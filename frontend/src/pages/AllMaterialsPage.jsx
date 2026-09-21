@@ -59,10 +59,8 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
 
-  // Undo Delete State
-  const [pendingDelete, setPendingDelete] = useState(null)
-  const undoTimerRef = useRef(null)
-  const countdownIntervalRef = useRef(null)
+  // Undo Delete State (Optimistic ID suppression)
+  const [pendingDeleteIds, setPendingDeleteIds] = useState([])
 
   const fetchMaterials = async () => {
     try {
@@ -100,11 +98,6 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
   useEffect(() => {
     fetchMaterials()
     fetchCategories()
-    return () => {
-      // Clear pending delete timeouts on unmount
-      if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
-      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current)
-    }
   }, [])
 
   // Reset to first page when search or filters change
@@ -118,8 +111,7 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
   }, [materials])
 
   // Filter materials (excluding items currently in pending delete)
-  const pendingIds = pendingDelete ? pendingDelete.ids : []
-  const availableMaterials = materials.filter(m => !pendingIds.includes(m.id))
+  const availableMaterials = materials.filter(m => !pendingDeleteIds.includes(m.id))
 
   const filteredMaterials = availableMaterials.filter(m => {
     const matchesSearch = 
@@ -182,61 +174,66 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
     }
   }
 
-  // Start 3-Second Undo Countdown & Process
+  // Start SweetAlert Toast with Live Seconds Countdown and Undo Action
   const scheduleDeleteWithUndo = (ids, labelText) => {
-    // If an existing pending delete exists, finalize it immediately
-    if (pendingDelete) {
-      clearTimeout(undoTimerRef.current)
-      clearInterval(countdownIntervalRef.current)
-      executePermanentDelete(pendingDelete.ids)
-    }
-
     // Clear selection for deleted IDs
     setSelectedIds(prev => prev.filter(id => !ids.includes(id)))
 
-    const pendingObj = {
-      ids,
-      label: labelText,
-      secondsLeft: 3
-    }
-    setPendingDelete(pendingObj)
+    // Optimistically hide from UI table immediately
+    setPendingDeleteIds(prev => [...prev, ...ids])
 
-    // Countdown interval every second
-    countdownIntervalRef.current = setInterval(() => {
-      setPendingDelete(prev => {
-        if (!prev) return null
-        if (prev.secondsLeft <= 1) {
-          clearInterval(countdownIntervalRef.current)
-          return { ...prev, secondsLeft: 0 }
-        }
-        return { ...prev, secondsLeft: prev.secondsLeft - 1 }
-      })
-    }, 1000)
-
-    // Finalize after 3 seconds
-    undoTimerRef.current = setTimeout(async () => {
-      clearInterval(countdownIntervalRef.current)
-      await executePermanentDelete(ids)
-      setPendingDelete(null)
-    }, 3200)
-  }
-
-  // User Clicks Undo
-  const handleUndo = () => {
-    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
-    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current)
-    
-    const restoredCount = pendingDelete?.ids?.length || 0
-    setPendingDelete(null)
+    let timerInterval = null
 
     Swal.fire({
-      icon: 'info',
-      title: 'Action Undone',
-      text: `${restoredCount} material(s) restored successfully.`,
-      timer: 1800,
-      showConfirmButton: false,
+      icon: 'warning',
+      title: `Deleted ${labelText}`,
+      html: `Action permanent in <b id="swal-undo-timer" style="color: #dc2626; font-weight: 700; font-family: monospace;">4</b>s`,
+      timer: 4000,
+      timerProgressBar: true,
       toast: true,
-      position: 'top-end'
+      position: 'top-end',
+      showConfirmButton: false,
+      showCancelButton: true,
+      cancelButtonText: '↺ UNDO',
+      cancelButtonColor: '#043486',
+      customClass: {
+        popup: 'rounded-none border border-gray-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-900 text-[#292424] dark:text-white',
+        title: 'text-xs font-bold text-gray-900 dark:text-white',
+        htmlContainer: 'text-xs text-gray-600 dark:text-slate-300',
+        cancelButton: 'px-3 py-1.5 text-xs font-bold tracking-wide uppercase rounded-none cursor-pointer'
+      },
+      didOpen: () => {
+        const timerElem = document.getElementById('swal-undo-timer')
+        timerInterval = setInterval(() => {
+          const timerLeft = Swal.getTimerLeft()
+          if (timerElem && timerLeft !== null) {
+            timerElem.textContent = `${Math.ceil(timerLeft / 1000)}`
+          }
+        }, 150)
+      },
+      willClose: () => {
+        if (timerInterval) clearInterval(timerInterval)
+      }
+    }).then(async (result) => {
+      if (result.dismiss === Swal.DismissReason.cancel) {
+        // User clicked UNDO button!
+        setPendingDeleteIds(prev => prev.filter(id => !ids.includes(id)))
+        Swal.mixin({
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 1800,
+          timerProgressBar: true
+        }).fire({
+          icon: 'info',
+          title: 'Action Undone',
+          text: `${labelText} restored successfully.`
+        })
+      } else {
+        // Countdown timer expired -> Permanently delete in TiDB
+        await executePermanentDelete(ids)
+        setPendingDeleteIds(prev => prev.filter(id => !ids.includes(id)))
+      }
     })
   }
 
@@ -344,27 +341,6 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
         />
       </div>
 
-      {/* 3-Second Undo Floating Toast Banner */}
-      {pendingDelete && (
-        <div className="bg-slate-900 dark:bg-slate-950 text-white px-4 py-3 rounded-sm shadow-xl flex items-center justify-between gap-4 border border-slate-700 animate-in slide-in-from-top-3 duration-200">
-          <div className="flex items-center gap-3">
-            <div className="w-6 h-6 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center font-bold text-xs">
-              {pendingDelete.secondsLeft}s
-            </div>
-            <span className="text-xs font-medium text-slate-200">
-              Deleted <strong className="text-white">{pendingDelete.label}</strong>. Action will be permanent in {pendingDelete.secondsLeft}s.
-            </span>
-          </div>
-
-          <button
-            onClick={handleUndo}
-            className="px-3.5 py-1.5 text-xs font-bold text-slate-900 bg-amber-400 hover:bg-amber-300 rounded-sm transition-all flex items-center gap-1.5 cursor-pointer shadow-sm hover:scale-105"
-          >
-            <RotateCcw size={14} />
-            <span>UNDO ({pendingDelete.secondsLeft}s)</span>
-          </button>
-        </div>
-      )}
 
       {/* Bulk Action Bar (White BG / Dark Slate, Clean Design Without Blinking) */}
       {selectedIds.length > 0 && (

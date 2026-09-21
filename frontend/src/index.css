@@ -79,7 +79,8 @@ body {
 
 /* Hide print container on screen */
 #invoice-print-wrapper,
-#receipt-print-wrapper {
+#receipt-print-wrapper,
+#return-slip-print-wrapper {
   display: none;
 }
 
@@ -109,9 +110,10 @@ body {
     display: none !important;
   }
 
-  /* Show ONLY the printable invoice or receipt wrapper */
+  /* Show ONLY the printable invoice, receipt or return voucher wrapper */
   #invoice-print-wrapper,
-  #receipt-print-wrapper {
+  #receipt-print-wrapper,
+  #return-slip-print-wrapper {
     display: block !important;
     position: absolute !important;
     top: 0 !important;
@@ -126,7 +128,8 @@ body {
   #invoice-printable-area,
   #receipt-printable-area,
   #service-invoice-printable-area,
-  #service-receipt-printable-area {
+  #service-receipt-printable-area,
+  #return-slip-printable-area {
     display: block !important;
     width: 100% !important;
     max-width: 100% !important;

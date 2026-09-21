@@ -68,6 +68,13 @@ export default function SystemSettingsPage() {
   const [servicePaddingDigits, setServicePaddingDigits] = useState('4')
   const [serviceSeparator, setServiceSeparator] = useState('/')
 
+  // Dynamic Return Numbering Settings
+  const [returnPrefix, setReturnPrefix] = useState('SIS-RET')
+  const [returnFinancialYear, setReturnFinancialYear] = useState('2026-27')
+  const [returnStartingNumber, setReturnStartingNumber] = useState('0001')
+  const [returnPaddingDigits, setReturnPaddingDigits] = useState('4')
+  const [returnSeparator, setReturnSeparator] = useState('/')
+
   // Tax Rates
   const [cgstRate, setCgstRate] = useState('9.00')
   const [sgstRate, setSgstRate] = useState('9.00')
@@ -145,6 +152,13 @@ export default function SystemSettingsPage() {
     setServiceStartingNumber(s.service_starting_number !== undefined ? String(s.service_starting_number).padStart(parseInt(s.service_padding_digits || 4, 10), '0') : '0001')
     setServicePaddingDigits(s.service_padding_digits !== undefined ? String(s.service_padding_digits) : '4')
     setServiceSeparator(s.service_separator || '/')
+
+    // Return numbering
+    setReturnPrefix(s.return_prefix !== undefined ? s.return_prefix : 'SIS-RET')
+    setReturnFinancialYear(s.return_financial_year || '2026-27')
+    setReturnStartingNumber(s.return_starting_number !== undefined ? String(s.return_starting_number).padStart(parseInt(s.return_padding_digits || 4, 10), '0') : '0001')
+    setReturnPaddingDigits(s.return_padding_digits !== undefined ? String(s.return_padding_digits) : '4')
+    setReturnSeparator(s.return_separator || '/')
 
     setCgstRate(s.cgst_rate !== undefined ? String(s.cgst_rate) : '9.00')
     setSgstRate(s.sgst_rate !== undefined ? String(s.sgst_rate) : '9.00')
@@ -524,6 +538,17 @@ export default function SystemSettingsPage() {
         })
         return
       }
+
+      const retStart = parseInt(returnStartingNumber, 10)
+      if (isNaN(retStart) || retStart < 1 || retStart > 999999) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Invalid Starting Number',
+          text: 'Return starting number must be between 1 and 999999.',
+          confirmButtonColor: '#043486'
+        })
+        return
+      }
     }
 
     if (tabId === 'bank') {
@@ -578,6 +603,11 @@ export default function SystemSettingsPage() {
         service_starting_number: parseInt(serviceStartingNumber, 10) || 1,
         service_padding_digits: parseInt(servicePaddingDigits, 10) || 4,
         service_separator: serviceSeparator || '/',
+        return_prefix: returnPrefix.trim(),
+        return_financial_year: returnFinancialYear.trim(),
+        return_starting_number: parseInt(returnStartingNumber, 10) || 1,
+        return_padding_digits: parseInt(returnPaddingDigits, 10) || 4,
+        return_separator: returnSeparator || '/',
         cgst_rate: parseFloat(cgstRate) || 9.00,
         sgst_rate: parseFloat(sgstRate) || 9.00,
         igst_rate: parseFloat(igstRate) || 18.00,
@@ -909,7 +939,7 @@ export default function SystemSettingsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
                 {/* --- CARD 1: TAX INVOICE NUMBERING CONFIGURATION --- */}
                 <div className="bg-gray-50/50 dark:bg-slate-950/50 border border-gray-200 dark:border-slate-800 p-5 rounded-none space-y-4">
@@ -1259,6 +1289,114 @@ export default function SystemSettingsPage() {
                       <div className="p-1.5 bg-gray-50/60 dark:bg-slate-850 border-l-2 border-gray-300 dark:border-slate-700 flex items-center justify-between text-gray-700 dark:text-slate-300">
                         <span className="truncate">{servicePrefix || 'SIS-SR'}{serviceSeparator}{serviceFinancialYear || '2026-27'}{serviceSeparator}{String((parseInt(serviceStartingNumber, 10) || 1) + 1).padStart(parseInt(servicePaddingDigits, 10) || 4, '0')}</span>
                         <span className="text-[9px] text-gray-400 font-sans font-normal ml-1 shrink-0">(2nd Ticket)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* --- CARD 4: RETURN RECEIPT / RMA NUMBERING CONFIGURATION --- */}
+                <div className="bg-gray-50/50 dark:bg-slate-950/50 border border-gray-200 dark:border-slate-800 p-5 rounded-none space-y-4">
+                  <div className="pb-2 border-b border-gray-200 dark:border-slate-800">
+                    <h3 className="text-sm font-bold text-gray-800 dark:text-slate-200">
+                      Product Return Settings
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                        Prefix *
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!editStates.company}
+                        value={returnPrefix}
+                        maxLength={10}
+                        onChange={(e) => setReturnPrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 10))}
+                        placeholder="SIS-RET"
+                        className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none uppercase transition-all ${
+                          editStates.company
+                            ? 'bg-white dark:bg-slate-900 text-gray-800 dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'
+                            : 'bg-gray-100 dark:bg-slate-900 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-800 cursor-not-allowed'
+                        }`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                        Financial Year *
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!editStates.company}
+                        value={returnFinancialYear}
+                        maxLength={7}
+                        onChange={(e) => setReturnFinancialYear(e.target.value.replace(/[^0-9-]/g, '').slice(0, 7))}
+                        placeholder="2026-27"
+                        className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none transition-all ${
+                          editStates.company
+                            ? 'bg-white dark:bg-slate-900 text-[#292424] dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'
+                            : 'bg-gray-100 dark:bg-slate-900 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-800 cursor-not-allowed'
+                        }`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                        Starting Number *
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="999999"
+                        disabled={!editStates.company}
+                        value={returnStartingNumber}
+                        onChange={(e) => setReturnStartingNumber(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="1"
+                        className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none transition-all ${
+                          editStates.company
+                            ? 'bg-white dark:bg-slate-900 text-[#292424] dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'
+                            : 'bg-gray-100 dark:bg-slate-900 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-800 cursor-not-allowed'
+                        }`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                        Separator / Delimiter
+                      </label>
+                      <select
+                        disabled={!editStates.company}
+                        value={returnSeparator}
+                        onChange={(e) => setReturnSeparator(e.target.value)}
+                        className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none transition-all ${
+                          editStates.company
+                            ? 'bg-white dark:bg-slate-900 text-[#292424] dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486] cursor-pointer'
+                            : 'bg-gray-100 dark:bg-slate-900 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-800 cursor-not-allowed'
+                        }`}
+                      >
+                        <option value="/">Slash ( / )</option>
+                        <option value="-">Hyphen ( - )</option>
+                        <option value=".">Dot ( . )</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Live Return Preview Box */}
+                  <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                        Return ID Preview:
+                      </span>
+                    </div>
+                    <div className="space-y-1 font-mono text-[11px] font-bold text-gray-800 dark:text-slate-200">
+                      <div className="p-1.5 bg-gray-50 dark:bg-slate-800 border-l-2 border-gray-400 dark:border-slate-600 flex items-center justify-between">
+                        <span className="truncate">{returnPrefix || 'SIS-RET'}{returnSeparator}{returnFinancialYear || '2026-27'}{returnSeparator}{String(parseInt(returnStartingNumber, 10) || 1).padStart(parseInt(returnPaddingDigits, 10) || 4, '0')}</span>
+                        <span className="text-[9px] text-gray-400 font-sans font-normal ml-1 shrink-0">(1st Return)</span>
+                      </div>
+                      <div className="p-1.5 bg-gray-50/60 dark:bg-slate-850 border-l-2 border-gray-300 dark:border-slate-700 flex items-center justify-between text-gray-700 dark:text-slate-300">
+                        <span className="truncate">{returnPrefix || 'SIS-RET'}{returnSeparator}{returnFinancialYear || '2026-27'}{returnSeparator}{String((parseInt(returnStartingNumber, 10) || 1) + 1).padStart(parseInt(returnPaddingDigits, 10) || 4, '0')}</span>
+                        <span className="text-[9px] text-gray-400 font-sans font-normal ml-1 shrink-0">(2nd Return)</span>
                       </div>
                     </div>
                   </div>

@@ -78,6 +78,16 @@ export async function updateSettings(req, res) {
       service_starting_number,
       service_padding_digits,
       service_separator,
+      return_prefix,
+      return_financial_year,
+      return_starting_number,
+      return_padding_digits,
+      return_separator,
+      credit_note_prefix,
+      credit_note_financial_year,
+      credit_note_starting_number,
+      credit_note_padding_digits,
+      credit_note_separator,
       return_days,
       due_date_days
     } = req.body
@@ -95,9 +105,11 @@ export async function updateSettings(req, res) {
         terms_conditions, return_days, due_date_days, cgst_rate, sgst_rate, igst_rate,
         invoice_prefix, invoice_financial_year, invoice_starting_number, invoice_padding_digits, invoice_separator,
         receipt_prefix, receipt_financial_year, receipt_starting_number, receipt_padding_digits, receipt_separator,
-        service_prefix, service_financial_year, service_starting_number, service_padding_digits, service_separator
+        service_prefix, service_financial_year, service_starting_number, service_padding_digits, service_separator,
+        return_prefix, return_financial_year, return_starting_number, return_padding_digits, return_separator,
+        credit_note_prefix, credit_note_financial_year, credit_note_starting_number, credit_note_padding_digits, credit_note_separator
       ) VALUES (
-        1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )
       ON DUPLICATE KEY UPDATE
         company_name = VALUES(company_name),
@@ -133,6 +145,16 @@ export async function updateSettings(req, res) {
         service_starting_number = VALUES(service_starting_number),
         service_padding_digits = VALUES(service_padding_digits),
         service_separator = VALUES(service_separator),
+        return_prefix = VALUES(return_prefix),
+        return_financial_year = VALUES(return_financial_year),
+        return_starting_number = VALUES(return_starting_number),
+        return_padding_digits = VALUES(return_padding_digits),
+        return_separator = VALUES(return_separator),
+        credit_note_prefix = VALUES(credit_note_prefix),
+        credit_note_financial_year = VALUES(credit_note_financial_year),
+        credit_note_starting_number = VALUES(credit_note_starting_number),
+        credit_note_padding_digits = VALUES(credit_note_padding_digits),
+        credit_note_separator = VALUES(credit_note_separator),
         updated_at = CURRENT_TIMESTAMP
     `, [
       company_name || 'SIMCHA INFO SOLUTIONS',
@@ -167,7 +189,17 @@ export async function updateSettings(req, res) {
       service_financial_year || '2026-27',
       parseInt(service_starting_number, 10) || 1,
       parseInt(service_padding_digits, 10) || 4,
-      service_separator || '/'
+      service_separator || '/',
+      return_prefix !== undefined ? return_prefix : 'SIS-RET',
+      return_financial_year || '2026-27',
+      parseInt(return_starting_number, 10) || 1,
+      parseInt(return_padding_digits, 10) || 4,
+      return_separator || '/',
+      credit_note_prefix !== undefined ? credit_note_prefix : 'SIS-CN',
+      credit_note_financial_year || '2026-27',
+      parseInt(credit_note_starting_number, 10) || 1,
+      parseInt(credit_note_padding_digits, 10) || 4,
+      credit_note_separator || '/'
     ])
 
     return res.status(200).json({

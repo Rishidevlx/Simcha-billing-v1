@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import {
   RotateCcw,
@@ -20,13 +21,18 @@ import {
   Receipt,
   ArrowRight,
   ShieldCheck,
+  BadgeCheck,
   CreditCard,
   FileText,
+  Printer,
+  ChevronDown,
   User,
   Phone,
   Hash,
   Layers,
-  ArrowUpRight
+  ArrowUpRight,
+  Pencil,
+  Edit3
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import Swal from 'sweetalert2'
@@ -34,6 +40,7 @@ import { API_ENDPOINTS } from '../config/api'
 import ListPageHeader from '../components/common/ListPageHeader'
 import ListKpiCard from '../components/common/ListKpiCard'
 import ListPagePagination from '../components/common/ListPagePagination'
+import ReturnVoucherTemplate from '../components/invoice/ReturnVoucherTemplate'
 
 // Initial standard sample data for Returns & Adjustments
 const DEFAULT_RETURNS = [
@@ -163,10 +170,17 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
   const [viewModalOpen, setViewModalOpen] = useState(false)
   const [selectedReturnView, setSelectedReturnView] = useState(null)
 
-  // QC Form State (Option 1: STOCK | Option 2: REPLACE | Option 3: REFUND)
-  const [qcDecision, setQcDecision] = useState('STOCK')
+  // QC Form State (REPLACE | REFUND | REJECT)
+  const [qcDecision, setQcDecision] = useState('REPLACE')
+  const [qcCondition, setQcCondition] = useState('PASS')
   const [qcNotes, setQcNotes] = useState('')
   const [qcRefundAmount, setQcRefundAmount] = useState('')
+  const [refundMode, setRefundMode] = useState('Credit Note')
+  const [replacementSerial, setReplacementSerial] = useState('')
+  const [availableSerialsList, setAvailableSerialsList] = useState([])
+  const [serialDropdownOpen, setSerialDropdownOpen] = useState(false)
+  const [serialSearchTerm, setSerialSearchTerm] = useState('')
+  const [isLoadingSerials, setIsLoadingSerials] = useState(false)
   const [isSubmittingQc, setIsSubmittingQc] = useState(false)
 
   // New Return Form State
@@ -182,50 +196,52 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
     custom_reason: ''
   })
 
-  // Save returns to localStorage whenever updated
-  useEffect(() => {
+  // Fetch materials, bills, services, company settings, and returns from DB API
+  const fetchAllData = async () => {
     try {
-      localStorage.setItem('simcha_returns_registry', JSON.stringify(returnsList))
-    } catch (e) {
-      console.error('Failed to sync returns with localStorage:', e)
-    }
-  }, [returnsList])
+      setLoading(true)
+      const [matRes, billsRes, servRes, setRes, retRes] = await Promise.all([
+        fetch(API_ENDPOINTS.MATERIALS).catch(() => null),
+        fetch(API_ENDPOINTS.BILLS).catch(() => null),
+        fetch(API_ENDPOINTS.SERVICES).catch(() => null),
+        fetch(API_ENDPOINTS.SETTINGS).catch(() => null),
+        fetch(API_ENDPOINTS.RETURNS).catch(() => null)
+      ])
 
-  // Fetch materials, bills, services, and company settings
-  useEffect(() => {
-    const fetchAuxiliaryData = async () => {
-      try {
-        setLoading(true)
-        const [matRes, billsRes, servRes, setRes] = await Promise.all([
-          fetch(API_ENDPOINTS.MATERIALS).catch(() => null),
-          fetch(API_ENDPOINTS.BILLS).catch(() => null),
-          fetch(API_ENDPOINTS.SERVICES).catch(() => null),
-          fetch(API_ENDPOINTS.SETTINGS).catch(() => null)
-        ])
-
-        if (matRes && matRes.ok) {
-          const mData = await matRes.json()
-          if (mData.success && mData.materials) setMaterials(mData.materials)
-        }
-        if (billsRes && billsRes.ok) {
-          const bData = await billsRes.json()
-          if (bData.success && bData.bills) setBills(bData.bills)
-        }
-        if (servRes && servRes.ok) {
-          const sData = await servRes.json()
-          if (sData.success && sData.services) setServicesList(sData.services)
-        }
-        if (setRes && setRes.ok) {
-          const stData = await setRes.json()
-          if (stData.success && stData.settings) setSettings(stData.settings)
-        }
-      } catch (err) {
-        console.error('Failed to load auxiliary data for returns:', err)
-      } finally {
-        setLoading(false)
+      if (matRes && matRes.ok) {
+        const mData = await matRes.json()
+        if (mData.success && mData.materials) setMaterials(mData.materials)
       }
+      if (billsRes && billsRes.ok) {
+        const bData = await billsRes.json()
+        if (bData.success && bData.bills) setBills(bData.bills)
+      }
+      if (servRes && servRes.ok) {
+        const sData = await servRes.json()
+        if (sData.success && sData.services) setServicesList(sData.services)
+      }
+      if (setRes && setRes.ok) {
+        const stData = await setRes.json()
+        if (stData.success && stData.settings) setSettings(stData.settings)
+      }
+      if (retRes && retRes.ok) {
+        const rData = await retRes.json()
+        if (rData.success && rData.returns) {
+          setReturnsList(rData.returns)
+          try {
+            localStorage.setItem('simcha_returns_registry', JSON.stringify(rData.returns))
+          } catch (e) {}
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load data for returns:', err)
+    } finally {
+      setLoading(false)
     }
-    fetchAuxiliaryData()
+  }
+
+  useEffect(() => {
+    fetchAllData()
   }, [])
 
   // Return Policy Window (Days) from Settings (Default 7 Days)
@@ -252,31 +268,133 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
     return { daysElapsed, isWithinWindow, billDateFormatted }
   }, [selectedBill, returnPolicyDays])
 
-  // Filtered Bill suggestions for Invoice Search
+  // Parse serial numbers helper
+  const parseItemSerials = (it) => {
+    if (!it) return []
+    if (Array.isArray(it.serial_numbers) && it.serial_numbers.length > 0) {
+      return it.serial_numbers.map(s => String(s).trim()).filter(Boolean)
+    }
+    if (Array.isArray(it.serials) && it.serials.length > 0) {
+      return it.serials.map(s => String(s).trim()).filter(Boolean)
+    }
+    if (typeof it.serial_number === 'string' && it.serial_number.trim()) {
+      return it.serial_number.split(',').map(s => s.trim()).filter(Boolean)
+    }
+    if (typeof it.serialNumber === 'string' && it.serialNumber.trim()) {
+      return it.serialNumber.split(',').map(s => s.trim()).filter(Boolean)
+    }
+    return []
+  }
+
+  // Helper: Check if a Bill is Cancelled
+  const isBillCancelled = (b) => {
+    if (!b) return false
+    const pStatus = (b.payment_status || '').toLowerCase().trim()
+    const bStatus = (b.status || '').toLowerCase().trim()
+    return pStatus === 'cancelled' || pStatus === 'cancel' || bStatus === 'cancelled' || bStatus === 'cancel'
+  }
+
+  // Helper: Check if a Bill is currently in Pending QC
+  const isBillInPendingQc = (b) => {
+    if (!b) return false
+    const billNo = (b.invoice_number || b.service_number || '').toLowerCase().trim()
+    const recNo = (b.receipt_number || '').toLowerCase().trim()
+    const bId = b.id
+    return returnsList.some(r => {
+      if (r.qc_status !== 'Pending QC') return false
+      if (r.bill_id && bId && String(r.bill_id) === String(bId)) return true
+      if (r.bill_number) {
+        const rBillNo = r.bill_number.toLowerCase().trim()
+        if (billNo && rBillNo === billNo) return true
+        if (recNo && rBillNo === recNo) return true
+      }
+      return false
+    })
+  }
+
+  // Helper: Check if a Serial Number has already been submitted for return / QC
+  const isSerialAlreadyInReturn = (serial, materialId, billId, billNumber) => {
+    if (!serial) return false
+    const snClean = String(serial).toLowerCase().trim()
+    return returnsList.some(r => {
+      if (!r.serial_number) return false
+      if (r.qc_status === 'Rejected' || r.qc_decision === 'REJECT') return false
+      const rSerials = r.serial_number.toLowerCase().split(',').map(s => s.trim())
+      if (!rSerials.includes(snClean)) return false
+      
+      // Match against this specific bill
+      const matchBillId = billId && r.bill_id && String(r.bill_id) === String(billId)
+      const matchBillNo = billNumber && r.bill_number && r.bill_number.trim().toLowerCase() === String(billNumber).trim().toLowerCase()
+      return matchBillId || matchBillNo
+    })
+  }
+
+  // Helper: Get remaining returnable quantity for a bill item
+  const getItemRemainingReturnableQty = (it, billId, billNumber) => {
+    const totalQty = parseFloat(it.quantity) || 1
+    const serials = parseItemSerials(it)
+    if (serials.length > 0) {
+      const activeSerials = serials.filter(sn => !isSerialAlreadyInReturn(sn, it.material_id, billId, billNumber))
+      return activeSerials.length
+    }
+    const returnedQty = returnsList
+      .filter(r => {
+        if (r.qc_status === 'Rejected' || r.qc_decision === 'REJECT') return false
+        const matchBill = (billId && r.bill_id && String(r.bill_id) === String(billId)) ||
+          (billNumber && r.bill_number && r.bill_number.trim().toLowerCase() === String(billNumber).trim().toLowerCase())
+        const matchMat = (it.material_id && r.material_id && String(r.material_id) === String(it.material_id)) ||
+          (r.item_name && (r.item_name.toLowerCase().trim() === (it.product_name || it.item_name || '').toLowerCase().trim()))
+        return matchBill && matchMat
+      })
+      .reduce((sum, r) => sum + (parseFloat(r.quantity) || 1), 0)
+    return Math.max(0, totalQty - returnedQty)
+  }
+
+  // Helper: Check if all items in bill are already fully returned
+  const isBillFullyReturned = (b) => {
+    if (!b) return false
+    if (!b.items || b.items.length === 0) return false
+    return b.items.every(it => getItemRemainingReturnableQty(it, b.id, b.invoice_number) <= 0)
+  }
+
+  // Filtered Bill suggestions for Invoice Search (All active non-cancelled matching bills)
   const filteredBillSuggestions = useMemo(() => {
     if (!invoiceQuery.trim()) return []
     const q = invoiceQuery.toLowerCase().trim()
-    return bills.filter(b => 
-      b.invoice_number?.toLowerCase().includes(q) ||
-      b.customer_name?.toLowerCase().includes(q) ||
-      b.customer_phone?.toLowerCase().includes(q)
-    ).slice(0, 8)
+    return bills.filter(b => {
+      if (isBillCancelled(b)) return false
+      return (
+        b.invoice_number?.toLowerCase().includes(q) ||
+        b.customer_name?.toLowerCase().includes(q) ||
+        b.customer_phone?.toLowerCase().includes(q)
+      )
+    }).slice(0, 8)
   }, [bills, invoiceQuery])
 
-  // Filtered Receipt suggestions for Receipt Search (Only Sales Receipts)
+  // Filtered Receipt suggestions for Receipt Search (STRICTLY Receipt Number ONLY)
   const filteredReceiptSuggestions = useMemo(() => {
     if (!receiptQuery.trim()) return []
     const q = receiptQuery.toLowerCase().trim()
-    return bills.filter(b => 
-      b.receipt_number?.toLowerCase().includes(q) ||
-      b.customer_name?.toLowerCase().includes(q) ||
-      b.customer_phone?.toLowerCase().includes(q)
-    ).slice(0, 8)
+    return bills.filter(b => {
+      if (!b.receipt_number || !b.receipt_number.trim()) return false
+      if (isBillCancelled(b)) return false
+      return b.receipt_number.toLowerCase().includes(q)
+    }).slice(0, 8)
   }, [bills, receiptQuery])
 
   // Select Bill / Invoice for Return Entry
   const handleSelectBill = async (billObj, isService = false) => {
     try {
+      if (isBillCancelled(billObj)) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Cancelled Invoice',
+          text: `Invoice "${billObj.invoice_number || billObj.id}" has been CANCELLED in Outward List and cannot be returned.`,
+          confirmButtonColor: '#043486'
+        })
+        return
+      }
+
       setIsLoadingBill(true)
       let fullBill = billObj
       if (isService) {
@@ -310,24 +428,6 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
     }
   }
 
-  // Parse serial numbers helper
-  const parseItemSerials = (it) => {
-    if (!it) return []
-    if (Array.isArray(it.serial_numbers) && it.serial_numbers.length > 0) {
-      return it.serial_numbers.map(s => String(s).trim()).filter(Boolean)
-    }
-    if (Array.isArray(it.serials) && it.serials.length > 0) {
-      return it.serials.map(s => String(s).trim()).filter(Boolean)
-    }
-    if (typeof it.serial_number === 'string' && it.serial_number.trim()) {
-      return it.serial_number.split(',').map(s => s.trim()).filter(Boolean)
-    }
-    if (typeof it.serialNumber === 'string' && it.serialNumber.trim()) {
-      return it.serialNumber.split(',').map(s => s.trim()).filter(Boolean)
-    }
-    return []
-  }
-
   // Clear Selected Bill
   const handleClearSelectedBill = () => {
     setSelectedBill(null)
@@ -340,19 +440,32 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
   const handleToggleItemCheckbox = (item) => {
     const itemKey = item.id || `${item.item_name}_${item.product_name}`
     const serials = parseItemSerials(item)
+    const availableSerials = serials.filter(sn => !isSerialAlreadyInReturn(sn, item.material_id, selectedBill?.id, selectedBill?.invoice_number))
+    const remainingQty = getItemRemainingReturnableQty(item, selectedBill?.id, selectedBill?.invoice_number)
+
+    if (remainingQty <= 0) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Item Already Returned',
+        text: 'All purchased units for this line item have already been returned or are in QC.',
+        confirmButtonColor: '#043486'
+      })
+      return
+    }
+
     setSelectedReturnItems(prev => {
       const next = { ...prev }
       if (next[itemKey]) {
         delete next[itemKey]
       } else {
         const hasMultipleSerials = serials.length > 1
-        const initialSerials = hasMultipleSerials ? [...serials] : (serials.length === 1 ? [serials[0]] : [])
-        const initialQty = hasMultipleSerials ? serials.length : 1
+        const initialSerials = hasMultipleSerials ? [...availableSerials] : (availableSerials.length === 1 ? [availableSerials[0]] : [])
+        const initialQty = hasMultipleSerials ? availableSerials.length : remainingQty
         next[itemKey] = {
           checked: true,
           selected_serials: initialSerials,
           return_qty: initialQty,
-          max_qty: parseFloat(item.quantity) || 1,
+          max_qty: remainingQty,
           reason: 'Defective Product',
           custom_reason: '',
           item_data: item
@@ -364,14 +477,26 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
 
   // Toggle individual serial checkbox for multi-serial items
   const handleToggleItemSerial = (item, serial) => {
+    if (isSerialAlreadyInReturn(serial, item.material_id, selectedBill?.id, selectedBill?.invoice_number)) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Serial Already In Return',
+        text: `Serial number "${serial}" is already in Return or Pending QC.`,
+        confirmButtonColor: '#043486'
+      })
+      return
+    }
+
     const itemKey = item.id || `${item.item_name}_${item.product_name}`
+    const remainingQty = getItemRemainingReturnableQty(item, selectedBill?.id, selectedBill?.invoice_number)
+
     setSelectedReturnItems(prev => {
       const next = { ...prev }
       const current = next[itemKey] || {
         checked: true,
         selected_serials: [],
         return_qty: 0,
-        max_qty: parseFloat(item.quantity) || 1,
+        max_qty: remainingQty,
         reason: 'Defective Product',
         custom_reason: '',
         item_data: item
@@ -399,12 +524,13 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
     })
   }
 
-  // Handle Item Return Qty Change (if needed programmatically)
+  // Handle Item Return Qty Change
   const handleItemQtyChange = (itemKey, qty) => {
     setSelectedReturnItems(prev => {
       if (!prev[itemKey]) return prev
       const max = prev[itemKey].max_qty || 1
-      const clamped = Math.max(1, Math.min(max, parseFloat(qty) || 1))
+      const num = parseFloat(qty)
+      const clamped = isNaN(num) || num < 1 ? 1 : Math.min(max, num)
       return {
         ...prev,
         [itemKey]: {
@@ -463,72 +589,103 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
     executeCreateReturns()
   }
 
-  const executeCreateReturns = () => {
-    const selectedEntries = Object.values(selectedReturnItems)
-    const newReturnEntries = selectedEntries.map((entry, idx) => {
-      const it = entry.item_data
-      const returnNum = `RET-2026-${String(returnsList.length + idx + 1).padStart(4, '0')}`
-      const serialStr = entry.selected_serials && entry.selected_serials.length > 0
-        ? entry.selected_serials.join(', ')
-        : (it.serial_number || '')
+  const executeCreateReturns = async () => {
+    try {
+      const selectedEntries = Object.values(selectedReturnItems)
+      const payloadItems = selectedEntries.map(entry => {
+        const it = entry.item_data
+        const serialStr = entry.selected_serials && entry.selected_serials.length > 0
+          ? entry.selected_serials.join(', ')
+          : (it.serial_number || '')
 
-      return {
-        id: Date.now() + idx,
-        return_number: returnNum,
-        return_date: new Date().toISOString().split('T')[0],
-        bill_number: selectedBill.invoice_number || selectedBill.service_number || 'N/A',
-        receipt_number: selectedBill.receipt_number || null,
-        customer_name: selectedBill.customer_name || 'Customer',
-        customer_phone: selectedBill.customer_phone || '-',
-        item_name: it.product_name || it.item_name || 'Product',
-        material_id: it.material_id || null,
-        serial_number: serialStr,
-        quantity: entry.return_qty || 1,
-        unit: it.unit || 'Nos',
-        reason: entry.reason,
-        qc_status: 'Pending QC',
-        qc_decision: null,
-        qc_notes: '',
-        resolution_ref: '',
-        refund_amount: (parseFloat(it.rate || 0) * (entry.return_qty || 1)).toFixed(2),
-        created_at: new Date().toISOString()
+        return {
+          return_date: new Date().toISOString().split('T')[0],
+          bill_id: selectedBill.id || null,
+          bill_number: selectedBill.invoice_number || selectedBill.service_number || 'N/A',
+          customer_name: selectedBill.customer_name || 'Customer',
+          customer_phone: selectedBill.customer_phone || null,
+          customer_email: selectedBill.customer_email || null,
+          item_name: it.product_name || it.item_name || 'Product',
+          material_id: it.material_id || null,
+          serial_number: serialStr,
+          quantity: entry.return_qty || 1,
+          unit: it.unit || 'Nos',
+          unit_price: parseFloat(it.rate || it.selling_price || 0),
+          total_amount: parseFloat(it.rate || it.selling_price || 0) * (entry.return_qty || 1),
+          reason: entry.reason,
+          custom_reason: entry.custom_reason || ''
+        }
+      })
+
+      const res = await fetch(API_ENDPOINTS.RETURNS, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: payloadItems })
+      })
+
+      const data = await res.json()
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to create return record')
       }
-    })
 
-    setReturnsList(prev => [...newReturnEntries, ...prev])
+      await fetchAllData()
 
-    Swal.fire({
-      icon: 'success',
-      title: 'Return Request Created!',
-      text: `${newReturnEntries.length} item(s) submitted for return. Proceeding to QC Inspection...`,
-      timer: 1800,
-      showConfirmButton: false
-    })
+      Swal.fire({
+        icon: 'success',
+        title: 'Return Request Created!',
+        text: `${payloadItems.length} item(s) submitted for return. Proceeding to QC Inspection...`,
+        timer: 1800,
+        showConfirmButton: false
+      })
 
-    // Reset return entry form and switch to pending QC tab
-    handleClearSelectedBill()
-    setActiveTab('pending')
-    setCurrentPage(1)
+      // Reset return entry form and switch to pending QC tab
+      handleClearSelectedBill()
+      setActiveTab('pending')
+      setCurrentPage(1)
+    } catch (err) {
+      console.error('Error creating returns:', err)
+      Swal.fire({
+        icon: 'error',
+        title: 'Return Request Failed',
+        text: err.message || 'Could not save return record to database.',
+        confirmButtonColor: '#043486'
+      })
+    }
+  }
+
+  // Helper: Check if an item is a Defective / QC Failed unit
+  const isDefectiveItem = (r) => {
+    if (r.qc_status === 'Pending QC') return false
+    const cond = (r.qc_condition || '').toUpperCase().trim()
+    const dec = (r.qc_decision || '').toUpperCase().trim()
+    return cond === 'FAIL' || cond === 'DEFECTIVE' || cond === 'DAMAGED' || dec === 'REJECT'
+  }
+
+  // Helper: Check if an item is a Completed & Resolved unit (Pass condition)
+  const isCompletedItem = (r) => {
+    if (r.qc_status === 'Pending QC') return false
+    return !isDefectiveItem(r)
   }
 
   // KPI Metrics Calculation
   const summaryMetrics = useMemo(() => {
     const total = returnsList.length
     const pending = returnsList.filter(r => r.qc_status === 'Pending QC').length
-    const restocked = returnsList.filter(r => r.qc_decision === 'STOCK').length
+    const defective = returnsList.filter(r => isDefectiveItem(r)).length
+    const completed = returnsList.filter(r => isCompletedItem(r)).length
     const replaced = returnsList.filter(r => r.qc_decision === 'REPLACE').length
     const refunded = returnsList.filter(r => r.qc_decision === 'REFUND').length
-    return { total, pending, restocked, replaced, refunded }
+    const rejected = returnsList.filter(r => r.qc_decision === 'REJECT' || r.qc_status === 'Rejected').length
+    return { total, pending, defective, completed, replaced, refunded, rejected }
   }, [returnsList])
 
   // Filter Logic
   const filteredReturns = useMemo(() => {
     return returnsList.filter(item => {
-      // Tab Filtering
+      // Tab Filtering: 'pending' vs 'completed' vs 'defective'
       if (activeTab === 'pending' && item.qc_status !== 'Pending QC') return false
-      if (activeTab === 'restocked' && item.qc_decision !== 'STOCK') return false
-      if (activeTab === 'replaced' && item.qc_decision !== 'REPLACE') return false
-      if (activeTab === 'refunded' && item.qc_decision !== 'REFUND') return false
+      if (activeTab === 'completed' && !isCompletedItem(item)) return false
+      if (activeTab === 'defective' && !isDefectiveItem(item)) return false
 
       // Search Filter
       const q = searchQuery.toLowerCase().trim()
@@ -538,7 +695,9 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
         item.customer_name?.toLowerCase().includes(q) ||
         item.customer_phone?.toLowerCase().includes(q) ||
         item.bill_number?.toLowerCase().includes(q) ||
-        item.item_name?.toLowerCase().includes(q)
+        item.item_name?.toLowerCase().includes(q) ||
+        item.serial_number?.toLowerCase().includes(q) ||
+        item.replacement_serial?.toLowerCase().includes(q)
 
       // Reason Filter
       const matchReason =
@@ -584,58 +743,93 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
     )
   }
 
-  // Open QC Inspection Modal
-  const handleOpenQcModal = returnItem => {
+  // Filtered available serials for searchable replacement dropdown
+  const filteredAvailableSerials = useMemo(() => {
+    if (!Array.isArray(availableSerialsList)) return []
+    if (!serialSearchTerm.trim()) return availableSerialsList
+    const q = serialSearchTerm.toLowerCase().trim()
+    return availableSerialsList.filter(s => s.serial_number?.toLowerCase().includes(q))
+  }, [availableSerialsList, serialSearchTerm])
+
+  // Open QC Inspection Modal and load material available serials
+  const handleOpenQcModal = async returnItem => {
     setSelectedReturnForQc(returnItem)
-    setQcDecision(returnItem.qc_decision || 'STOCK')
+    setQcDecision(returnItem.qc_decision || 'REPLACE')
+    setQcCondition(returnItem.qc_condition === 'FAIL' || returnItem.qc_condition === 'Defective' || returnItem.qc_condition === 'Damaged' ? 'FAIL' : 'PASS')
     setQcNotes(returnItem.qc_notes || '')
-    setQcRefundAmount(returnItem.refund_amount ? String(returnItem.refund_amount) : '')
+    setQcRefundAmount(returnItem.refund_amount ? String(returnItem.refund_amount) : (returnItem.total_amount ? String(returnItem.total_amount) : ''))
+    setReplacementSerial(returnItem.replacement_serial || '')
+    setSerialSearchTerm(returnItem.replacement_serial || '')
+    setSerialDropdownOpen(false)
+    setRefundMode('Credit Note')
+    setAvailableSerialsList([])
     setQcModalOpen(true)
+
+    if (returnItem.material_id) {
+      try {
+        setIsLoadingSerials(true)
+        const res = await fetch(API_ENDPOINTS.INVENTORY_MATERIAL_SERIALS(returnItem.material_id, 'Available'))
+        const data = await res.json()
+        if (data.success && Array.isArray(data.serials)) {
+          setAvailableSerialsList(data.serials)
+        }
+      } catch (e) {
+        console.error('Failed to load available serials for replacement:', e)
+      } finally {
+        setIsLoadingSerials(false)
+      }
+    }
   }
 
-  // Submit QC Inspection Decision (Option 1: STOCK, Option 2: REPLACE, Option 3: REFUND)
+  // Submit QC Inspection Decision (REPLACE | REFUND | REJECT)
   const handleSaveQcDecision = async e => {
     e.preventDefault()
     if (!selectedReturnForQc) return
 
+    if (qcDecision === 'REPLACE' && availableSerialsList.length > 0 && !replacementSerial) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Replacement Serial Required',
+        text: 'Please choose an available serial number from stock for replacement.',
+        confirmButtonColor: '#043486'
+      })
+      return
+    }
+
     setIsSubmittingQc(true)
     try {
-      let refCode = ''
-      if (qcDecision === 'STOCK') {
-        refCode = `RESTOCK-${Date.now().toString().slice(-4)}`
-      } else if (qcDecision === 'REPLACE') {
-        refCode = `DISP-${Date.now().toString().slice(-4)}`
-      } else if (qcDecision === 'REFUND') {
-        refCode = `CN-2026-${String(Math.floor(1000 + Math.random() * 9000))}`
+      const res = await fetch(API_ENDPOINTS.RETURN_QC_DECISION(selectedReturnForQc.id), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          qc_decision: qcDecision,
+          qc_condition: qcCondition,
+          qc_notes: qcNotes || `QC Decision: ${qcDecision} (${qcCondition})`,
+          refund_amount: qcDecision === 'REFUND' ? (parseFloat(qcRefundAmount) || 0) : 0,
+          replacement_serial: qcDecision === 'REPLACE' ? replacementSerial : null
+        })
+      })
+
+      const data = await res.json()
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to update QC decision in database.')
       }
 
-      setReturnsList(prev =>
-        prev.map(r =>
-          r.id === selectedReturnForQc.id
-            ? {
-                ...r,
-                qc_status: 'Completed',
-                qc_decision: qcDecision,
-                qc_notes: qcNotes || 'QC inspection completed successfully.',
-                resolution_ref: refCode,
-                refund_amount: qcDecision === 'REFUND' ? parseFloat(qcRefundAmount) || 0 : 0
-              }
-            : r
-        )
-      )
+      await fetchAllData()
 
       let titleMessage = 'QC Decision Recorded'
       let textMessage = ''
-      if (qcDecision === 'STOCK') {
-        textMessage = `Item approved for restock. Stock (+${selectedReturnForQc.quantity}) recorded in inventory.`
-      } else if (qcDecision === 'REPLACE') {
-        textMessage = `Replacement dispatched. Dispatched Slip ${refCode} generated.`
+      if (qcDecision === 'REPLACE') {
+        textMessage = `Replacement dispatched. Outward Slip ${data.resolutionRef || ''} generated.`
       } else if (qcDecision === 'REFUND') {
-        textMessage = `Credit Note ${refCode} generated for customer refund balance.`
+        textMessage = `Credit Note ${data.resolutionRef || ''} generated for customer refund balance.`
+      } else if (qcDecision === 'REJECT') {
+        titleMessage = 'Return Rejected'
+        textMessage = 'Return request has been marked as Rejected.'
       }
 
       Swal.fire({
-        icon: 'success',
+        icon: qcDecision === 'REJECT' ? 'info' : 'success',
         title: titleMessage,
         text: textMessage,
         confirmButtonColor: '#043486',
@@ -649,7 +843,7 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: 'Failed to record QC inspection decision.',
+        text: err.message || 'Failed to record QC inspection decision.',
         confirmButtonColor: '#043486'
       })
     } finally {
@@ -657,61 +851,74 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
     }
   }
 
-  // Create New Return Request
-  const handleCreateReturn = e => {
+  // Handle Manual Modal Return Form Submission
+  const handleCreateNewReturnSubmit = async e => {
     e.preventDefault()
     if (!newForm.customer_name.trim() || !newForm.item_name.trim()) {
       Swal.fire({
         icon: 'warning',
-        title: 'Missing Required Fields',
-        text: 'Please enter customer name and product/item name.',
+        title: 'Required Fields Missing',
+        text: 'Customer Name and Item Name are mandatory.',
         confirmButtonColor: '#043486'
       })
       return
     }
 
-    const nextId = returnsList.length + 1
-    const newReturnObj = {
-      id: Date.now(),
-      return_number: `RET-2026-000${nextId}`,
-      return_date: new Date().toISOString().split('T')[0],
-      bill_number: newForm.bill_number.trim() || 'N/A',
-      customer_name: newForm.customer_name.trim(),
-      customer_phone: newForm.customer_phone.trim() || '-',
-      item_name: newForm.item_name.trim(),
-      material_id: newForm.material_id || null,
-      quantity: Number(newForm.quantity) || 1,
-      unit: newForm.unit || 'Nos',
-      reason: newForm.reason === 'Other' ? newForm.custom_reason : newForm.reason,
-      qc_status: 'Pending QC',
-      qc_decision: null,
-      qc_notes: '',
-      resolution_ref: '',
-      refund_amount: 0,
-      created_at: new Date().toISOString()
+    try {
+      const payload = {
+        return_date: new Date().toISOString().split('T')[0],
+        bill_number: newForm.bill_number.trim() || 'MANUAL-ENTRY',
+        customer_name: newForm.customer_name.trim(),
+        customer_phone: newForm.customer_phone.trim() || null,
+        item_name: newForm.item_name.trim(),
+        material_id: newForm.material_id || null,
+        quantity: Number(newForm.quantity) || 1,
+        unit: newForm.unit || 'Nos',
+        reason: newForm.reason === 'Other' ? newForm.custom_reason : newForm.reason,
+        custom_reason: newForm.custom_reason || ''
+      }
+
+      const res = await fetch(API_ENDPOINTS.RETURNS, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      const data = await res.json()
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to create return record.')
+      }
+
+      await fetchAllData()
+      setNewReturnModalOpen(false)
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Return Request Created',
+        text: 'New return request has been queued for Quality Check (QC).',
+        confirmButtonColor: '#043486'
+      })
+
+      setNewForm({
+        customer_name: '',
+        customer_phone: '',
+        bill_number: '',
+        item_name: '',
+        material_id: '',
+        quantity: 1,
+        unit: 'Nos',
+        reason: 'Defective Product',
+        custom_reason: ''
+      })
+    } catch (err) {
+      console.error('Error creating manual return:', err)
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: err.message || 'Failed to create return request.',
+        confirmButtonColor: '#043486'
+      })
     }
-
-    setReturnsList(prev => [newReturnObj, ...prev])
-    setNewReturnModalOpen(false)
-
-    Swal.fire({
-      icon: 'success',
-      title: 'Return Request Created',
-      html: `<p class="text-sm">Return reference <b>${newReturnObj.return_number}</b> has been queued for Quality Check (QC).</p>`,
-      confirmButtonColor: '#043486'
-    })
-
-    setNewForm({
-      customer_name: '',
-      customer_phone: '',
-      bill_number: '',
-      item_name: '',
-      material_id: '',
-      quantity: 1,
-      unit: 'Nos',
-      reason: 'Defective Product',
-      custom_reason: ''
-    })
   }
 
   // Export to Excel
@@ -737,12 +944,15 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
       'Return Date': item.return_date,
       'Bill #': item.bill_number,
       'Customer Name': item.customer_name,
-      'Contact Phone': item.customer_phone,
+      'Contact Phone': item.customer_phone || '-',
       'Product / Item': item.item_name,
+      'Returned Serial': item.serial_number || '-',
       'Return Qty': `${item.quantity} ${item.unit || 'Nos'}`,
       'Return Reason': item.reason,
+      'QC Condition': item.qc_condition || (item.qc_status === 'Pending QC' ? 'Pending' : 'PASS'),
       'QC Status': item.qc_status,
       'QC Outcome': item.qc_decision || 'Pending',
+      'Replacement Serial': item.replacement_serial || '-',
       'Reference / Credit Note': item.resolution_ref || '-',
       'Refund Amount (₹)': parseFloat(item.refund_amount || 0).toFixed(2),
       'QC Notes': item.qc_notes || '-'
@@ -787,7 +997,11 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
 
             {/* Blue New Return Request Button */}
             <button
-              onClick={() => setNewReturnModalOpen(true)}
+              onClick={() => {
+                setActiveTab('entry')
+                handleClearSelectedBill()
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
               className="px-4 py-2.5 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] dark:bg-blue-600 dark:hover:bg-blue-500 border border-[#043486] dark:border-blue-600 rounded-none shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <Plus size={15} />
@@ -797,7 +1011,7 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
         }
       />
 
-      {/* 2. Top Summary KPI Metrics Cards (Identical Layout & Styling as Inventory) */}
+      {/* 2. Top Summary KPI Metrics Cards (4 Dedicated Category Cards) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <ListKpiCard
           label="Total Return Requests"
@@ -812,20 +1026,20 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
           variant="amber"
         />
         <ListKpiCard
-          label="Restocked to Inventory (+1)"
-          value={summaryMetrics.restocked}
+          label="Completed & Resolved"
+          value={summaryMetrics.completed}
           icon={CheckCircle2}
           variant="emerald"
         />
         <ListKpiCard
-          label="Replacements & Credit Notes"
-          value={summaryMetrics.replaced + summaryMetrics.refunded}
-          icon={CreditCard}
+          label="Defective / QC Failed"
+          value={summaryMetrics.defective}
+          icon={AlertTriangle}
           variant="rose"
         />
       </div>
 
-      {/* 3. Tab Navigation Bar */}
+      {/* 3. Tab Navigation Bar (4 Clean Modular Tabs: Entry, Pending QC, Completed, Defective) */}
       <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-none shadow-xs flex items-center justify-between px-2 pt-2 transition-colors">
         <div className="flex items-center gap-1 flex-wrap">
           {/* 1. Return Entry Tab (Primary Intake) */}
@@ -848,26 +1062,7 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
             </span>
           </button>
 
-          {/* 2. All Returns Registry (Commented out for now - Can be enabled in the future) */}
-          {/* 
-          <button
-            onClick={() => {
-              setActiveTab('all')
-              setCurrentPage(1)
-              setSelectedIds([])
-            }}
-            className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'all'
-                ? 'border-[#043486] text-[#043486] dark:border-blue-400 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30'
-                : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
-            }`}
-          >
-            <RotateCcw size={14} />
-            <span>All Returns ({summaryMetrics.total})</span>
-          </button>
-          */}
-
-          {/* 3. Pending QC Inspection */}
+          {/* 2. Pending QC Inspection */}
           <button
             onClick={() => {
               setActiveTab('pending')
@@ -884,38 +1079,38 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
             <span>Pending QC ({summaryMetrics.pending})</span>
           </button>
 
-          {/* 4. Restocked to Inventory (+1) */}
+          {/* 3. Completed & Resolved Returns */}
           <button
             onClick={() => {
-              setActiveTab('restocked')
+              setActiveTab('completed')
               setCurrentPage(1)
               setSelectedIds([])
             }}
             className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'restocked'
-                ? 'border-emerald-500 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30'
+              activeTab === 'completed'
+                ? 'border-emerald-600 text-emerald-700 dark:border-emerald-400 dark:text-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/30'
                 : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
             <CheckCircle2 size={14} />
-            <span>Restocked to Inventory ({summaryMetrics.restocked})</span>
+            <span>Completed &amp; Resolved ({summaryMetrics.completed})</span>
           </button>
 
-          {/* 5. Credit Notes & Refunds */}
+          {/* 4. Defective & QC Failed Products */}
           <button
             onClick={() => {
-              setActiveTab('refunded')
+              setActiveTab('defective')
               setCurrentPage(1)
               setSelectedIds([])
             }}
             className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'refunded'
-                ? 'border-indigo-500 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30'
+              activeTab === 'defective'
+                ? 'border-rose-600 text-rose-700 dark:border-rose-400 dark:text-rose-300 bg-rose-50/50 dark:bg-rose-950/30'
                 : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
-            <CreditCard size={14} />
-            <span>Credit Notes &amp; Refunds ({summaryMetrics.refunded})</span>
+            <AlertTriangle size={14} className="text-rose-600 dark:text-rose-400" />
+            <span>Defective &amp; QC Failed ({summaryMetrics.defective})</span>
           </button>
         </div>
       </div>
@@ -1045,7 +1240,7 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                             >
                               <div className="flex items-center gap-2">
                                 <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                                  {item.receipt_number || item.invoice_number}
+                                  {item.receipt_number}
                                 </span>
                                 <span className="text-gray-700 dark:text-slate-300 font-medium truncate max-w-[180px]">{item.customer_name}</span>
                               </div>
@@ -1140,7 +1335,15 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                         ) : (
                           selectedBill.items.map((it, idx) => {
                             const itemKey = it.id || `${it.item_name}_${it.product_name}_${idx}`
-                            const isReturnable = it.return_policy === true || it.return_policy === 1 || it.return_policy === '1' || it.return_policy === 'true'
+                            const mat = materials.find(m => (it.material_id && m.id === it.material_id) || m.name === (it.product_name || it.item_name))
+                            const baseReturnable = 
+                              it.is_returnable === 1 || it.is_returnable === true || it.is_returnable === '1' ||
+                              it.return_policy === true || it.return_policy === 1 || it.return_policy === '1' || it.return_policy === 'true' ||
+                              (mat && (mat.is_returnable === 1 || mat.is_returnable === true || mat.is_returnable === '1')) ||
+                              (it.is_returnable === undefined && it.return_policy === undefined)
+                            const remainingQty = getItemRemainingReturnableQty(it, selectedBill?.id, selectedBill?.invoice_number)
+                            const isFullyReturned = remainingQty <= 0
+                            const isReturnable = baseReturnable && !isFullyReturned
                             const isChecked = Boolean(selectedReturnItems[itemKey])
                             const selectedState = selectedReturnItems[itemKey] || {}
                             const serials = parseItemSerials(it)
@@ -1150,14 +1353,16 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                               <tr
                                 key={itemKey}
                                 className={`transition-colors ${
-                                  !isReturnable
+                                  !baseReturnable
                                     ? 'bg-gray-50/80 dark:bg-slate-950/40 opacity-70'
+                                    : isFullyReturned
+                                    ? 'bg-amber-50/40 dark:bg-amber-950/20 opacity-80'
                                     : isChecked
                                     ? 'bg-blue-50/80 dark:bg-blue-950/40'
                                     : 'hover:bg-gray-50 dark:hover:bg-slate-800/40'
                                 }`}
                               >
-                                {/* Checkbox (Enabled ONLY if return_policy is enabled) */}
+                                {/* Checkbox (Enabled ONLY if return_policy is enabled and items remain) */}
                                 <td className="p-3 text-center align-top pt-3.5">
                                   <input
                                     type="checkbox"
@@ -1191,39 +1396,54 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                                       </span>
                                       <div className="flex flex-wrap gap-1.5">
                                         {serials.map((sn, sIdx) => {
+                                          const isSnAlreadyReturned = isSerialAlreadyInReturn(sn, it.material_id, selectedBill?.id, selectedBill?.invoice_number)
                                           const isSnChecked = selectedState.selected_serials?.includes(sn) || false
                                           return (
                                             <label
                                               key={sIdx}
-                                              className={`inline-flex items-center gap-1.5 px-2 py-1 border text-[11px] font-mono cursor-pointer transition-all ${
-                                                !isReturnable
-                                                  ? 'opacity-40 cursor-not-allowed border-gray-200 dark:border-slate-800 text-gray-400'
+                                              className={`inline-flex items-center gap-1.5 px-2 py-1 border text-[11px] font-mono transition-all ${
+                                                !baseReturnable || isSnAlreadyReturned
+                                                  ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400'
                                                   : isSnChecked
-                                                  ? 'bg-blue-100/80 dark:bg-blue-900/50 border-[#043486] dark:border-blue-500 text-[#043486] dark:text-blue-300 font-bold'
-                                                  : 'bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:border-gray-400'
+                                                  ? 'bg-blue-100/80 dark:bg-blue-900/50 border-[#043486] dark:border-blue-500 text-[#043486] dark:text-blue-300 font-bold cursor-pointer'
+                                                  : 'bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:border-gray-400 cursor-pointer'
                                               }`}
                                             >
                                               <input
                                                 type="checkbox"
                                                 checked={isSnChecked}
-                                                disabled={!isReturnable}
+                                                disabled={!baseReturnable || isSnAlreadyReturned}
                                                 onChange={() => handleToggleItemSerial(it, sn)}
                                                 className="w-3.5 h-3.5 accent-[#043486] rounded-none cursor-pointer"
                                               />
                                               <span>{sn}</span>
+                                              {isSnAlreadyReturned && (
+                                                <span className="text-[9px] font-sans font-bold px-1 bg-amber-100 dark:bg-amber-900/70 text-amber-800 dark:text-amber-300 rounded-none ml-0.5">
+                                                  In QC / Returned
+                                                </span>
+                                              )}
                                             </label>
                                           )
                                         })}
                                       </div>
                                     </div>
-                                  ) : serials.length === 1 ? (
-                                    <div className="text-[11px] text-blue-600 dark:text-blue-400 font-mono mt-0.5">
-                                      SN: {serials[0]}
-                                    </div>
-                                  ) : it.serial_number ? (
-                                    <div className="text-[11px] text-blue-600 dark:text-blue-400 font-mono mt-0.5">
-                                      SN: {it.serial_number}
-                                    </div>
+                                  ) : (serials.length === 1 || it.serial_number) ? (
+                                    (() => {
+                                      const singleSn = serials[0] || it.serial_number
+                                      const isSingleAlreadyReturned = isSerialAlreadyInReturn(singleSn, it.material_id, selectedBill?.id, selectedBill?.invoice_number)
+                                      return (
+                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                          <span className="text-[11px] text-blue-600 dark:text-blue-400 font-mono">
+                                            SN: {singleSn}
+                                          </span>
+                                          {isSingleAlreadyReturned && (
+                                            <span className="text-[9px] font-sans font-bold px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/70 text-amber-800 dark:text-amber-300 rounded-none">
+                                              In QC / Returned
+                                            </span>
+                                          )}
+                                        </div>
+                                      )
+                                    })()
                                   ) : null}
                                 </td>
 
@@ -1244,7 +1464,11 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
 
                                 {/* Return Policy Status Badge */}
                                 <td className="p-3 text-center align-top pt-3.5">
-                                  {isReturnable ? (
+                                  {isFullyReturned ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-[10px] font-bold">
+                                      <CheckCircle2 size={11} /> Returned / In QC
+                                    </span>
+                                  ) : isReturnable ? (
                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold">
                                       <CheckCircle2 size={11} /> Returnable
                                     </span>
@@ -1258,8 +1482,8 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                                 {/* Return Qty (Non-editable display) */}
                                 <td className="p-3 text-center align-top pt-3.5">
                                   {isChecked ? (
-                                    <span className="inline-block px-2 py-1 font-bold text-xs bg-slate-100 dark:bg-slate-800 text-gray-900 dark:text-white border border-slate-200 dark:border-slate-700 min-w-10">
-                                      {selectedState.return_qty || 1}
+                                    <span className="inline-block px-2.5 py-1 font-bold font-mono text-xs bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white border border-gray-200 dark:border-slate-700 min-w-8">
+                                      {hasMultipleSerials ? (selectedState.selected_serials?.length || 1) : (selectedState.return_qty !== undefined ? selectedState.return_qty : remainingQty)}
                                     </span>
                                   ) : (
                                     <span className="text-gray-400 text-xs">-</span>
@@ -1339,7 +1563,13 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={15} />
               <input
                 type="text"
-                placeholder="Search Return #, Customer, Bill #, Item..."
+                placeholder={
+                  activeTab === 'defective'
+                    ? 'Search Defective #, Serial, Customer, Issue...'
+                    : activeTab === 'completed'
+                    ? 'Search Completed Return #, Bill, Customer...'
+                    : 'Search Return #, Customer, Bill #, Item...'
+                }
                 value={searchQuery}
                 onChange={e => {
                   setSearchQuery(e.target.value)
@@ -1380,24 +1610,27 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                 </select>
               </div>
 
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
-                  QC Decision:
-                </span>
-                <select
-                  value={selectedDecision}
-                  onChange={e => {
-                    setSelectedDecision(e.target.value)
-                    setCurrentPage(1)
-                  }}
-                  className="px-3 py-1.5 text-xs text-gray-800 dark:text-slate-200 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] cursor-pointer"
-                >
-                  <option value="ALL">All Decisions</option>
-                  <option value="STOCK">Restock to Inventory (+1)</option>
-                  <option value="REPLACE">Exchange / Replace</option>
-                  <option value="REFUND">Credit Note / Refund</option>
-                </select>
-              </div>
+              {activeTab !== 'pending' && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                    QC Decision:
+                  </span>
+                  <select
+                    value={selectedDecision}
+                    onChange={e => {
+                      setSelectedDecision(e.target.value)
+                      setCurrentPage(1)
+                    }}
+                    className="px-3 py-1.5 text-xs text-gray-800 dark:text-slate-200 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] cursor-pointer"
+                  >
+                    <option value="ALL">All Decisions</option>
+                    <option value="STOCK">Restock to Inventory (+1)</option>
+                    <option value="REPLACE">Exchange / Replace</option>
+                    <option value="REFUND">Credit Note / Refund</option>
+                    <option value="REJECT">Rejected</option>
+                  </select>
+                </div>
+              )}
 
               {/* Reload Button */}
               <button
@@ -1428,15 +1661,32 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                       className="w-4 h-4 text-[#043486] rounded-none border-gray-300 dark:border-slate-600 focus:ring-0 cursor-pointer accent-[#043486]"
                     />
                   </th>
-                  <th className="py-3 px-3 w-12 text-center">#</th>
-                  <th className="py-3 px-4">Return ID</th>
-                  <th className="py-3 px-4">Date</th>
-                  <th className="py-3 px-4">Customer &amp; Phone</th>
-                  <th className="py-3 px-4">Original Bill #</th>
-                  <th className="py-3 px-4">Product &amp; QTY</th>
-                  <th className="py-3 px-4">Return Reason</th>
-                  <th className="py-3 px-4 text-center">QC Status &amp; Decision</th>
-                  <th className="py-3 px-4 text-center">Quick Actions</th>
+                  <th className="py-3 px-3 w-12 text-center">S.NO</th>
+                  <th className="py-3 px-4">Return ID &amp; Date</th>
+                  <th className="py-3 px-4">Customer</th>
+                  <th className="py-3 px-4">Bill #</th>
+                  
+                  {activeTab === 'defective' ? (
+                    <>
+                      <th className="py-3 px-4">Defective Item</th>
+                      <th className="py-3 px-4">QC Inspection Findings / Remarks</th>
+                      <th className="py-3 px-4 text-center">Resolution</th>
+                    </>
+                  ) : activeTab === 'completed' ? (
+                    <>
+                      <th className="py-3 px-4">Product &amp; QTY</th>
+                      <th className="py-3 px-4">Returned Serial</th>
+                      <th className="py-3 px-4 text-center">Resolution</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="py-3 px-4">Product &amp; QTY</th>
+                      <th className="py-3 px-4">Return Reason</th>
+                      <th className="py-3 px-4 text-center">QC Status</th>
+                    </>
+                  )}
+
+                  <th className="py-3 px-4 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-slate-800 text-xs text-gray-700 dark:text-slate-300">
@@ -1453,10 +1703,21 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                   <tr>
                     <td colSpan={10} className="py-12 text-center text-gray-400 dark:text-slate-500">
                       <div className="flex flex-col items-center justify-center gap-2">
-                        <RotateCcw size={28} className="text-gray-300 dark:text-slate-600" />
-                        <span className="text-xs font-semibold">
-                          No product return records found matching current criteria.
-                        </span>
+                        {activeTab === 'defective' ? (
+                          <>
+                            <CheckCircle2 size={28} className="text-emerald-500" />
+                            <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                              No defective or QC failed products found in registry.
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <RotateCcw size={28} className="text-gray-300 dark:text-slate-600" />
+                            <span className="text-xs font-semibold">
+                              No return records found matching current criteria.
+                            </span>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -1472,6 +1733,8 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                         className={`transition-colors ${
                           isSelected
                             ? 'bg-blue-50/80 dark:bg-blue-950/40 border-l-2 border-[#043486] dark:border-blue-500'
+                            : activeTab === 'defective'
+                            ? 'hover:bg-rose-50/30 dark:hover:bg-rose-950/20'
                             : 'hover:bg-blue-50/40 dark:hover:bg-slate-800/40'
                         }`}
                       >
@@ -1485,27 +1748,28 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                           />
                         </td>
 
+                        {/* S.No */}
                         <td className="py-3 px-3 text-center font-mono text-gray-400 dark:text-slate-500">
                           {rowNumber}
                         </td>
 
-                        {/* Return ID */}
-                        <td className="py-3 px-4 font-mono font-bold text-[#043486] dark:text-blue-400">
-                          {item.return_number}
+                        {/* Return ID & Date */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <div className="font-mono font-bold text-[#043486] dark:text-blue-400">
+                            {item.return_number}
+                          </div>
+                          <div className="text-[11px] text-gray-500 dark:text-slate-400">
+                            {item.return_date
+                              ? new Date(item.return_date).toLocaleDateString('en-GB', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric'
+                                })
+                              : '-'}
+                          </div>
                         </td>
 
-                        {/* Date */}
-                        <td className="py-3 px-4 whitespace-nowrap text-gray-600 dark:text-slate-400">
-                          {item.return_date
-                            ? new Date(item.return_date).toLocaleDateString('en-GB', {
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric'
-                              })
-                            : '-'}
-                        </td>
-
-                        {/* Customer & Phone */}
+                        {/* Customer Column */}
                         <td className="py-3 px-4">
                           <div className="font-bold text-gray-800 dark:text-slate-200">
                             {item.customer_name}
@@ -1515,75 +1779,136 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                           </div>
                         </td>
 
-                        {/* Original Bill # */}
-                        <td className="py-3 px-4 font-mono text-gray-700 dark:text-slate-300">
-                          <span className="px-2 py-0.5 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-[11px]">
+                        {/* Bill # Column */}
+                        <td className="py-3 px-4 font-mono whitespace-nowrap">
+                          <span className="px-2 py-0.5 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-[11px] font-bold text-gray-700 dark:text-slate-300">
                             {item.bill_number}
                           </span>
                         </td>
 
-                        {/* Product & Qty */}
-                        <td className="py-3 px-4">
-                          <div className="font-semibold text-gray-800 dark:text-slate-200">
-                            {item.item_name}
-                          </div>
-                          <div className="text-[11px] text-gray-500 font-mono font-bold">
-                            Qty: {item.quantity} {item.unit || 'Nos'}
-                          </div>
-                        </td>
+                        {/* TAB-SPECIFIC CONTENT COLUMNS */}
+                        {activeTab === 'defective' ? (
+                          <>
+                            {/* Defective Item & Qty */}
+                            <td className="py-3 px-4">
+                              <div className="font-semibold text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
+                                <AlertTriangle size={13} className="shrink-0 text-rose-600" />
+                                <span>{item.item_name}</span>
+                              </div>
+                              <div className="text-[11px] text-gray-500 font-mono font-bold mt-0.5">
+                                Qty: {item.quantity} {item.unit || 'Nos'}
+                              </div>
+                            </td>
 
-                        {/* Return Reason */}
-                        <td className="py-3 px-4">
-                          <span className="text-gray-700 dark:text-slate-300 font-medium">
-                            {item.reason}
-                          </span>
-                        </td>
+                            {/* QC Inspection Findings / Remarks */}
+                            <td className="py-3 px-4">
+                              <span className="text-xs font-semibold text-gray-800 dark:text-slate-200">
+                                {item.qc_notes || item.reason || '-'}
+                              </span>
+                            </td>
 
-                        {/* QC Status & Decision */}
-                        <td className="py-3 px-4 text-center">
-                          {isPending ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 animate-pulse">
-                              <Clock size={11} /> Pending QC
-                            </span>
-                          ) : item.qc_decision === 'STOCK' ? (
-                            <div className="flex flex-col items-center gap-0.5">
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                                <Boxes size={11} /> Restocked (+{item.quantity})
+                            {/* Resolution */}
+                            <td className="py-3 px-4 text-center whitespace-nowrap">
+                              {item.qc_decision === 'REPLACE' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
+                                  <RotateCcw size={10} /> Replaced
+                                </span>
+                              ) : item.qc_decision === 'REFUND' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-900">
+                                  <CreditCard size={10} /> Credit Note
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                                  <XCircle size={10} /> Rejected
+                                </span>
+                              )}
+                            </td>
+                          </>
+                        ) : activeTab === 'completed' ? (
+                          <>
+                            {/* Product & QTY */}
+                            <td className="py-3 px-4">
+                              <div className="font-semibold text-gray-800 dark:text-slate-200">
+                                {item.item_name}
+                              </div>
+                              <div className="text-[11px] text-gray-500 font-mono font-bold mt-0.5">
+                                Qty: {item.quantity} {item.unit || 'Nos'}
+                              </div>
+                            </td>
+
+                            {/* Returned Serial (if any) */}
+                            <td className="py-3 px-4 font-mono text-xs whitespace-nowrap">
+                              {item.serial_number ? (
+                                <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700">
+                                  {item.serial_number}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+
+                            {/* Resolution (Only 2 Clean Badges: Replaced & Credit Note) */}
+                            <td className="py-3 px-4 text-center whitespace-nowrap">
+                              {item.qc_decision === 'REFUND' || item.qc_decision === 'Credit Note' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-900">
+                                  <CreditCard size={10} /> Credit Note
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
+                                  <RotateCcw size={10} /> Replaced
+                                </span>
+                              )}
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            {/* Product & QTY */}
+                            <td className="py-3 px-4">
+                              <div className="font-semibold text-gray-800 dark:text-slate-200">
+                                {item.item_name}
+                              </div>
+                              <div className="text-[11px] text-gray-500 font-mono font-bold mt-0.5">
+                                Qty: {item.quantity} {item.unit || 'Nos'}
+                              </div>
+                            </td>
+
+                            {/* Return Reason */}
+                            <td className="py-3 px-4">
+                              <span className="text-gray-700 dark:text-slate-300 font-medium">
+                                {item.reason}
                               </span>
-                              <span className="text-[10px] font-mono text-gray-400">{item.resolution_ref}</span>
-                            </div>
-                          ) : item.qc_decision === 'REPLACE' ? (
-                            <div className="flex flex-col items-center gap-0.5">
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
-                                <RotateCcw size={11} /> Replaced (New Unit)
+                            </td>
+
+                            {/* QC Status */}
+                            <td className="py-3 px-4 text-center whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 animate-pulse">
+                                <Clock size={11} /> Pending QC
                               </span>
-                              <span className="text-[10px] font-mono text-gray-400">{item.resolution_ref}</span>
-                            </div>
-                          ) : (
-                            <div className="flex flex-col items-center gap-0.5">
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-900">
-                                <CreditCard size={11} /> Credit Note (₹{item.refund_amount})
-                              </span>
-                              <span className="text-[10px] font-mono text-gray-400">{item.resolution_ref}</span>
-                            </div>
-                          )}
-                        </td>
+                            </td>
+                          </>
+                        )}
 
                         {/* Quick Actions */}
                         <td className="py-3 px-4 text-center">
                           <div className="flex items-center justify-center gap-1.5">
-                            {/* Quality Check Inspection Action */}
-                            <button
-                              onClick={() => handleOpenQcModal(item)}
-                              className={`p-1.5 rounded-none border transition-all cursor-pointer shadow-2xs ${
-                                isPending
-                                  ? 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-600 hover:text-white border-amber-300 dark:border-amber-700 font-bold'
-                                  : 'text-[#043486] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 hover:bg-[#043486] hover:text-white border-blue-200 dark:border-blue-800'
-                              }`}
-                              title={isPending ? 'Perform QC Quality Check' : 'Edit QC Inspection'}
-                            >
-                              <ShieldCheck size={15} />
-                            </button>
+                            {/* Quality Check Inspection Action vs Edit Action */}
+                            {isPending ? (
+                              <button
+                                onClick={() => handleOpenQcModal(item)}
+                                className="p-1.5 text-white bg-[#043486] hover:bg-[#0248BC] dark:bg-blue-600 dark:hover:bg-blue-500 rounded-none transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center"
+                                title="Perform Quality Inspection (QC)"
+                              >
+                                <BadgeCheck size={16} />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleOpenQcModal(item)}
+                                className="p-1.5 text-[#043486] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 hover:bg-[#043486] hover:text-white border border-blue-200 dark:border-blue-800 rounded-none transition-all cursor-pointer"
+                                title="Edit QC Decision / Outcome"
+                              >
+                                <Pencil size={15} />
+                              </button>
+                            )}
 
                             {/* View Details / Slip */}
                             <button
@@ -1624,17 +1949,11 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
       {/* 6. QC Quality Check Inspection Modal (Option 1: STOCK, Option 2: REPLACE, Option 3: REFUND) */}
       {qcModalOpen && selectedReturnForQc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 w-full max-w-xl shadow-2xl p-6 relative">
-            <div className="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-slate-800">
-              <div>
-                <h3 className="text-base font-bold text-[#292424] dark:text-white flex items-center gap-2">
-                  <ShieldCheck className="text-[#043486] dark:text-blue-400" size={20} />
-                  <span>QC Quality Inspection &amp; Decision</span>
-                </h3>
-                <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
-                  Inspect product condition and assign resolution workflow.
-                </p>
-              </div>
+          <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 w-full max-w-lg shadow-2xl p-6 relative">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
+              <h3 className="text-sm font-bold text-[#292424] dark:text-white uppercase tracking-wider">
+                QC Quality Inspection &amp; Decision
+              </h3>
               <button
                 onClick={() => setQcModalOpen(false)}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 p-1 cursor-pointer"
@@ -1643,151 +1962,299 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
               </button>
             </div>
 
-            {/* Return Request Summary Preview */}
-            <div className="my-4 p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs grid grid-cols-2 gap-2">
-              <div>
-                <span className="text-gray-400">Return ID:</span>{' '}
-                <span className="font-mono font-bold text-[#043486] dark:text-blue-400">
-                  {selectedReturnForQc.return_number}
+            {/* Return Request Clean Vertical Summary */}
+            <div className="my-3 p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs space-y-2">
+              <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-700/60 pb-1">
+                <span className="text-gray-500 dark:text-slate-400">Return ID:</span>
+                <span className="font-mono font-bold text-[#043486] dark:text-blue-400">{selectedReturnForQc.return_number}</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-700/60 pb-1">
+                <span className="text-gray-500 dark:text-slate-400">Product Name:</span>
+                <span className="font-bold text-gray-800 dark:text-slate-200">{selectedReturnForQc.item_name}</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-700/60 pb-1">
+                <span className="text-gray-500 dark:text-slate-400">QTY:</span>
+                <span className="font-bold text-gray-800 dark:text-slate-200">{selectedReturnForQc.quantity} {selectedReturnForQc.unit || 'Nos'}</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-700/60 pb-1">
+                <span className="text-gray-500 dark:text-slate-400">Serial No:</span>
+                <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{selectedReturnForQc.serial_number || '—'}</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-700/60 pb-1">
+                <span className="text-gray-500 dark:text-slate-400">Billed Product Rate / Price:</span>
+                <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                  ₹{parseFloat(selectedReturnForQc.unit_price || selectedReturnForQc.rate || (selectedReturnForQc.total_amount ? (selectedReturnForQc.total_amount / (selectedReturnForQc.quantity || 1)) : 0) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </span>
               </div>
-              <div>
-                <span className="text-gray-400">Customer:</span>{' '}
-                <span className="font-semibold text-gray-800 dark:text-slate-200">
-                  {selectedReturnForQc.customer_name}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-400">Product:</span>{' '}
-                <span className="font-semibold text-gray-800 dark:text-slate-200">
-                  {selectedReturnForQc.item_name} (Qty: {selectedReturnForQc.quantity})
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-400">Reported Issue:</span>{' '}
-                <span className="font-semibold text-rose-600 dark:text-rose-400">
-                  {selectedReturnForQc.reason}
-                </span>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500 dark:text-slate-400">Reported Issue:</span>
+                <span className="font-bold text-rose-600 dark:text-rose-400">{selectedReturnForQc.reason}</span>
               </div>
             </div>
 
             <form onSubmit={handleSaveQcDecision} className="space-y-4">
+              {/* Step A: QC Inspection Result (PASS / FAIL) */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                  Select QC Outcome (Flow Option):
+                <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  1. QC Inspection Result:
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  {/* Option 1: STOCK (+1) */}
+                <div className="grid grid-cols-2 gap-2.5">
                   <label
-                    className={`p-3 border text-left cursor-pointer transition-all flex flex-col justify-between ${
-                      qcDecision === 'STOCK'
-                        ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500 text-emerald-900 dark:text-emerald-200 ring-2 ring-emerald-500/20'
+                    className={`p-2.5 border text-center cursor-pointer transition-all flex items-center justify-center gap-2 font-bold text-xs ${
+                      qcCondition === 'PASS'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500 text-emerald-900 dark:text-emerald-200 ring-2 ring-emerald-500/20 shadow-xs'
                         : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-bold text-xs uppercase flex items-center gap-1.5">
-                        <Boxes size={14} className="text-emerald-600" />
-                        1. STOCK
-                      </span>
-                      <input
-                        type="radio"
-                        name="qcDecisionRadio"
-                        value="STOCK"
-                        checked={qcDecision === 'STOCK'}
-                        onChange={() => setQcDecision('STOCK')}
-                        className="accent-emerald-600 cursor-pointer"
-                      />
-                    </div>
-                    <p className="text-[11px] text-gray-500 dark:text-slate-400 leading-tight">
-                      Good condition. Re-stock +{selectedReturnForQc.quantity} to warehouse inventory.
-                    </p>
+                    <input
+                      type="radio"
+                      name="qcConditionRadio"
+                      value="PASS"
+                      checked={qcCondition === 'PASS'}
+                      onChange={() => setQcCondition('PASS')}
+                      className="sr-only"
+                    />
+                    <CheckCircle2 size={16} className={qcCondition === 'PASS' ? 'text-emerald-600' : 'text-gray-400'} />
+                    <span>QC PASS (Good / Sealed)</span>
                   </label>
 
-                  {/* Option 2: REPLACE */}
                   <label
-                    className={`p-3 border text-left cursor-pointer transition-all flex flex-col justify-between ${
-                      qcDecision === 'REPLACE'
-                        ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-500 text-blue-900 dark:text-blue-200 ring-2 ring-blue-500/20'
+                    className={`p-2.5 border text-center cursor-pointer transition-all flex items-center justify-center gap-2 font-bold text-xs ${
+                      qcCondition === 'FAIL'
+                        ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-500 text-rose-900 dark:text-rose-200 ring-2 ring-rose-500/20 shadow-xs'
                         : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-bold text-xs uppercase flex items-center gap-1.5">
-                        <RotateCcw size={14} className="text-blue-600" />
-                        2. REPLACE
-                      </span>
-                      <input
-                        type="radio"
-                        name="qcDecisionRadio"
-                        value="REPLACE"
-                        checked={qcDecision === 'REPLACE'}
-                        onChange={() => setQcDecision('REPLACE')}
-                        className="accent-blue-600 cursor-pointer"
-                      />
-                    </div>
-                    <p className="text-[11px] text-gray-500 dark:text-slate-400 leading-tight">
-                      Defective item. Dispatch a new unit / replacement slip to customer.
-                    </p>
-                  </label>
-
-                  {/* Option 3: REFUND (Credit Note) */}
-                  <label
-                    className={`p-3 border text-left cursor-pointer transition-all flex flex-col justify-between ${
-                      qcDecision === 'REFUND'
-                        ? 'bg-purple-50/80 dark:bg-purple-950/40 border-purple-500 text-purple-900 dark:text-purple-200 ring-2 ring-purple-500/20'
-                        : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-bold text-xs uppercase flex items-center gap-1.5">
-                        <CreditCard size={14} className="text-purple-600" />
-                        3. REFUND
-                      </span>
-                      <input
-                        type="radio"
-                        name="qcDecisionRadio"
-                        value="REFUND"
-                        checked={qcDecision === 'REFUND'}
-                        onChange={() => setQcDecision('REFUND')}
-                        className="accent-purple-600 cursor-pointer"
-                      />
-                    </div>
-                    <p className="text-[11px] text-gray-500 dark:text-slate-400 leading-tight">
-                      Customer refund. Issue GST Credit Note / balance adjustment.
-                    </p>
+                    <input
+                      type="radio"
+                      name="qcConditionRadio"
+                      value="FAIL"
+                      checked={qcCondition === 'FAIL'}
+                      onChange={() => setQcCondition('FAIL')}
+                      className="sr-only"
+                    />
+                    <AlertTriangle size={16} className={qcCondition === 'FAIL' ? 'text-rose-600' : 'text-gray-400'} />
+                    <span>QC FAIL (Defective / Faulty)</span>
                   </label>
                 </div>
               </div>
 
-              {/* Conditional Refund Amount Field for Option 3 */}
-              {qcDecision === 'REFUND' && (
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                    Refund / Credit Note Value (₹):
+              {/* Step B: Customer Resolution Action (REPLACE | REFUND | REJECT) */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  2. Customer Resolution Action:
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {/* Option 1: REPLACE */}
+                  <label
+                    className={`p-2.5 border text-center cursor-pointer transition-all flex items-center justify-center gap-1.5 font-bold text-xs uppercase ${
+                      qcDecision === 'REPLACE'
+                        ? 'bg-blue-50 dark:bg-blue-950/50 border-blue-500 text-blue-900 dark:text-blue-200 ring-2 ring-blue-500/20 shadow-xs'
+                        : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <RotateCcw size={14} className={qcDecision === 'REPLACE' ? 'text-blue-600' : 'text-gray-400'} />
+                    <span>Replace</span>
+                    <input
+                      type="radio"
+                      name="qcDecisionRadio"
+                      value="REPLACE"
+                      checked={qcDecision === 'REPLACE'}
+                      onChange={() => setQcDecision('REPLACE')}
+                      className="sr-only"
+                    />
                   </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="Enter refund amount (e.g. 2400.00)"
-                    value={qcRefundAmount}
-                    onChange={e => setQcRefundAmount(e.target.value)}
-                    required={qcDecision === 'REFUND'}
-                    className="w-full px-3 py-2 text-xs border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white rounded-none focus:outline-none focus:border-purple-600"
-                  />
+
+                  {/* Option 2: REFUND */}
+                  <label
+                    className={`p-2.5 border text-center cursor-pointer transition-all flex items-center justify-center gap-1.5 font-bold text-xs uppercase ${
+                      qcDecision === 'REFUND'
+                        ? 'bg-purple-50 dark:bg-purple-950/50 border-purple-500 text-purple-900 dark:text-purple-200 ring-2 ring-purple-500/20 shadow-xs'
+                        : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <CreditCard size={14} className={qcDecision === 'REFUND' ? 'text-purple-600' : 'text-gray-400'} />
+                    <span>Refund</span>
+                    <input
+                      type="radio"
+                      name="qcDecisionRadio"
+                      value="REFUND"
+                      checked={qcDecision === 'REFUND'}
+                      onChange={() => setQcDecision('REFUND')}
+                      className="sr-only"
+                    />
+                  </label>
+
+                  {/* Option 3: REJECT */}
+                  <label
+                    className={`p-2.5 border text-center cursor-pointer transition-all flex items-center justify-center gap-1.5 font-bold text-xs uppercase ${
+                      qcDecision === 'REJECT'
+                        ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-500 text-rose-900 dark:text-rose-200 ring-2 ring-rose-500/20 shadow-xs'
+                        : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <XCircle size={14} className={qcDecision === 'REJECT' ? 'text-rose-600' : 'text-gray-400'} />
+                    <span>Reject</span>
+                    <input
+                      type="radio"
+                      name="qcDecisionRadio"
+                      value="REJECT"
+                      checked={qcDecision === 'REJECT'}
+                      onChange={() => setQcDecision('REJECT')}
+                      className="sr-only"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Conditional: Searchable Replacement Serial Number Dropdown */}
+              {qcDecision === 'REPLACE' && (
+                <div className="space-y-1.5 pt-1 relative">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider">
+                      Select In-Stock Serial for Replacement:
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      {isLoadingSerials && <Loader2 size={12} className="animate-spin text-blue-600" />}
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 border border-emerald-200 dark:border-emerald-800">
+                        {availableSerialsList.length} In-Stock Available
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Searchable Input + Dropdown Box */}
+                  <div className="relative">
+                    <div className="relative flex items-center">
+                      <Search size={14} className="absolute left-3 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder={availableSerialsList.length > 0 ? "Type to search or select in-stock serial..." : "Enter replacement serial number..."}
+                        value={replacementSerial}
+                        onFocus={() => {
+                          setSerialDropdownOpen(true)
+                          setSerialSearchTerm(replacementSerial || '')
+                        }}
+                        onChange={e => {
+                          setReplacementSerial(e.target.value)
+                          setSerialSearchTerm(e.target.value)
+                          setSerialDropdownOpen(true)
+                        }}
+                        className="w-full pl-8 pr-16 py-2 text-xs border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white rounded-none font-mono focus:outline-none focus:border-[#043486]"
+                      />
+                      <div className="absolute right-2 flex items-center gap-1">
+                        {replacementSerial && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReplacementSerial('')
+                              setSerialSearchTerm('')
+                            }}
+                            className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 p-0.5 cursor-pointer"
+                            title="Clear selection"
+                          >
+                            <X size={13} />
+                          </button>
+                        )}
+                        {availableSerialsList.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setSerialDropdownOpen(prev => !prev)}
+                            className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 p-0.5 cursor-pointer"
+                            title="Toggle suggestions"
+                          >
+                            <ChevronDown size={14} className={`transition-transform duration-150 ${serialDropdownOpen ? 'rotate-180' : ''}`} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Autocomplete Suggestions Popup */}
+                    {serialDropdownOpen && availableSerialsList.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 z-50 max-h-48 overflow-y-auto border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl divide-y divide-gray-100 dark:divide-slate-800 text-xs mt-1">
+                        {filteredAvailableSerials.length === 0 ? (
+                          <div className="p-3 text-gray-400 text-center italic text-xs">
+                            No matching available serials found for "{serialSearchTerm}".
+                          </div>
+                        ) : (
+                          filteredAvailableSerials.map(s => {
+                            const isSelected = replacementSerial === s.serial_number
+                            return (
+                              <button
+                                key={s.id || s.serial_number}
+                                type="button"
+                                onClick={() => {
+                                  setReplacementSerial(s.serial_number)
+                                  setSerialSearchTerm(s.serial_number)
+                                  setSerialDropdownOpen(false)
+                                }}
+                                className={`w-full text-left p-2.5 flex items-center justify-between cursor-pointer transition-colors ${
+                                  isSelected
+                                    ? 'bg-blue-50 dark:bg-blue-950/60 text-[#043486] dark:text-blue-400 font-bold'
+                                    : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-gray-800 dark:text-slate-200'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 font-mono">
+                                  <span>{s.serial_number}</span>
+                                  {isSelected && <CheckCircle2 size={13} className="text-[#043486] dark:text-blue-400" />}
+                                </div>
+                                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 border border-emerald-200 dark:border-emerald-800">
+                                  In-Stock Available
+                                </span>
+                              </button>
+                            )
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
-              {/* QC Inspector Notes */}
+              {/* Conditional: Refund / Credit Note Calculator */}
+              {qcDecision === 'REFUND' && (
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                      Refund Amount (₹):
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="Enter refund amount"
+                      value={qcRefundAmount}
+                      onChange={e => setQcRefundAmount(e.target.value)}
+                      required={qcDecision === 'REFUND'}
+                      className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white rounded-none font-mono font-bold focus:outline-none focus:border-[#043486]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                      Refund Mode:
+                    </label>
+                    <select
+                      value={refundMode}
+                      onChange={e => setRefundMode(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white rounded-none focus:outline-none focus:border-[#043486] font-medium"
+                    >
+                      <option value="Credit Note">GST Credit Note</option>
+                      <option value="Cash">Cash Refund</option>
+                      <option value="UPI">UPI Refund</option>
+                      <option value="Bank Transfer">Bank Transfer</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* QC Inspector Remarks */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                  QC Inspection Remarks / Findings:
+                  QC Inspection Findings / Remarks:
                 </label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   value={qcNotes}
                   onChange={e => setQcNotes(e.target.value)}
-                  placeholder="Enter physical condition observation, serial verification details..."
+                  placeholder="Enter observation notes, serial verification..."
                   className="w-full p-2.5 text-xs border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white rounded-none focus:outline-none focus:border-[#043486]"
                 />
               </div>
@@ -1988,11 +2455,17 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
               </div>
               <div className="flex justify-between py-1 border-b border-gray-100 dark:border-slate-800">
                 <span className="text-gray-500">Return Date:</span>
-                <span className="font-semibold text-gray-800 dark:text-slate-200">{selectedReturnView.return_date}</span>
+                <span className="font-semibold text-gray-800 dark:text-slate-200">
+                  {selectedReturnView.return_date
+                    ? new Date(selectedReturnView.return_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                    : '-'}
+                </span>
               </div>
               <div className="flex justify-between py-1 border-b border-gray-100 dark:border-slate-800">
                 <span className="text-gray-500">Customer:</span>
-                <span className="font-semibold text-gray-800 dark:text-slate-200">{selectedReturnView.customer_name} ({selectedReturnView.customer_phone})</span>
+                <span className="font-semibold text-gray-800 dark:text-slate-200">
+                  {selectedReturnView.customer_name} {selectedReturnView.customer_phone ? `(${selectedReturnView.customer_phone})` : ''}
+                </span>
               </div>
               <div className="flex justify-between py-1 border-b border-gray-100 dark:border-slate-800">
                 <span className="text-gray-500">Original Invoice #:</span>
@@ -2000,8 +2473,22 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
               </div>
               <div className="flex justify-between py-1 border-b border-gray-100 dark:border-slate-800">
                 <span className="text-gray-500">Product Returned:</span>
-                <span className="font-semibold text-gray-800 dark:text-slate-200">{selectedReturnView.item_name} (Qty: {selectedReturnView.quantity})</span>
+                <span className="font-semibold text-gray-800 dark:text-slate-200">
+                  {selectedReturnView.item_name} (Qty: {parseFloat(selectedReturnView.quantity || 1).toFixed(2)} {selectedReturnView.unit || 'Nos'})
+                </span>
               </div>
+              {selectedReturnView.serial_number && (
+                <div className="flex justify-between py-1 border-b border-gray-100 dark:border-slate-800">
+                  <span className="text-gray-500">Returned Serial #:</span>
+                  <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{selectedReturnView.serial_number}</span>
+                </div>
+              )}
+              {selectedReturnView.replacement_serial && (
+                <div className="flex justify-between py-1 border-b border-gray-100 dark:border-slate-800">
+                  <span className="text-gray-500">Replacement Serial #:</span>
+                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{selectedReturnView.replacement_serial}</span>
+                </div>
+              )}
               <div className="flex justify-between py-1 border-b border-gray-100 dark:border-slate-800">
                 <span className="text-gray-500">Reason:</span>
                 <span className="font-semibold text-rose-600 dark:text-rose-400">{selectedReturnView.reason}</span>
@@ -2023,7 +2510,7 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
               {selectedReturnView.refund_amount > 0 && (
                 <div className="flex justify-between py-1 border-b border-gray-100 dark:border-slate-800">
                   <span className="text-gray-500">Refund / CN Amount:</span>
-                  <span className="font-mono font-bold text-purple-600">₹{selectedReturnView.refund_amount.toFixed(2)}</span>
+                  <span className="font-mono font-bold text-purple-600">₹{parseFloat(selectedReturnView.refund_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                 </div>
               )}
               {selectedReturnView.qc_notes && (
@@ -2036,10 +2523,19 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
               )}
             </div>
 
-            <div className="pt-3 border-t border-gray-200 dark:border-slate-800 text-right">
+            <div className="pt-3 border-t border-gray-200 dark:border-slate-800 flex items-center justify-between">
               <button
+                type="button"
+                onClick={() => window.print()}
+                className="px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-none cursor-pointer flex items-center gap-1.5"
+              >
+                <Printer size={14} />
+                <span>Print Slip</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setViewModalOpen(false)}
-                className="px-4 py-2 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] rounded-none cursor-pointer"
+                className="px-4 py-1.5 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] rounded-none cursor-pointer"
               >
                 Close Voucher
               </button>
@@ -2047,6 +2543,15 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
           </div>
         </div>
       )}
+
+      {/* 9. Direct Printable Return Voucher Portal for instant window.print() */}
+      {selectedReturnView && typeof document !== 'undefined' && createPortal(
+        <div id="return-slip-print-wrapper">
+          <ReturnVoucherTemplate returnItem={selectedReturnView} settings={settings} />
+        </div>,
+        document.body
+      )}
+
     </div>
   )
 }

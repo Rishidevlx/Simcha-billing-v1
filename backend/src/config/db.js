@@ -245,6 +245,16 @@ export async function initDatabase() {
           await pool.query(`ALTER TABLE settings ADD COLUMN service_starting_number INT DEFAULT 1;`)
           await pool.query(`ALTER TABLE settings ADD COLUMN service_padding_digits INT DEFAULT 4;`)
           await pool.query(`ALTER TABLE settings ADD COLUMN service_separator VARCHAR(10) DEFAULT '/';`)
+          await pool.query(`ALTER TABLE settings ADD COLUMN return_prefix VARCHAR(50) DEFAULT 'SIS-RET';`)
+          await pool.query(`ALTER TABLE settings ADD COLUMN return_financial_year VARCHAR(20) DEFAULT '2026-27';`)
+          await pool.query(`ALTER TABLE settings ADD COLUMN return_starting_number INT DEFAULT 1;`)
+          await pool.query(`ALTER TABLE settings ADD COLUMN return_padding_digits INT DEFAULT 4;`)
+          await pool.query(`ALTER TABLE settings ADD COLUMN return_separator VARCHAR(10) DEFAULT '/';`)
+          await pool.query(`ALTER TABLE settings ADD COLUMN credit_note_prefix VARCHAR(50) DEFAULT 'SIS-CN';`)
+          await pool.query(`ALTER TABLE settings ADD COLUMN credit_note_financial_year VARCHAR(20) DEFAULT '2026-27';`)
+          await pool.query(`ALTER TABLE settings ADD COLUMN credit_note_starting_number INT DEFAULT 1;`)
+          await pool.query(`ALTER TABLE settings ADD COLUMN credit_note_padding_digits INT DEFAULT 4;`)
+          await pool.query(`ALTER TABLE settings ADD COLUMN credit_note_separator VARCHAR(10) DEFAULT '/';`)
         } catch {}
 
         // Ensure customer_email, customer_type, receipt_number, delivery_address, same_as_billing, due_date, has_due_date columns exist in bills
@@ -686,6 +696,61 @@ export async function initDatabase() {
         } catch {}
 
         console.log('✅ "service_bill_items" table ready.')
+
+        // Step 21: Create Returns Registry table if not exists
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS returns_registry (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            return_number VARCHAR(100) UNIQUE NOT NULL,
+            return_date DATE NOT NULL,
+            bill_id INT NULL,
+            bill_number VARCHAR(100) NOT NULL,
+            customer_name VARCHAR(200) NOT NULL,
+            customer_phone VARCHAR(50) NULL,
+            customer_email VARCHAR(191) NULL,
+            material_id INT NULL,
+            item_name VARCHAR(255) NOT NULL,
+            serial_number VARCHAR(150) NULL,
+            quantity DECIMAL(10, 2) NOT NULL DEFAULT 1.00,
+            unit VARCHAR(50) DEFAULT 'Nos',
+            unit_price DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+            total_amount DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+            reason VARCHAR(255) NOT NULL,
+            custom_reason TEXT NULL,
+            qc_status VARCHAR(50) DEFAULT 'Pending QC',
+            qc_decision VARCHAR(50) NULL,
+            qc_condition VARCHAR(50) NULL,
+            qc_notes TEXT NULL,
+            resolution_ref VARCHAR(100) NULL,
+            refund_amount DECIMAL(12, 2) DEFAULT 0.00,
+            replacement_serial VARCHAR(150) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (bill_id) REFERENCES bills(id) ON DELETE SET NULL,
+            FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE SET NULL
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        `)
+        try {
+          await pool.query(`ALTER TABLE returns_registry MODIFY COLUMN qc_decision VARCHAR(50) NULL;`)
+          await pool.query(`ALTER TABLE returns_registry MODIFY COLUMN qc_condition VARCHAR(50) NULL;`)
+          await pool.query(`ALTER TABLE returns_registry MODIFY COLUMN qc_status VARCHAR(50) DEFAULT 'Pending QC';`)
+        } catch {}
+        console.log('✅ "returns_registry" table ready.')
+
+        // Seed initial sample returns if empty
+        const [returnCount] = await pool.query('SELECT COUNT(*) as count FROM returns_registry')
+        if (returnCount[0].count === 0) {
+          await pool.query(`
+            INSERT INTO returns_registry (
+              return_number, return_date, bill_number, customer_name, customer_phone,
+              item_name, material_id, quantity, unit, unit_price, total_amount,
+              reason, qc_status, qc_decision, qc_condition, qc_notes, resolution_ref, refund_amount
+            ) VALUES 
+            ('RET-2026-0001', '2026-09-18', 'INV-92026002', 'Mrs. Sathya Shree', '8870551040', 'Logitech H390 USB Headphone', 1, 1, 'NOS', 2414.41, 2849.00, 'Defective Sound / Mic Issue', 'Pending QC', NULL, NULL, '', '', 0.00),
+            ('RET-2026-0002', '2026-09-19', 'INV-92026002', 'Mrs. Sathya Shree', '8870551040', 'Logitech H390 USB Headphone', 1, 1, 'NOS', 2414.41, 2849.00, 'Wrong Color / Unopened Box', 'Completed', 'STOCK', 'Good', 'Factory seal intact. Returned to inventory shelf (+1).', 'RESTOCK-LOG-004', 0.00)
+          `)
+          console.log('✨ Seeded sample returns in returns_registry.')
+        }
 
         return pool
       } catch (error) {

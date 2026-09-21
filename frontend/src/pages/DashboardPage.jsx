@@ -808,103 +808,173 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
 
       </div>
 
-      {/* 5. Recent Outward Invoices Live Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-slate-800">
-          <div>
-            <h2 className="text-sm font-bold text-[#043486] dark:text-blue-400 uppercase tracking-wide flex items-center gap-2">
-              <Receipt size={16} />
-              <span>Recent Outward Invoices</span>
-            </h2>
-            <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">
-              Live customer billing activity log with instant preview and print access.
-            </p>
+      {/* 5. Side-by-Side Inward & Outward Tables */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Left Side: Recent Inward Purchases */}
+        <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-5 shadow-sm space-y-3 flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between pb-2.5 border-b border-gray-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900">
+                  <PackageCheck size={16} />
+                </div>
+                <div>
+                  <h2 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                    Recent Inwards
+                  </h2>
+                  <p className="text-[10.5px] text-gray-400 dark:text-slate-500">
+                    Latest supplier inward purchases
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveRoute('inward-list')}
+                className="text-xs font-bold text-[#043486] dark:text-blue-400 hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <span>View All Inwards</span>
+                <ArrowRight size={13} />
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950/60 text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+                    <th className="py-2.5 px-3">Inward ID</th>
+                    <th className="py-2.5 px-3">Supplier Name</th>
+                    <th className="py-2.5 px-3">Date</th>
+                    <th className="py-2.5 px-3 text-right">Total Amt</th>
+                    <th className="py-2.5 px-3 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-slate-800 text-xs text-gray-700 dark:text-slate-300">
+                  {inwards.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="text-center py-8 text-gray-400 text-xs">
+                        No inward purchases recorded yet. Click &quot;New Inward&quot; to add.
+                      </td>
+                    </tr>
+                  ) : (
+                    inwards.slice(0, 6).map((inw) => (
+                      <tr key={inw.id} className="hover:bg-gray-50/70 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="py-2.5 px-3 font-mono font-bold text-[#043486] dark:text-blue-400 whitespace-nowrap">
+                          {inw.inward_number}
+                        </td>
+                        <td className="py-2.5 px-3 text-gray-900 dark:text-white font-semibold truncate max-w-[130px]" title={inw.supplier_name || inw.supplier || '-'}>
+                          {inw.supplier_name || inw.supplier || '-'}
+                        </td>
+                        <td className="py-2.5 px-3 text-gray-500 dark:text-slate-400 whitespace-nowrap font-medium text-[11px]">
+                          {inw.inward_date
+                            ? new Date(inw.inward_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                            : inw.created_at
+                            ? new Date(inw.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                            : '-'}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-gray-900 dark:text-white whitespace-nowrap">
+                          ₹{parseFloat(inw.total_amount || inw.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/inward/edit/${inw.id}`)}
+                            className="p-1 text-gray-500 hover:text-[#043486] dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-none transition-colors cursor-pointer"
+                            title="View / Edit Inward"
+                          >
+                            <Eye size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setActiveRoute('all-bills')}
-            className="text-xs font-semibold text-[#043486] dark:text-blue-400 hover:underline cursor-pointer flex items-center gap-1 self-start sm:self-auto"
-          >
-            <span>View All Outward Invoices</span>
-            <ArrowRight size={13} />
-          </button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950/60 text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px] tracking-wider">
-                <th className="py-3 px-3">Invoice #</th>
-                <th className="py-3 px-3">Customer / Company</th>
-                <th className="py-3 px-3 text-center">Party Type</th>
-                <th className="py-3 px-3">Date</th>
-                <th className="py-3 px-3 text-right">Tax (₹)</th>
-                <th className="py-3 px-3 text-right">Total Amount (₹)</th>
-                <th className="py-3 px-3 text-center">Payment Status</th>
-                <th className="py-3 px-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
-              {bills.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="text-center py-8 text-gray-400">
-                    No outward invoices recorded yet. Click &quot;Create Outward Bill&quot; to generate.
-                  </td>
-                </tr>
-              ) : (
-                bills.slice(0, 6).map((bill) => (
-                  <tr key={bill.id} className="hover:bg-gray-50/70 dark:hover:bg-slate-800/50 transition-colors">
-                    <td className="py-3 px-3 font-mono font-bold text-[#043486] dark:text-blue-400">
-                      {bill.invoice_number}
-                    </td>
-                    <td className="py-3 px-3 text-[#292424] dark:text-white font-semibold">
-                      {bill.customer_name}
-                    </td>
-                    <td className="py-3 px-3 text-center">
-                      <span className={`px-2 py-0.5 text-[9.5px] font-bold uppercase ${
-                        (bill.customer_type || '').toLowerCase().includes('company')
-                          ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-900'
-                          : 'bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300 border border-gray-200 dark:border-slate-700'
-                      }`}>
-                        {bill.customer_type || 'Individual'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-gray-500 dark:text-slate-400 font-medium">
-                      {new Date(bill.invoice_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono text-gray-600 dark:text-slate-400">
-                      ₹ {parseFloat(bill.total_tax || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono font-bold text-[#292424] dark:text-white">
-                      ₹ {parseFloat(bill.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </td>
-                    <td className="py-3 px-3 text-center">
-                      <span className={`px-2 py-0.5 text-[10px] font-bold uppercase ${
-                        bill.payment_status === 'Paid'
-                          ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
-                          : bill.payment_status === 'Partial'
-                          ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800'
-                          : 'bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-300 dark:border-red-800'
-                      }`}>
-                        {bill.payment_status || 'Paid'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenBillModal(bill)}
-                        className="p-1.5 text-[#043486] dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                        title="View Invoice Preview & Print"
-                      >
-                        <Eye size={15} />
-                      </button>
-                    </td>
+        {/* Right Side: Recent Outward Invoices */}
+        <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-5 shadow-sm space-y-3 flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between pb-2.5 border-b border-gray-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-blue-50 dark:bg-blue-950/60 text-[#043486] dark:text-blue-400 border border-blue-200 dark:border-blue-900">
+                  <Receipt size={16} />
+                </div>
+                <div>
+                  <h2 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                    Recent Outwards
+                  </h2>
+                  <p className="text-[10.5px] text-gray-400 dark:text-slate-500">
+                    Latest sales &amp; customer billing
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveRoute('all-bills')}
+                className="text-xs font-bold text-[#043486] dark:text-blue-400 hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <span>View All Outwards</span>
+                <ArrowRight size={13} />
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950/60 text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+                    <th className="py-2.5 px-3">Invoice #</th>
+                    <th className="py-2.5 px-3">Customer</th>
+                    <th className="py-2.5 px-3">Date</th>
+                    <th className="py-2.5 px-3 text-right">Total Amt</th>
+                    <th className="py-2.5 px-3 text-center">Action</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-slate-800 text-xs text-gray-700 dark:text-slate-300">
+                  {bills.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="text-center py-8 text-gray-400 text-xs">
+                        No outward invoices recorded yet. Click &quot;Create Outward Bill&quot; to generate.
+                      </td>
+                    </tr>
+                  ) : (
+                    bills.slice(0, 6).map((bill) => (
+                      <tr key={bill.id} className="hover:bg-gray-50/70 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="py-2.5 px-3 font-mono font-bold text-[#043486] dark:text-blue-400 whitespace-nowrap">
+                          {bill.invoice_number}
+                        </td>
+                        <td className="py-2.5 px-3 text-gray-900 dark:text-white font-semibold truncate max-w-[130px]">
+                          {bill.customer_name}
+                        </td>
+                        <td className="py-2.5 px-3 text-gray-500 dark:text-slate-400 whitespace-nowrap font-medium text-[11px]">
+                          {bill.invoice_date
+                            ? new Date(bill.invoice_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                            : '-'}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-gray-900 dark:text-white whitespace-nowrap">
+                          ₹{parseFloat(bill.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenBillModal(bill)}
+                            className="p-1 text-gray-500 hover:text-[#043486] dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-none transition-colors cursor-pointer"
+                            title="View Invoice Preview & Print"
+                          >
+                            <Eye size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
+
       </div>
 
       {/* 6. Invoice Preview & Print Modal */}

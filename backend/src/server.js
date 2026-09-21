@@ -12,6 +12,7 @@ import inwardRoutes from './routes/inwardRoutes.js'
 import cloudinaryRoutes from './routes/cloudinaryRoutes.js'
 import inventoryRoutes from './routes/inventoryRoutes.js'
 import serviceRoutes from './routes/serviceRoutes.js'
+import returnRoutes from './routes/returnRoutes.js'
 
 dotenv.config()
 
@@ -55,12 +56,13 @@ app.use('/api/email-config', emailRoutes)
 app.use('/api/cloudinary', cloudinaryRoutes)
 app.use('/api/inventory', inventoryRoutes)
 app.use('/api/services', serviceRoutes)
+app.use('/api/returns', returnRoutes)
 
 
 // Global Error Handler
 app.use((err, req, res, next) => {
   console.error('Unhandled Server Error:', err)
-  res.status(500).json({ success: false, message: 'Internal Server Error' })
+  res.status(500).json({ success: false, message: 'Internal Server Error: ' + err.message })
 })
 
 // Start Server after connecting to TiDB (Local Development)
