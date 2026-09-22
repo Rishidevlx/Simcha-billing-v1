@@ -26,6 +26,7 @@ export default function Sidebar({
   const [openMenus, setOpenMenus] = useState({
     bills: false,
     services: true,
+    categories: true,
     materials: true,
     inventory: true,
     settings: true
@@ -42,6 +43,8 @@ export default function Sidebar({
       setOpenMenus(prev => ({ ...prev, settings: true }))
     } else if (currentPath.includes('service')) {
       setOpenMenus(prev => ({ ...prev, services: true }))
+    } else if (currentPath.includes('categor')) {
+      setOpenMenus(prev => ({ ...prev, categories: true }))
     } else if (currentPath.includes('material')) {
       setOpenMenus(prev => ({ ...prev, materials: true }))
     } else if (
@@ -100,8 +103,9 @@ export default function Sidebar({
       id: 'categories',
       title: 'Categories',
       icon: Layers,
-      path: '/categories',
-      single: true
+      subItems: [
+        { id: 'create-category', title: 'Create Category', path: '/categories' }
+      ]
     },
     {
       id: 'materials',

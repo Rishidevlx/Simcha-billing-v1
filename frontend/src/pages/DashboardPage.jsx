@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { 
-  TrendingUp, 
-  Receipt, 
-  Boxes, 
-  Clock, 
-  Plus, 
+import {
+  TrendingUp,
+  Receipt,
+  Boxes,
+  Clock,
+  Plus,
   ArrowRight,
   Eye,
   Printer,
@@ -21,7 +21,10 @@ import {
   RotateCcw,
   Sparkles,
   ArrowUpRight,
-  CreditCard
+  CreditCard,
+  Wrench,
+  Layers,
+  PackageOpen
 } from 'lucide-react'
 import {
   ResponsiveContainer,
@@ -78,6 +81,8 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
   const [inwards, setInwards] = useState([])
   const [materials, setMaterials] = useState([])
   const [categories, setCategories] = useState([])
+  const [services, setServices] = useState([])
+  const [returnsList, setReturnsList] = useState([])
   const [settings, setSettings] = useState(null)
   const [selectedBillForPreview, setSelectedBillForPreview] = useState(null)
   const [chartViewTab, setChartViewTab] = useState('sales_vs_purchase') // 'sales_vs_purchase' | 'monthly_growth'
@@ -87,12 +92,14 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
   const fetchAllData = async () => {
     try {
       setIsLoading(true)
-      const [billsRes, inwRes, matRes, catRes, setRes] = await Promise.all([
+      const [billsRes, inwRes, matRes, catRes, setRes, servRes, retRes] = await Promise.all([
         fetch(API_ENDPOINTS.BILLS).then(r => r.json()).catch(() => ({ bills: [] })),
         fetch(API_ENDPOINTS.INWARDS).then(r => r.json()).catch(() => ({ inwards: [] })),
         fetch(API_ENDPOINTS.MATERIALS).then(r => r.json()).catch(() => ({ materials: [] })),
         fetch(API_ENDPOINTS.CATEGORIES).then(r => r.json()).catch(() => ({ categories: [] })),
-        fetch(API_ENDPOINTS.SETTINGS).then(r => r.json()).catch(() => ({ settings: null }))
+        fetch(API_ENDPOINTS.SETTINGS).then(r => r.json()).catch(() => ({ settings: null })),
+        fetch(API_ENDPOINTS.SERVICES).then(r => r.json()).catch(() => ({ services: [] })),
+        fetch(API_ENDPOINTS.RETURNS).then(r => r.json()).catch(() => ({ returns: [] }))
       ])
 
       if (billsRes.success && Array.isArray(billsRes.bills)) {
@@ -109,6 +116,12 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
       }
       if (setRes.success && setRes.settings) {
         setSettings(setRes.settings)
+      }
+      if (servRes.success && Array.isArray(servRes.services)) {
+        setServices(servRes.services)
+      }
+      if (retRes.success && Array.isArray(retRes.returns)) {
+        setReturnsList(retRes.returns)
       }
     } catch (err) {
       console.error('Error fetching dashboard summary:', err)
@@ -128,7 +141,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
     const paidBills = bills.filter(b => b.payment_status === 'Paid')
     const pendingBills = bills.filter(b => b.payment_status === 'Pending')
     const partialBills = bills.filter(b => b.payment_status === 'Partial')
-    
+
     const paidAmount = paidBills.reduce((acc, b) => acc + (parseFloat(b.total_amount) || 0), 0)
     const pendingAmount = pendingBills.reduce((acc, b) => acc + (parseFloat(b.total_amount) || 0), 0)
     const totalTaxCollected = bills.reduce((acc, b) => acc + (parseFloat(b.total_tax) || 0), 0)
@@ -225,6 +238,15 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
     ]
   }, [bills])
 
+  // Credit Notes filtered from returns
+  const creditNotes = useMemo(() => {
+    return returnsList.filter(
+      r => r.qc_decision === 'REFUND' ||
+        (r.resolution_ref && r.resolution_ref.includes('CN')) ||
+        parseFloat(r.refund_amount || 0) > 0
+    )
+  }, [returnsList])
+
   // 4. Payment Status Breakdown
   const paymentStatusData = useMemo(() => {
     let paidCount = 0
@@ -276,7 +298,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 pb-12 font-['Poppins',sans-serif]">
-      
+
       {/* 1. Executive Header & Live System Status */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm transition-colors">
         <div>
@@ -326,9 +348,9 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
 
       {/* 2. Top 5 High-Impact KPI Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        
+
         {/* KPI 1: Outward Revenue */}
-        <div 
+        <div
           onClick={() => setActiveRoute('all-bills')}
           className="bg-white dark:bg-slate-900 p-5 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm hover:border-[#043486] transition-all cursor-pointer group flex flex-col justify-between"
         >
@@ -352,7 +374,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
         </div>
 
         {/* KPI 2: Inward Purchases */}
-        <div 
+        <div
           onClick={() => setActiveRoute('inward-reports')}
           className="bg-white dark:bg-slate-900 p-5 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm hover:border-teal-600 transition-all cursor-pointer group flex flex-col justify-between"
         >
@@ -376,7 +398,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
         </div>
 
         {/* KPI 3: GST Tax Collected */}
-        <div 
+        <div
           onClick={() => setActiveRoute('all-bills')}
           className="bg-white dark:bg-slate-900 p-5 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm hover:border-purple-600 transition-all cursor-pointer group flex flex-col justify-between"
         >
@@ -400,7 +422,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
         </div>
 
         {/* KPI 4: Pending Receivables */}
-        <div 
+        <div
           onClick={() => setActiveRoute('all-bills')}
           className="bg-white dark:bg-slate-900 p-5 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm hover:border-amber-500 transition-all cursor-pointer group flex flex-col justify-between"
         >
@@ -424,7 +446,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
         </div>
 
         {/* KPI 5: Active Warehouse Stock */}
-        <div 
+        <div
           onClick={() => setActiveRoute('inventory')}
           className="bg-white dark:bg-slate-900 p-5 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm hover:border-blue-500 transition-all cursor-pointer group flex flex-col justify-between"
         >
@@ -455,7 +477,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
 
       {/* 3. Visual Charts Analytics Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
+
         {/* Main Chart (8 Cols): Monthly Sales vs Inward Purchase Flow */}
         <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-6 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-slate-800">
@@ -474,22 +496,20 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
               <button
                 type="button"
                 onClick={() => setChartViewTab('sales_vs_purchase')}
-                className={`px-3 py-1 text-xs font-bold transition-all cursor-pointer ${
-                  chartViewTab === 'sales_vs_purchase'
+                className={`px-3 py-1 text-xs font-bold transition-all cursor-pointer ${chartViewTab === 'sales_vs_purchase'
                     ? 'bg-[#043486] text-white shadow-xs'
                     : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
-                }`}
+                  }`}
               >
                 Area Trend
               </button>
               <button
                 type="button"
                 onClick={() => setChartViewTab('monthly_growth')}
-                className={`px-3 py-1 text-xs font-bold transition-all cursor-pointer ${
-                  chartViewTab === 'monthly_growth'
+                className={`px-3 py-1 text-xs font-bold transition-all cursor-pointer ${chartViewTab === 'monthly_growth'
                     ? 'bg-[#043486] text-white shadow-xs'
                     : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
-                }`}
+                  }`}
               >
                 Bar Compare
               </button>
@@ -503,25 +523,25 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
                 <AreaChart data={monthlyChartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                   <defs>
                     <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#043486" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#043486" stopOpacity={0.0}/>
+                      <stop offset="5%" stopColor="#043486" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#043486" stopOpacity={0.0} />
                     </linearGradient>
                     <linearGradient id="purchaseGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#0d9488" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#0d9488" stopOpacity={0.0}/>
+                      <stop offset="5%" stopColor="#0d9488" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#0d9488" stopOpacity={0.0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="month" stroke="#94a3b8" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} tickFormatter={(val) => `₹${val >= 1000 ? `${(val/1000).toFixed(0)}k` : val}`} />
-                  <Tooltip 
+                  <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} tickFormatter={(val) => `₹${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`} />
+                  <Tooltip
                     contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '0px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '11px' }}
                     formatter={(val, name) => [`₹ ${Number(val).toLocaleString('en-IN')}`, name === 'sales' ? 'Outward Sales' : 'Inward Cost']}
                   />
-                  <Legend 
-                    verticalAlign="top" 
-                    height={30} 
-                    iconType="circle" 
+                  <Legend
+                    verticalAlign="top"
+                    height={30}
+                    iconType="circle"
                     iconSize={8}
                     formatter={(val) => val === 'sales' ? 'Outward Sales (₹)' : 'Inward Purchases (₹)'}
                   />
@@ -532,15 +552,15 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
                 <BarChart data={monthlyChartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="month" stroke="#94a3b8" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} tickFormatter={(val) => `₹${val >= 1000 ? `${(val/1000).toFixed(0)}k` : val}`} />
-                  <Tooltip 
+                  <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} tickFormatter={(val) => `₹${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`} />
+                  <Tooltip
                     contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '0px', fontSize: '11px' }}
                     formatter={(val, name) => [`₹ ${Number(val).toLocaleString('en-IN')}`, name === 'sales' ? 'Outward Sales' : 'Inward Cost']}
                   />
-                  <Legend 
-                    verticalAlign="top" 
-                    height={30} 
-                    iconType="square" 
+                  <Legend
+                    verticalAlign="top"
+                    height={30}
+                    iconType="square"
                     iconSize={8}
                     formatter={(val) => val === 'sales' ? 'Outward Sales (₹)' : 'Inward Purchases (₹)'}
                   />
@@ -566,18 +586,16 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
                 <button
                   type="button"
                   onClick={() => setPieTab('customer_type')}
-                  className={`px-2 py-0.5 transition-colors cursor-pointer ${
-                    pieTab === 'customer_type' ? 'bg-[#043486] text-white' : 'text-gray-600 dark:text-slate-400'
-                  }`}
+                  className={`px-2 py-0.5 transition-colors cursor-pointer ${pieTab === 'customer_type' ? 'bg-[#043486] text-white' : 'text-gray-600 dark:text-slate-400'
+                    }`}
                 >
                   Party Type
                 </button>
                 <button
                   type="button"
                   onClick={() => setPieTab('payment_status')}
-                  className={`px-2 py-0.5 transition-colors cursor-pointer ${
-                    pieTab === 'payment_status' ? 'bg-[#043486] text-white' : 'text-gray-600 dark:text-slate-400'
-                  }`}
+                  className={`px-2 py-0.5 transition-colors cursor-pointer ${pieTab === 'payment_status' ? 'bg-[#043486] text-white' : 'text-gray-600 dark:text-slate-400'
+                    }`}
                 >
                   Payment
                 </button>
@@ -601,13 +619,13 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
                       <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '0px', fontSize: '11px' , marginTop: '120px'}}
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '0px', fontSize: '11px', marginTop: '120px' }}
                     formatter={(val, name) => [`${val} Invoices`, name]}
                   />
                 </PieChart>
               </ResponsiveContainer>
-              
+
               {/* Center Counter */}
               <div className="absolute text-center pointer-events-none">
                 <span className="text-lg font-black text-[#292424] dark:text-white font-mono leading-none">
@@ -624,9 +642,9 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
               {(pieTab === 'customer_type' ? customerTypeData : paymentStatusData).map((item, idx) => (
                 <div key={idx} className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
-                    <span 
-                      className="w-2.5 h-2.5 inline-block shrink-0" 
-                      style={{ backgroundColor: PIE_COLORS[idx % PIE_COLORS.length] }} 
+                    <span
+                      className="w-2.5 h-2.5 inline-block shrink-0"
+                      style={{ backgroundColor: PIE_COLORS[idx % PIE_COLORS.length] }}
                     />
                     <span className="text-gray-700 dark:text-slate-300 font-medium truncate max-w-[150px]">
                       {item.name}
@@ -646,7 +664,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
 
       {/* 4. Top Selling Materials & Quick Actions Row */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
+
         {/* Top 5 Products / Materials (6 Cols) */}
         <div className="lg:col-span-6 bg-white dark:bg-slate-900 p-6 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-slate-800">
@@ -697,8 +715,8 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
                     </div>
                     {/* Progress Bar */}
                     <div className="w-full h-1.5 bg-gray-100 dark:bg-slate-800 overflow-hidden">
-                      <div 
-                        className="h-full bg-gradient-to-r from-[#043486] to-[#0284c7] transition-all duration-500" 
+                      <div
+                        className="h-full bg-gradient-to-r from-[#043486] to-[#0284c7] transition-all duration-500"
                         style={{ width: `${percent}%` }}
                       />
                     </div>
@@ -725,34 +743,6 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
               <button
                 type="button"
-                onClick={() => setActiveRoute('create-bill')}
-                className="p-3.5 bg-gray-50 dark:bg-slate-950 hover:bg-blue-50 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800 hover:border-[#043486] text-left transition-all group cursor-pointer"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-[#292424] dark:text-white group-hover:text-[#043486] dark:group-hover:text-blue-400">
-                    Create Outward Bill
-                  </span>
-                  <ArrowUpRight size={14} className="text-gray-400 group-hover:text-[#043486]" />
-                </div>
-                <p className="text-[11px] text-gray-500 dark:text-slate-400">GST Invoice &amp; Payment Receipt generation</p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveRoute('inward')}
-                className="p-3.5 bg-gray-50 dark:bg-slate-950 hover:bg-teal-50 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800 hover:border-teal-600 text-left transition-all group cursor-pointer"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-[#292424] dark:text-white group-hover:text-teal-600">
-                    New Inward Stock
-                  </span>
-                  <ArrowUpRight size={14} className="text-gray-400 group-hover:text-teal-600" />
-                </div>
-                <p className="text-[11px] text-gray-500 dark:text-slate-400">Supplier bill entry with serial tracking</p>
-              </button>
-
-              <button
-                type="button"
                 onClick={() => setActiveRoute('add-material')}
                 className="p-3.5 bg-gray-50 dark:bg-slate-950 hover:bg-purple-50 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800 hover:border-purple-600 text-left transition-all group cursor-pointer"
               >
@@ -767,16 +757,44 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
 
               <button
                 type="button"
-                onClick={() => setActiveRoute('system-settings')}
+                onClick={() => navigate('/services/new')}
+                className="p-3.5 bg-gray-50 dark:bg-slate-950 hover:bg-cyan-50 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800 hover:border-cyan-600 text-left transition-all group cursor-pointer"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold text-[#292424] dark:text-white group-hover:text-cyan-600">
+                    New Service Request
+                  </span>
+                  <ArrowUpRight size={14} className="text-gray-400 group-hover:text-cyan-600" />
+                </div>
+                <p className="text-[11px] text-gray-500 dark:text-slate-400">Device intake &amp; repair booking entry</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveRoute('categories')}
                 className="p-3.5 bg-gray-50 dark:bg-slate-950 hover:bg-amber-50 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800 hover:border-amber-600 text-left transition-all group cursor-pointer"
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-bold text-[#292424] dark:text-white group-hover:text-amber-600">
-                    System Settings
+                    Add Categories
                   </span>
                   <ArrowUpRight size={14} className="text-gray-400 group-hover:text-amber-600" />
                 </div>
-                <p className="text-[11px] text-gray-500 dark:text-slate-400">Signatures, numbering prefixes &amp; taxes</p>
+                <p className="text-[11px] text-gray-500 dark:text-slate-400">Manage item groups &amp; service types</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveRoute('inventory')}
+                className="p-3.5 bg-gray-50 dark:bg-slate-950 hover:bg-emerald-50 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800 hover:border-emerald-600 text-left transition-all group cursor-pointer"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold text-[#292424] dark:text-white group-hover:text-emerald-600">
+                    Stock &amp; Inventory
+                  </span>
+                  <ArrowUpRight size={14} className="text-gray-400 group-hover:text-emerald-600" />
+                </div>
+                <p className="text-[11px] text-gray-500 dark:text-slate-400">Live stock overview, serials &amp; scrap</p>
               </button>
             </div>
           </div>
@@ -810,7 +828,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
 
       {/* 5. Side-by-Side Inward & Outward Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
+
         {/* Left Side: Recent Inward Purchases */}
         <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-5 shadow-sm space-y-3 flex flex-col justify-between">
           <div className="space-y-3">
@@ -869,8 +887,8 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
                           {inw.inward_date
                             ? new Date(inw.inward_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
                             : inw.created_at
-                            ? new Date(inw.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-                            : '-'}
+                              ? new Date(inw.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                              : '-'}
                         </td>
                         <td className="py-2.5 px-3 text-right font-mono font-bold text-gray-900 dark:text-white whitespace-nowrap">
                           ₹{parseFloat(inw.total_amount || inw.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -965,6 +983,168 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
                           >
                             <Eye size={14} />
                           </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* 5.2 Side-by-Side Recent Services & Recent Credit Notes */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* Left Side: Recent Services List */}
+        <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-5 shadow-sm space-y-3 flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between pb-2.5 border-b border-gray-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-900">
+                  <Wrench size={16} />
+                </div>
+                <div>
+                  <h2 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                    Recent Services
+                  </h2>
+                  <p className="text-[10.5px] text-gray-400 dark:text-slate-500">
+                    Latest device repairs &amp; customer services
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/services/list')}
+                className="text-xs font-bold text-[#043486] dark:text-blue-400 hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <span>View All Services</span>
+                <ArrowRight size={13} />
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950/60 text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+                    <th className="py-2.5 px-3 whitespace-nowrap">Service ID</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap">Customer</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap">Date</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap">Total Amt</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-slate-800 text-xs text-gray-700 dark:text-slate-300">
+                  {services.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="text-center py-8 text-gray-400 text-xs">
+                        No service requests recorded yet. Click &quot;New Service Request&quot; to add.
+                      </td>
+                    </tr>
+                  ) : (
+                    services.slice(0, 6).map((serv) => (
+                      <tr key={serv.id} className="hover:bg-gray-50/70 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="py-2.5 px-3 font-mono font-bold text-[#043486] dark:text-blue-400 whitespace-nowrap">
+                          {serv.service_number || `SRV-${serv.id}`}
+                        </td>
+                        <td className="py-2.5 px-3 text-gray-900 dark:text-white font-semibold truncate max-w-[130px]" title={serv.customer_name || '-'}>
+                          {serv.customer_name || '-'}
+                        </td>
+                        <td className="py-2.5 px-3 text-gray-500 dark:text-slate-400 whitespace-nowrap font-medium text-[11px]">
+                          {serv.service_date
+                            ? new Date(serv.service_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                            : serv.created_at
+                              ? new Date(serv.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                              : '-'}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-gray-900 dark:text-white whitespace-nowrap">
+                          ₹{parseFloat(serv.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => navigate('/services/list')}
+                            className="p-1 text-gray-500 hover:text-[#043486] dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-none transition-colors cursor-pointer"
+                            title="View Service Details"
+                          >
+                            <Eye size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Side: Recent Credit Notes */}
+        <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-5 shadow-sm space-y-3 flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between pb-2.5 border-b border-gray-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-900">
+                  <RotateCcw size={16} />
+                </div>
+                <div>
+                  <h2 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                    Recent Credit Notes
+                  </h2>
+                  <p className="text-[10.5px] text-gray-400 dark:text-slate-500">
+                    Customer refund &amp; credit note records
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/inventory/returns')}
+                className="text-xs font-bold text-[#043486] dark:text-blue-400 hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <span>View All Credit Notes</span>
+                <ArrowRight size={13} />
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950/60 text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+                    <th className="py-2.5 px-3 whitespace-nowrap">Return ID</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap">Invoice ID</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap">Date</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap">Customer</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap">Refund Amt</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-slate-800 text-xs text-gray-700 dark:text-slate-300">
+                  {creditNotes.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="text-center py-8 text-gray-400 text-xs">
+                        No credit notes generated yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    creditNotes.slice(0, 6).map((cn) => (
+                      <tr key={cn.id} className="hover:bg-gray-50/70 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="py-2.5 px-3 font-mono font-bold text-purple-700 dark:text-purple-400 whitespace-nowrap">
+                          {cn.return_number}
+                        </td>
+                        <td className="py-2.5 px-3 font-mono text-gray-700 dark:text-slate-300 whitespace-nowrap font-medium">
+                          {cn.bill_number || cn.invoice_number || '—'}
+                        </td>
+                        <td className="py-2.5 px-3 text-gray-500 dark:text-slate-400 whitespace-nowrap font-medium text-[11px]">
+                          {cn.return_date
+                            ? new Date(cn.return_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                            : '-'}
+                        </td>
+                        <td className="py-2.5 px-3 text-gray-900 dark:text-white font-semibold truncate max-w-[120px]">
+                          {cn.customer_name}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-gray-900 dark:text-white whitespace-nowrap">
+                          ₹{parseFloat(cn.refund_amount || cn.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                       </tr>
                     ))

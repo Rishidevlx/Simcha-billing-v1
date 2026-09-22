@@ -34,12 +34,15 @@ import ListPagePagination from '../components/common/ListPagePagination'
 
 export default function InventoryPage({ setActiveRoute }) {
   const navigate = useNavigate()
-  // Active Tab: 'overview' | 'reorder'
+  // Active Tab: 'overview' | 'reorder' | 'scrap'
   const [activeTab, setActiveTab] = useState('overview')
 
   // Data States
   const [loading, setLoading] = useState(true)
   const [inventoryData, setInventoryData] = useState([])
+  const [scrapList, setScrapList] = useState([])
+  const [scrapLoading, setScrapLoading] = useState(false)
+  const [scrapSearch, setScrapSearch] = useState('')
   const [summaryMetrics, setSummaryMetrics] = useState({
     total_sku_count: 0,
     total_stock_units: 0,
@@ -103,16 +106,89 @@ export default function InventoryPage({ setActiveRoute }) {
       const res = await fetch(API_ENDPOINTS.CATEGORIES)
       const data = await res.json()
       if (data.success) {
-        setCategories(data.data || [])
+        setCategories(data.categories || data.data || [])
       }
     } catch (err) {
       console.error('Failed to fetch categories:', err)
     }
   }
 
+  // Fetch Scrap & Defective Inventory
+  const fetchScrap = async () => {
+    try {
+      setScrapLoading(true)
+      const res = await fetch(API_ENDPOINTS.INVENTORY_SCRAP)
+      const data = await res.json()
+      if (data.success) {
+        const scrapEntries = []
+        const seenSerials = new Set()
+
+        // 1. First prioritize QC defective return records
+        for (const r of (data.qcDefectiveReturns || [])) {
+          if (r.serial_number && r.serial_number !== '-') {
+            seenSerials.add(r.serial_number.toLowerCase().trim())
+          }
+          scrapEntries.push({
+            id: `return-${r.id}`,
+            source: 'return',
+            material_id: r.material_id,
+            material_name: r.material_name,
+            material_code: r.material_code,
+            category_id: r.category_id,
+            category_name: r.category_name || 'Uncategorized',
+            serial_number: r.serial_number || '-',
+            return_number: r.return_number || '-',
+            bill_number: r.bill_number || '-',
+            customer_name: r.customer_name || 'Return Customer',
+            reason: r.reason || r.custom_reason || 'Defective Product',
+            qc_notes: r.qc_notes || '',
+            date: r.return_date || r.created_at,
+            unit: r.unit || 'Nos',
+            price: r.unit_price || 0,
+            status: r.reason || r.custom_reason || 'Defective Product'
+          })
+        }
+
+        // 2. Add any additional damaged serials from inventory_serials not already covered by returns
+        for (const s of (data.damagedSerials || [])) {
+          const sn = (s.serial_number || '').toLowerCase().trim()
+          if (!sn || !seenSerials.has(sn)) {
+            if (sn) seenSerials.add(sn)
+            scrapEntries.push({
+              id: `serial-${s.id}`,
+              source: 'serial',
+              material_id: s.material_id,
+              material_name: s.material_name,
+              material_code: s.material_code,
+              category_id: s.category_id,
+              category_name: s.category_name || 'Uncategorized',
+              serial_number: s.serial_number || '-',
+              return_number: s.return_number || '-',
+              bill_number: s.bill_number || '-',
+              customer_name: s.customer_name || 'In-House / Defective Stock',
+              reason: s.reason || 'Defective Product',
+              qc_notes: s.qc_notes || '',
+              date: s.return_date || s.updated_at || s.created_at,
+              unit: s.unit || 'Nos',
+              price: s.selling_price || 0,
+              status: s.reason || 'Defective Product'
+            })
+          }
+        }
+
+        setScrapList(scrapEntries)
+      }
+    } catch (err) {
+      console.error('Failed to load scrap inventory:', err)
+    } finally {
+      setScrapLoading(false)
+    }
+  }
+
   useEffect(() => {
     fetchInventory()
     fetchCategories()
+    fetchScrap()
   }, [])
 
   // Available unique units
@@ -166,8 +242,31 @@ export default function InventoryPage({ setActiveRoute }) {
     })
   }, [inventoryData])
 
+  // Filtered Scrap / Defective Items
+  const filteredScrap = useMemo(() => {
+    return scrapList.filter(item => {
+      const q = scrapSearch.toLowerCase().trim()
+      const matchSearch =
+        !q ||
+        item.material_name?.toLowerCase().includes(q) ||
+        item.serial_number?.toLowerCase().includes(q) ||
+        item.return_number?.toLowerCase().includes(q) ||
+        item.bill_number?.toLowerCase().includes(q) ||
+        item.customer_name?.toLowerCase().includes(q) ||
+        item.reason?.toLowerCase().includes(q) ||
+        item.hsn_code?.toLowerCase().includes(q)
+
+      const matchCat =
+        selectedCategory === 'ALL' ||
+        String(item.category_id) === String(selectedCategory) ||
+        String(item.category_name) === String(selectedCategory)
+
+      return matchSearch && matchCat
+    })
+  }, [scrapList, scrapSearch, selectedCategory])
+
   // Paginated Items
-  const currentTabList = activeTab === 'reorder' ? lowStockItems : filteredInventory
+  const currentTabList = activeTab === 'reorder' ? lowStockItems : (activeTab === 'scrap' ? filteredScrap : filteredInventory)
   const totalItems = currentTabList.length
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage))
   const startIndex = (currentPage - 1) * itemsPerPage
@@ -361,6 +460,35 @@ export default function InventoryPage({ setActiveRoute }) {
       return
     }
 
+    if (activeTab === 'scrap') {
+      const excelRows = targetItems.map((item, idx) => ({
+        'S.No': idx + 1,
+        'Recorded Date': item.date ? String(item.date).split('T')[0] : '-',
+        'Defective Material': item.material_name || '',
+        'Defective Serial Number': item.serial_number || '-',
+        'Return Bill Number': item.return_number || '-',
+        'Original Invoice Number': item.bill_number || '-',
+        'Customer Name': item.customer_name || '-',
+        'QC Defect Reason / Notes': item.qc_notes || item.reason || '-',
+        'Stock Status': 'Damaged / Scrap'
+      }))
+
+      const worksheet = XLSX.utils.json_to_sheet(excelRows)
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Scrap_Defective_Stock')
+      const dateStr = new Date().toISOString().split('T')[0]
+      XLSX.writeFile(workbook, `Simcha_Scrap_Defective_${dateStr}.xlsx`)
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Excel Export Ready',
+        text: `Successfully exported ${excelRows.length} scrap/defective item(s) to Excel.`,
+        timer: 2000,
+        showConfirmButton: false
+      })
+      return
+    }
+
     const excelRows = targetItems.map((item, idx) => {
       const stock = parseInt(item.current_stock || 0, 10)
       const reorder = parseInt(item.reorder_level || 0, 10)
@@ -471,9 +599,9 @@ export default function InventoryPage({ setActiveRoute }) {
         />
       </div>
 
-      {/* 3. Tab Navigation Bar */}
+      {/* 3. Tab Navigation Bar (Stock Overview, Low Stock / Reorder, Scrap / Defective) */}
       <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-none shadow-xs flex items-center justify-between px-2 pt-2 transition-colors">
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 flex-wrap">
           <button
             onClick={() => {
               setActiveTab('overview')
@@ -504,6 +632,23 @@ export default function InventoryPage({ setActiveRoute }) {
           >
             <AlertTriangle size={15} />
             <span>Low Stock / Reorder ({lowStockItems.length})</span>
+          </button>
+
+          {/* 3. Scrap / Defective Tab */}
+          <button
+            onClick={() => {
+              setActiveTab('scrap')
+              setCurrentPage(1)
+              setSelectedIds([])
+            }}
+            className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === 'scrap'
+                ? 'border-rose-600 text-rose-700 dark:border-rose-400 dark:text-rose-300 bg-rose-50/50 dark:bg-rose-950/30'
+                : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
+            }`}
+          >
+            <AlertTriangle size={15} className="text-rose-600 dark:text-rose-400" />
+            <span>Scrap / Defective ({scrapList.length})</span>
           </button>
         </div>
       </div>
@@ -807,6 +952,208 @@ export default function InventoryPage({ setActiveRoute }) {
                               <Edit3 size={15} />
                             </button>
                           </div>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          <ListPagePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={(newSize) => {
+              setItemsPerPage(newSize)
+              setCurrentPage(1)
+            }}
+          />
+        </div>
+      )}
+
+      {/* 5. Tab 3: Scrap / Defective Materials & Serials Vault Table */}
+      {activeTab === 'scrap' && (
+        <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-none shadow-xs transition-colors">
+          {/* Filter Bar */}
+          <div className="p-4 border-b border-gray-200 dark:border-slate-800 bg-[#fbfcfd] dark:bg-slate-950/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* Search Bar */}
+            <div className="relative w-full md:w-80">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={15} />
+              <input
+                type="text"
+                placeholder="Search Defective Serial, Material, Return #, Reason..."
+                value={scrapSearch}
+                onChange={(e) => {
+                  setScrapSearch(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="w-full pl-9 pr-4 py-2 text-xs text-gray-900 dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 transition-colors"
+              />
+              {scrapSearch && (
+                <button
+                  onClick={() => setScrapSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {/* Category Filter & Reload */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Category:</span>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => {
+                    setSelectedCategory(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  className="px-3 py-1.5 text-xs text-gray-800 dark:text-slate-200 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 cursor-pointer"
+                >
+                  <option value="ALL">All Categories</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Reload Button */}
+              <button
+                onClick={fetchScrap}
+                className="p-1.5 text-gray-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors shadow-xs cursor-pointer ml-1"
+                title="Reload Scrap Data"
+              >
+                <RefreshCw size={14} className={scrapLoading ? 'animate-spin' : ''} />
+              </button>
+            </div>
+          </div>
+
+          {/* Table Container */}
+          <div className="overflow-x-auto min-h-[300px]">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-950 text-[11px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="py-3 px-3 text-center w-10 whitespace-nowrap">#</th>
+                  <th className="py-3 px-4 text-center whitespace-nowrap">Date</th>
+                  <th className="py-3 px-4 whitespace-nowrap">Product Name</th>
+                  <th className="py-3 px-4 whitespace-nowrap">Serial Number</th>
+                  <th className="py-3 px-4 whitespace-nowrap">Return Bill #</th>
+                  <th className="py-3 px-4 whitespace-nowrap">Original Inv #</th>
+                  <th className="py-3 px-4 whitespace-nowrap">Customer</th>
+                  <th className="py-3 px-4 whitespace-nowrap">QC Findings / Notes</th>
+                  <th className="py-3 px-4 text-center whitespace-nowrap">Return Reason</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+                {scrapLoading ? (
+                  <tr>
+                    <td colSpan="9" className="py-12 text-center text-gray-400 dark:text-slate-500">
+                      <Loader2 className="animate-spin inline-block mr-2" size={18} />
+                      Loading scrap &amp; defective products...
+                    </td>
+                  </tr>
+                ) : paginatedInventory.length === 0 ? (
+                  <tr>
+                    <td colSpan="9" className="py-12 text-center text-gray-400 dark:text-slate-500">
+                      <div className="flex flex-col items-center justify-center gap-1.5 py-4">
+                        <AlertTriangle className="text-rose-400" size={32} />
+                        <p className="font-semibold text-xs text-gray-600 dark:text-slate-400">No Scrap / Defective Materials Found</p>
+                        <p className="text-[11px] text-gray-400 dark:text-slate-500">Items tagged as defective or QC Failed will appear here automatically.</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedInventory.map((item, index) => {
+                    const sNo = (currentPage - 1) * itemsPerPage + index + 1
+                    return (
+                      <tr
+                        key={item.id || index}
+                        className="hover:bg-rose-50/20 dark:hover:bg-rose-950/10 transition-colors"
+                      >
+                        {/* 1. S.No */}
+                        <td className="py-3 px-3 text-center font-mono font-medium text-gray-500 dark:text-slate-400 whitespace-nowrap">
+                          {sNo}
+                        </td>
+
+                        {/* 2. Date */}
+                        <td className="py-3 px-4 text-center font-mono text-[11px] font-semibold text-gray-700 dark:text-slate-300 whitespace-nowrap">
+                          {item.date ? String(item.date).split('T')[0] : '—'}
+                        </td>
+
+                        {/* 3. Product Name */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span className="font-bold text-gray-900 dark:text-white text-xs">
+                            {item.material_name}
+                          </span>
+                        </td>
+
+                        {/* 4. Serial Number */}
+                        <td className="py-3 px-4 font-mono whitespace-nowrap">
+                          {item.serial_number && item.serial_number !== '-' ? (
+                            <div
+                              onClick={() => {
+                                navigator.clipboard.writeText(item.serial_number)
+                                setCopiedSerial(item.serial_number)
+                                setTimeout(() => setCopiedSerial(null), 1500)
+                              }}
+                              className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-gray-800 dark:text-slate-200 hover:text-[#043486] dark:hover:text-blue-400 cursor-pointer group transition-colors"
+                              title="Click to copy serial number"
+                            >
+                              <span className="font-bold">{item.serial_number}</span>
+                              {copiedSerial === item.serial_number ? (
+                                <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-600 font-sans font-bold">
+                                  <Check size={12} /> Copied!
+                                </span>
+                              ) : (
+                                <Copy size={12} className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 text-xs font-mono">—</span>
+                          )}
+                        </td>
+
+                        {/* 5. Return Bill # */}
+                        <td className="py-3 px-4 font-mono font-semibold text-[#043486] dark:text-blue-400 text-xs whitespace-nowrap">
+                          {item.return_number && item.return_number !== '-' ? item.return_number : '—'}
+                        </td>
+
+                        {/* 6. Original Inv # */}
+                        <td className="py-3 px-4 font-mono font-medium text-gray-700 dark:text-slate-300 text-xs whitespace-nowrap">
+                          {item.bill_number && item.bill_number !== '-' ? item.bill_number : '—'}
+                        </td>
+
+                        {/* 7. Customer */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span className="font-semibold text-gray-800 dark:text-slate-200 text-xs">
+                            {item.customer_name || 'In-House'}
+                          </span>
+                        </td>
+
+                        {/* 8. QC Findings / Notes */}
+                        <td className="py-3 px-4 max-w-xs whitespace-nowrap">
+                          {item.qc_notes && item.qc_notes.trim() ? (
+                            <span className="text-gray-800 dark:text-slate-200 font-medium text-xs block truncate" title={item.qc_notes}>
+                              {item.qc_notes}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 text-xs font-mono">—</span>
+                          )}
+                        </td>
+
+                        {/* 9. Return Reason */}
+                        <td className="py-3 px-4 text-center whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900">
+                            {item.reason || 'Defective Product'}
+                          </span>
                         </td>
                       </tr>
                     )

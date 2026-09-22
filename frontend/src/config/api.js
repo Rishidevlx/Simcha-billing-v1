@@ -31,6 +31,7 @@ export const API_ENDPOINTS = {
   CLOUDINARY_UPLOAD: `${API_BASE_URL}/api/cloudinary/upload`,
   VERIFY_SERIAL: (serial) => `${API_BASE_URL}/api/materials/verify-serial/${encodeURIComponent(serial)}`,
   INVENTORY: `${API_BASE_URL}/api/inventory`,
+  INVENTORY_SCRAP: `${API_BASE_URL}/api/inventory/scrap`,
   INVENTORY_LEDGER: `${API_BASE_URL}/api/inventory/ledger`,
   INVENTORY_ADJUST: `${API_BASE_URL}/api/inventory/adjust`,
   INVENTORY_REORDER_LEVEL: `${API_BASE_URL}/api/inventory/reorder-level`,

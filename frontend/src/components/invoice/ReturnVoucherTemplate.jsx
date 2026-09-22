@@ -1,212 +1,387 @@
 import React from 'react'
 import logoImg from '../../assets/Logo/Logo-bg-remove.png'
-import { Phone, Mail, MapPin, CheckCircle2, RotateCcw, CreditCard, AlertTriangle, ShieldCheck } from 'lucide-react'
+import faviconWatermark from '../../assets/Logo/Favicon.jpeg'
+import { Phone, Mail, MapPin } from 'lucide-react'
+
+// Number to Words converter helper
+function numberToWords(num) {
+  if (!num || isNaN(num)) return ''
+  const a = [
+    '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+    'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'
+  ]
+  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety']
+
+  const inWords = (n) => {
+    if (n < 20) return a[n]
+    if (n < 100) return b[Math.floor(n / 10)] + (n % 10 ? ' ' + a[n % 10] : '')
+    if (n < 1000) return a[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' and ' + inWords(n % 100) : '')
+    if (n < 100000) return inWords(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 ? ' ' + inWords(n % 1000) : '')
+    if (n < 10000000) return inWords(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 ? ' ' + inWords(n % 100000) : '')
+    return inWords(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 ? ' ' + inWords(n % 10000000) : '')
+  }
+
+  const parts = Number(num).toFixed(2).split('.')
+  const rupees = parseInt(parts[0], 10)
+  const paise = parseInt(parts[1], 10)
+
+  let result = inWords(rupees) + ' Rupees'
+  if (paise > 0) {
+    result += ' and ' + inWords(paise) + ' Paise'
+  }
+  return result + ' Only'
+}
 
 export default function ReturnVoucherTemplate({ returnItem, settings }) {
   if (!returnItem) return null
 
-  const companyName = settings?.company_name || 'SIMCHA INFO SOLUTIONS'
-  const companyGstin = settings?.gstin || '33GEZPM1178G1ZY'
-  const companyPhone = settings?.phone || '8122022060'
-  const companyEmail = settings?.email || 'simchainfosolutions@gmail.com'
-  const companyAddress = settings?.address || '7A3, Thulasi Ammal Layout 2nd Street, Lakshmipuram, Peelamedu Post, Coimbatore - 641 004.'
+  // Resolve settings with localStorage fallback
+  let effectiveSettings = settings || {}
+  if (!effectiveSettings.signature_url || !effectiveSettings.company_name) {
+    try {
+      const stored = localStorage.getItem('simcha_settings')
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        effectiveSettings = { ...parsed, ...effectiveSettings }
+      }
+    } catch {}
+  }
+
+  // Dynamic Company Settings with fallbacks matching InvoiceTemplate
+  const companyName = effectiveSettings?.company_name || 'SIMCHA INFO SOLUTIONS'
+  const companyGstin = effectiveSettings?.gstin || '33GEZPM1178G1ZY'
+  const companyPhone = effectiveSettings?.phone || '8122022060'
+  const companyEmail = effectiveSettings?.email || 'simchainfosolutions@gmail.com'
+  const companyAddress = effectiveSettings?.address || '7A3, Thulasi Ammal Layout 2nd Street, Lakshmipuram, Peelamedu Post, Coimbatore - 641 004.'
+  const signatureUrl = effectiveSettings?.signature_url || returnItem?.signature_url || null
+
+  const isCreditNote = returnItem.qc_decision === 'REFUND' || (returnItem.resolution_ref && returnItem.resolution_ref.includes('CN'))
+  const isReplacement = returnItem.qc_decision === 'REPLACE'
+  const documentTitle = isCreditNote ? 'CREDIT NOTE' : (isReplacement ? 'REPLACEMENT VOUCHER' : 'RETURN VOUCHER')
+  const documentNumber = returnItem.resolution_ref || returnItem.return_number
 
   const isPassed = returnItem.qc_condition === 'PASS' || returnItem.qc_condition === 'Good'
   const isDefective = !isPassed && returnItem.qc_status !== 'Pending QC'
 
+  // Format date helper (e.g. 22 Sept 2026)
+  const formatDate = (dateStr) => {
+    if (!dateStr) return new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    const d = new Date(dateStr)
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+  }
+
+  // Format clean integer/decimal quantity
+  const formatQty = (qty) => {
+    const num = parseFloat(qty) || 0
+    return num % 1 === 0 ? parseInt(num, 10) : num
+  }
+
+  const returnQty = parseFloat(returnItem.quantity) || 1
+  const unitRate = parseFloat(returnItem.unit_price || returnItem.rate || 0)
+  const grandTotal = parseFloat(returnItem.refund_amount || returnItem.total_amount || (unitRate * returnQty)) || 0
+  const amountInWords = numberToWords(grandTotal)
+
   return (
-    <div id="return-slip-printable-area" className="w-full bg-white text-[#292424] font-['Poppins',sans-serif]">
-      <div className="invoice-page relative bg-white text-[#292424] w-full max-w-[210mm] min-h-[297mm] mx-auto p-8 flex flex-col justify-between box-border">
-        
-        {/* Header Section with Company Branding */}
-        <div>
-          <div className="flex items-start justify-between pb-4 border-b-2 border-[#043486]">
-            <div className="flex items-center gap-3">
-              <img src={logoImg} alt="Simcha Logo" className="h-16 w-auto object-contain" />
-              <div>
-                <h1 className="text-xl font-black tracking-tight text-[#043486] uppercase">
-                  {companyName}
-                </h1>
-                <div className="text-[11px] text-gray-600 space-y-0.5 mt-0.5">
-                  <div className="flex items-center gap-1.5">
-                    <MapPin size={12} className="text-[#043486] shrink-0" />
-                    <span>{companyAddress}</span>
-                  </div>
-                  <div className="flex items-center gap-4 text-gray-600">
-                    <span className="flex items-center gap-1">
-                      <Phone size={12} className="text-[#043486]" /> {companyPhone}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Mail size={12} className="text-[#043486]" /> {companyEmail}
-                    </span>
-                    <span className="font-semibold text-[#043486]">
-                      GSTIN: {companyGstin}
-                    </span>
-                  </div>
+    <div id="return-slip-printable-area" className="w-full">
+      <div
+        className="invoice-page relative bg-white text-[#292424] font-['Poppins',sans-serif] w-full max-w-[210mm] min-h-[297mm] max-h-[297mm] h-[297mm] mx-auto p-0 flex flex-col justify-between shadow-lg print:shadow-none print:w-full print:max-w-none print:h-[297mm] print:min-h-[297mm] print:max-h-[297mm] text-[11.5px] leading-relaxed overflow-hidden box-border mb-8 print:mb-0"
+        style={{ boxSizing: 'border-box' }}
+      >
+        {/* Background Watermark */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0 opacity-[0.05]">
+          <img
+            src={faviconWatermark}
+            alt="Favicon Watermark"
+            className="w-[300px] max-w-full object-contain filter grayscale"
+          />
+        </div>
+
+        {/* Main Content Area */}
+        <div className="relative z-10 px-7 pt-6 pb-2 space-y-3.5 flex-1">
+
+          {/* --- EXACT FULL HEADER IDENTICAL TO INVOICE TEMPLATE --- */}
+          <div className="space-y-1">
+            <div className="flex items-start justify-between gap-4 pt-0.5">
+              {/* Left Large Logo + Branding */}
+              <div className="flex items-start gap-3.5">
+                <img
+                  src={logoImg}
+                  alt="Simcha Logo"
+                  className="h-20 w-auto object-contain shrink-0 -mt-1"
+                />
+                <div className="space-y-0.5">
+                  <h1 className="text-xl font-black text-[#043486] tracking-tight leading-none">
+                    {companyName}
+                  </h1>
+                  <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider pt-0.5">
+                    IT CONSULTING | HARDWARE &amp; SOFTWARE SOLUTIONS | SALES &amp; SERVICE
+                  </p>
+                  <p className="text-[10px] text-gray-600 leading-normal truncate max-w-lg">
+                    {companyAddress}
+                  </p>
+                  <p className="text-[10px] text-gray-700 font-medium">
+                    <strong>Mobile:</strong> {companyPhone} &nbsp;|&nbsp; <strong>Email:</strong> {companyEmail}
+                  </p>
+                </div>
+              </div>
+
+              {/* Top Right: GSTIN Header */}
+              <div className="text-right shrink-0 pt-0.5">
+                <div className="text-xs font-bold text-[#292424] font-mono tracking-wide">
+                  <span className="text-gray-500 font-bold font-sans text-[11px]">GSTIN: </span>
+                  {companyGstin}
                 </div>
               </div>
             </div>
 
-            {/* Document Title Badge */}
-            <div className="text-right">
-              <div className="inline-block px-3 py-1.5 bg-[#043486] text-white font-black text-xs uppercase tracking-widest">
-                RETURN VOUCHER SLIP
-              </div>
-              <div className="text-[11px] font-mono font-bold text-gray-700 mt-1">
-                {returnItem.return_number}
-              </div>
-            </div>
+            {/* Thin Divider Rule */}
+            <div className="w-full h-[2px] bg-[#043486] mt-1.5" />
           </div>
 
-          {/* Return & Customer Info Banner */}
-          <div className="grid grid-cols-2 gap-4 my-6 p-4 bg-slate-50 border border-slate-200 text-xs">
-            <div className="space-y-1.5">
-              <div className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">
-                Customer Details:
-              </div>
-              <div className="text-sm font-bold text-gray-900">
-                {returnItem.customer_name}
-              </div>
-              <div className="text-gray-600 font-mono">
-                Phone: <b>{returnItem.customer_phone || 'N/A'}</b>
-              </div>
-              <div className="text-gray-600 font-mono">
-                Original Bill / Invoice #: <b>{returnItem.bill_number || 'N/A'}</b>
-              </div>
+          {/* Meta Bar */}
+          <div className="bg-[#f3f4f6] border border-gray-300 px-3.5 py-1.5 flex items-center justify-between text-xs font-bold text-[#292424]">
+            <div className="flex items-center gap-1.5">
+              <span className="text-gray-600 uppercase font-semibold text-[10.5px]">
+                {documentTitle} NUMBER:
+              </span>
+              <span className="text-[#292424] font-mono text-sm font-black">
+                {documentNumber}
+              </span>
             </div>
-
-            <div className="space-y-1.5 text-right">
-              <div className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">
-                Voucher Details:
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1.5">
+                <span className="text-gray-600 uppercase font-semibold text-[10.5px]">DATE:</span>
+                <span className="text-[#292424] font-semibold text-[11.5px]">{formatDate(returnItem.return_date)}</span>
               </div>
-              <div>
-                Return Date:{' '}
-                <b>
-                  {returnItem.return_date
-                    ? new Date(returnItem.return_date).toLocaleDateString('en-GB', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric'
-                      })
-                    : '-'}
-                </b>
-              </div>
-              <div>
-                QC Status: <b className="text-[#043486] uppercase">{returnItem.qc_status}</b>
-              </div>
-              {returnItem.resolution_ref && (
-                <div className="font-mono text-emerald-700">
-                  Ref / CN No: <b>{returnItem.resolution_ref}</b>
+              {returnItem.bill_number && (
+                <div className="flex items-center gap-1.5 pl-3 border-l border-gray-300">
+                  <span className="text-gray-600 uppercase font-semibold text-[10.5px]">AGAINST INVOICE:</span>
+                  <span className="text-[#043486] font-mono font-bold text-[11.5px]">{returnItem.bill_number}</span>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Product & Return Item Table */}
-          <table className="w-full text-left border-collapse border border-gray-300 text-xs my-4">
-            <thead>
-              <tr className="bg-[#043486] text-white uppercase text-[10px] tracking-wider">
-                <th className="p-2.5 border border-gray-300 w-12 text-center">S.No</th>
-                <th className="p-2.5 border border-gray-300">Product Description</th>
-                <th className="p-2.5 border border-gray-300 text-center w-20">Quantity</th>
-                <th className="p-2.5 border border-gray-300">Returned Serial #</th>
-                <th className="p-2.5 border border-gray-300">Replacement Serial #</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="p-3 border border-gray-300 text-center font-mono font-bold">1</td>
-                <td className="p-3 border border-gray-300">
-                  <div className="font-bold text-gray-900">{returnItem.item_name}</div>
-                  <div className="text-[11px] text-rose-600 font-semibold mt-0.5">
-                    Reason: {returnItem.reason}
+          {/* Customer & Return Details Box: Two Columns (BILL TO & RETURN VOUCHER DETAILS) */}
+          <div className="border border-gray-300 p-2.5 bg-white/80 text-[#292424]">
+            <div className="grid grid-cols-2 gap-4">
+              
+              {/* Left Column: BILL TO (CUSTOMER) */}
+              <div className="space-y-0.5 border-r border-gray-200 pr-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="text-[9.5px] font-black text-[#043486] uppercase tracking-wider block mb-0.5">
+                      BILL TO (CUSTOMER)
+                    </span>
+                    <h3 className="text-[12.5px] font-bold text-[#292424]">
+                      {returnItem.customer_name}
+                    </h3>
                   </div>
-                </td>
-                <td className="p-3 border border-gray-300 text-center font-bold">
-                  {parseFloat(returnItem.quantity || 1).toFixed(2)} {returnItem.unit || 'Nos'}
-                </td>
-                <td className="p-3 border border-gray-300 font-mono font-bold text-gray-800">
-                  {returnItem.serial_number || '—'}
-                </td>
-                <td className="p-3 border border-gray-300 font-mono font-bold text-emerald-700">
-                  {returnItem.replacement_serial || '—'}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-[#292424] bg-gray-100 border border-gray-300 px-2 py-0.5 inline-block shrink-0">
+                    ORIGINAL
+                  </span>
+                </div>
 
-          {/* Quality Inspection & Resolution Details */}
-          <div className="my-5 p-4 border border-gray-300 bg-gray-50/60 text-xs space-y-3">
-            <div className="text-[11px] uppercase font-bold text-gray-700 border-b border-gray-200 pb-1.5 flex items-center justify-between">
-              <span>Quality Check (QC) &amp; Warranty Resolution</span>
+                <div className="space-y-0.5 pt-1 text-[10px] font-medium text-gray-700">
+                  {returnItem.customer_phone && (
+                    <div><strong>Mobile:</strong> <span className="font-mono text-[#292424]">{returnItem.customer_phone}</span></div>
+                  )}
+                  {returnItem.customer_email && (
+                    <div><strong>Email:</strong> <span className="text-[#292424]">{returnItem.customer_email}</span></div>
+                  )}
+                  <div><strong>Place of Supply:</strong> <span className="text-[#292424]">33-Tamil Nadu</span></div>
+                </div>
+              </div>
+
+              {/* Right Column: RETURN & VOUCHER DETAILS */}
+              <div className="space-y-0.5 pl-1">
+                <span className="text-[9.5px] font-black text-[#043486] uppercase tracking-wider block mb-0.5">
+                  RETURN &amp; VOUCHER DETAILS
+                </span>
+                <div className="space-y-0.5 pt-0.5 text-[10px] font-medium text-gray-700">
+                  <div><strong>Return Tracking ID:</strong> <span className="font-mono text-[#292424] font-bold">{returnItem.return_number}</span></div>
+                  <div><strong>QC Status:</strong> <span className="font-bold text-emerald-700 uppercase">{returnItem.qc_status || 'COMPLETED'}</span></div>
+                  <div><strong>Resolution Type:</strong> <span className="font-bold text-[#292424] uppercase">{isCreditNote ? 'Credit Note Issued for Refund' : (isReplacement ? 'Item Replaced' : 'Restocked')}</span></div>
+                  <div><strong>Return Date:</strong> <span className="font-medium text-[#292424]">{formatDate(returnItem.return_date)}</span></div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* --- CLEAN PRODUCT & SERIAL ITEM TABLE (NO TAX COLUMNS, EXACT INVOICE STYLING) --- */}
+          <div className="border border-gray-300 overflow-hidden text-[#292424]">
+            <table className="w-full text-left border-collapse text-[10.5px]">
+              <thead>
+                <tr className="bg-[#f3f4f6] border-b border-gray-300 text-[9.5px] font-black uppercase text-[#292424]">
+                  <th className="py-2 px-2.5 border-r border-gray-300 text-center w-[6%]">S.NO</th>
+                  <th className="py-2 px-3 border-r border-gray-300 w-[46%]">PRODUCT DESCRIPTION</th>
+                  <th className="py-2 px-2.5 border-r border-gray-300 text-center w-[12%]">QUANTITY</th>
+                  <th className="py-2 px-3 border-r border-gray-300 text-center w-[18%]">RETURNED SERIAL #</th>
+                  <th className="py-2 px-3 text-right w-[18%]">AMOUNT (₹)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 text-[#292424]">
+                <tr className="hover:bg-gray-50/50">
+                  <td className="py-3 px-2.5 border-r border-gray-300 text-center font-bold align-top text-[#292424]">
+                    1
+                  </td>
+                  <td className="py-3 px-3 border-r border-gray-300 align-top">
+                    <div className="font-bold text-[11px] text-[#292424]">
+                      {returnItem.item_name}
+                      <span className="text-[10px] font-semibold text-gray-600 ml-1">
+                        ({returnItem.unit || 'Nos'})
+                      </span>
+                    </div>
+                    {returnItem.reason && (
+                      <div className="text-[9.5px] text-gray-500 font-medium mt-1">
+                        Reason: {returnItem.reason}
+                      </div>
+                    )}
+                    {returnItem.replacement_serial && (
+                      <div className="text-[9.5px] font-mono font-bold text-emerald-800 mt-0.5">
+                        Replacement Serial: {returnItem.replacement_serial}
+                      </div>
+                    )}
+                  </td>
+                  <td className="py-3 px-2.5 border-r border-gray-300 text-center font-semibold align-top text-[#292424]">
+                    {formatQty(returnQty)} {returnItem.unit || 'Nos'}
+                  </td>
+                  <td className="py-3 px-3 border-r border-gray-300 text-center font-mono font-bold align-top text-gray-800">
+                    {returnItem.serial_number || '—'}
+                  </td>
+                  <td className="py-3 px-3 text-right font-mono font-black align-top text-[#292424] text-[11px]">
+                    ₹ {grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              </tbody>
+
+              {/* Table Subtotal Bar */}
+              <tfoot>
+                <tr className="bg-[#f3f4f6] border-t border-gray-300 font-bold text-[10.5px] text-[#292424]">
+                  <td colSpan={2} className="py-1.5 px-3 border-r border-gray-300 uppercase text-[#292424]">SUB TOTAL</td>
+                  <td className="py-1.5 px-2.5 border-r border-gray-300 text-center font-mono text-[#292424]">{formatQty(returnQty)} Unit</td>
+                  <td className="border-r border-gray-300" />
+                  <td className="py-1.5 px-3 text-right font-mono text-[#292424] font-black">
+                    ₹ {grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          {/* --- QUALITY CHECK & RESOLUTION BOX --- */}
+          <div className="border border-gray-300 bg-white/90 p-3.5 space-y-2.5 text-[#292424]">
+            <div className="flex items-center justify-between pb-2 border-b border-gray-200">
+              <span className="text-[10.5px] font-black uppercase tracking-wider text-[#043486]">
+                Quality Check (QC) &amp; Resolution Summary
+              </span>
               <span
-                className={`px-2 py-0.5 text-[10px] font-bold uppercase ${
+                className={`px-2.5 py-0.5 text-[9.5px] font-bold uppercase ${
                   isPassed
-                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
                     : isDefective
-                    ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                    : 'bg-amber-100 text-amber-800 border border-amber-300'
+                    ? 'bg-rose-50 text-rose-800 border border-rose-300'
+                    : 'bg-amber-50 text-amber-800 border border-amber-300'
                 }`}
               >
-                QC Condition: {returnItem.qc_condition || 'Pending Inspection'}
+                QC Condition: {returnItem.qc_condition || 'PASS'}
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 pt-1">
+            <div className="grid grid-cols-2 gap-4 items-center pt-0.5">
               <div>
-                <span className="text-gray-500 block text-[11px]">Resolution Action:</span>
-                <span className="font-bold text-gray-900 uppercase">
-                  {returnItem.qc_decision === 'REPLACE'
-                    ? 'Exchange / Replacement Dispatched'
-                    : returnItem.qc_decision === 'REFUND'
+                <span className="text-gray-500 block text-[10px] uppercase font-semibold">Resolution Action:</span>
+                <span className="font-bold text-[#292424] text-[11px] uppercase">
+                  {isCreditNote
                     ? 'Credit Note Issued for Refund'
-                    : returnItem.qc_decision === 'STOCK'
-                    ? 'Restocked to Live Inventory'
-                    : returnItem.qc_decision === 'REJECT'
-                    ? 'Return Request Rejected'
-                    : 'Pending Inspection'}
+                    : isReplacement
+                    ? 'Exchange / Replacement Dispatched'
+                    : 'Restocked to Inventory'}
                 </span>
+                {returnItem.qc_notes && (
+                  <div className="text-[10px] text-gray-600 italic mt-1">
+                    <strong>Remarks:</strong> "{returnItem.qc_notes}"
+                  </div>
+                )}
               </div>
 
-              {returnItem.refund_amount > 0 && (
-                <div>
-                  <span className="text-gray-500 block text-[11px]">Refund / Credit Note Value:</span>
-                  <span className="font-mono font-bold text-purple-700 text-sm">
-                    ₹{parseFloat(returnItem.refund_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
-              )}
+              <div className="text-right">
+                <span className="text-gray-500 block text-[10px] uppercase font-semibold">
+                  {isCreditNote ? 'Credit Note Issued Value:' : 'Total Value:'}
+                </span>
+                <span className="text-base font-mono font-black text-[#292424]">
+                  ₹ {grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
             </div>
 
-            {returnItem.qc_notes && (
-              <div className="pt-2 border-t border-gray-200">
-                <span className="text-gray-500 block text-[10px] uppercase font-bold">QC Findings / Technician Observation:</span>
-                <p className="text-gray-700 italic mt-0.5">"{returnItem.qc_notes}"</p>
+            {/* Amount in words */}
+            {amountInWords && (
+              <div className="pt-2 border-t border-gray-200 text-[9.5px] text-gray-700 leading-tight">
+                <strong className="text-gray-800">Amount in Words: </strong>
+                <span className="italic text-[#292424] font-semibold capitalize">
+                  {amountInWords}
+                </span>
               </div>
             )}
           </div>
-        </div>
 
-        {/* Footer & Signature Section */}
-        <div className="pt-8 border-t border-gray-300">
-          <div className="grid grid-cols-2 gap-8 text-xs text-center">
-            <div>
-              <div className="h-16"></div>
-              <div className="border-t border-dashed border-gray-400 pt-1 font-semibold text-gray-700">
-                Customer Signature
-              </div>
-            </div>
-
-            <div>
-              <div className="h-16"></div>
-              <div className="border-t border-dashed border-gray-400 pt-1 font-semibold text-[#043486]">
-                For {companyName} (Authorized Signatory)
+          {/* --- SIGNATURE SECTION (AUTHORIZED SIGNATORY ONLY) --- */}
+          <div className="pt-6 flex justify-end">
+            <div className="w-56 text-center space-y-0.5">
+              {signatureUrl ? (
+                <div className="flex justify-center items-center h-12 mb-1">
+                  <img
+                    src={signatureUrl}
+                    alt="Authorized Signatory Signature / Seal"
+                    className="max-h-12 max-w-[150px] object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="h-10"></div>
+              )}
+              <div className="w-full border-t border-dashed border-gray-400 pt-1">
+                <p className="text-[10px] font-bold text-[#043486] uppercase tracking-wide">
+                  For {companyName} (Authorized Signatory)
+                </p>
               </div>
             </div>
           </div>
 
-          <div className="text-[10px] text-gray-400 text-center mt-6">
-            This is a computer-generated Return Voucher Slip issued under standard warranty &amp; billing policy.
+        </div>
+
+        {/* --- 100% FULL-WIDTH FOOTER RIBBON (EXACT SIMCHA LETTERHEAD DESIGN IDENTICAL TO INVOICE) --- */}
+        <div className="w-full bg-[#043486] text-white px-8 py-2.5 flex items-center justify-between text-[9.5px] font-medium tracking-wide z-10 shrink-0">
+          {/* Left Contact Pills */}
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full bg-white text-[#043486] flex items-center justify-center shrink-0 shadow-xs">
+                <Phone size={10} className="stroke-[2.5]" />
+              </div>
+              <span className="font-semibold tracking-wider font-mono">+91 {companyPhone}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full bg-white text-[#043486] flex items-center justify-center shrink-0 shadow-xs">
+                <Mail size={10} className="stroke-[2.5]" />
+              </div>
+              <span className="tracking-wide">{companyEmail}</span>
+            </div>
+          </div>
+
+          {/* Slanted Divider */}
+          <div className="h-5 w-[1px] bg-blue-300/40 transform rotate-12 mx-2" />
+
+          {/* Right Location Address */}
+          <div className="flex items-center gap-4 max-w-md text-right">
+            <div className="flex items-center gap-2 text-left">
+              <div className="w-5 h-5 rounded-full bg-white text-[#043486] flex items-center justify-center shrink-0 shadow-xs">
+                <MapPin size={10} className="stroke-[2.5]" />
+              </div>
+              <span className="text-[9px] leading-tight text-blue-100 truncate max-w-xs">
+                {companyAddress}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -214,3 +389,4 @@ export default function ReturnVoucherTemplate({ returnItem, settings }) {
     </div>
   )
 }
+

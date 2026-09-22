@@ -9,8 +9,8 @@ import growthAnimation from '../assets/lottiefiles/growth-software.json'
 import { API_ENDPOINTS } from '../config/api'
 
 export default function LoginPage({ onLogin }) {
-  const [email, setEmail] = useState('admin@simcha.com')
-  const [password, setPassword] = useState('admin123')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
@@ -136,20 +136,13 @@ export default function LoginPage({ onLogin }) {
               />
             </div>
 
-            {/* Admin Checkbox & Forgotten Password */}
-            <div className="flex items-center justify-between pt-1">
+            {/* Admin Checkbox */}
+            <div className="flex items-center justify-start pt-1">
               <Checkbox
                 label="Remember me"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
               />
-
-              <a
-                href="#forgot-password"
-                className="text-xs sm:text-sm font-medium text-gray-600 hover:text-[#043486] hover:underline transition-colors"
-              >
-                Forgotten password?
-              </a>
             </div>
 
             {/* Primary Login Button */}

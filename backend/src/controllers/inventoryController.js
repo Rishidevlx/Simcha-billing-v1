@@ -409,3 +409,95 @@ export const getMaterialSerials = async (req, res) => {
     })
   }
 }
+
+// Get all Scrap, Defective & Damaged Inventory Items & Serials
+export const getScrapInventory = async (req, res) => {
+  try {
+    const pool = getPool()
+
+    // 1. Fetch Damaged Serials joined with Materials, Categories, and Returns Registry
+    const [damagedSerials] = await pool.query(`
+      SELECT 
+        s.id,
+        s.material_id,
+        s.serial_number,
+        s.status,
+        s.created_at,
+        s.updated_at,
+        m.name AS material_name,
+        m.code AS material_code,
+        m.category_id,
+        m.hsn_code,
+        m.unit,
+        m.selling_price,
+        c.name AS category_name,
+        r.return_number,
+        r.bill_number,
+        r.customer_name,
+        r.reason,
+        r.custom_reason,
+        r.qc_notes,
+        r.return_date
+      FROM inventory_serials s
+      JOIN materials m ON s.material_id = m.id
+      LEFT JOIN categories c ON m.category_id = c.id
+      LEFT JOIN returns_registry r ON (
+        r.material_id = s.material_id 
+        AND (
+          LOWER(TRIM(r.serial_number)) = LOWER(TRIM(s.serial_number))
+          OR r.serial_number LIKE CONCAT('%', s.serial_number, '%')
+        )
+      )
+      WHERE s.status = 'Damaged'
+      ORDER BY s.updated_at DESC, s.id DESC
+    `)
+
+    // 2. Fetch QC Failed / Defective Returns from returns_registry
+    const [qcDefectiveReturns] = await pool.query(`
+      SELECT 
+        r.id,
+        r.return_number,
+        r.return_date,
+        r.bill_number,
+        r.customer_name,
+        r.customer_phone,
+        r.material_id,
+        r.item_name AS material_name,
+        r.serial_number,
+        r.quantity,
+        r.unit,
+        r.unit_price,
+        r.total_amount,
+        r.reason,
+        r.custom_reason,
+        r.qc_status,
+        r.qc_decision,
+        r.qc_condition,
+        r.qc_notes,
+        r.resolution_ref,
+        r.created_at,
+        m.code AS material_code,
+        m.category_id,
+        m.hsn_code,
+        c.name AS category_name
+      FROM returns_registry r
+      LEFT JOIN materials m ON r.material_id = m.id
+      LEFT JOIN categories c ON m.category_id = c.id
+      WHERE r.qc_condition IN ('FAIL', 'DAMAGED', 'DEFECTIVE', 'Defective') OR r.qc_decision = 'REJECT' OR r.qc_status = 'Rejected'
+      ORDER BY r.id DESC
+    `)
+
+    return res.status(200).json({
+      success: true,
+      count: damagedSerials.length + qcDefectiveReturns.length,
+      damagedSerials,
+      qcDefectiveReturns
+    })
+  } catch (error) {
+    console.error('Error fetching scrap inventory:', error)
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve scrap inventory.'
+    })
+  }
+}

@@ -213,6 +213,8 @@ export async function initDatabase() {
             payment_mode ENUM('Cash', 'UPI', 'Bank Transfer', 'Card', 'Credit') DEFAULT 'Cash',
             payment_status ENUM('Paid', 'Partial', 'Pending') DEFAULT 'Paid',
             notes TEXT,
+            receipt_sent BOOLEAN DEFAULT FALSE,
+            receipt_sent_at TIMESTAMP NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -322,6 +324,12 @@ export async function initDatabase() {
         } catch (alterErr) {
           console.error('Error updating bills payment column definitions:', alterErr.message)
         }
+        // Ensure bills table has receipt_sent and receipt_sent_at columns for email tracking
+try {
+  await pool.query(`ALTER TABLE bills ADD COLUMN receipt_sent BOOLEAN DEFAULT FALSE;`)
+  await pool.query(`ALTER TABLE bills ADD COLUMN receipt_sent_at TIMESTAMP NULL;`)
+} catch {}
+
         console.log('✅ "bills" table ready.')
 
         // Step 12: Create Bill Items table if not exists
