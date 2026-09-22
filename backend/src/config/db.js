@@ -82,19 +82,6 @@ export async function initDatabase() {
         `)
         console.log('✅ "categories" table ready.')
 
-        // Step 6: Seed initial categories if empty
-        const [catCount] = await pool.query('SELECT COUNT(*) as count FROM categories')
-        if (catCount[0].count === 0) {
-          await pool.query(`
-            INSERT INTO categories (name, status) VALUES 
-            ('Raw Materials', 'Active'),
-            ('Textiles & Fabrics', 'Active'),
-            ('Packaging Goods', 'Active'),
-            ('Hardware & Tools', 'Inactive')
-          `)
-          console.log('✨ Seeded sample categories.')
-        }
-
         // Step 7: Create Materials table if not exists
         await pool.query(`
           CREATE TABLE IF NOT EXISTS materials (
@@ -121,19 +108,6 @@ export async function initDatabase() {
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         `)
         console.log('✅ "materials" table ready.')
-
-        // Step 8: Seed initial materials if empty
-        const [matCount] = await pool.query('SELECT COUNT(*) as count FROM materials')
-        if (matCount[0].count === 0) {
-          await pool.query(`
-            INSERT INTO materials (name, code, category_id, brand, unit, description, selling_price, mrp, hsn_code, tax_inclusive, opening_stock, reorder_level, barcode, warranty, serial_tracking, status) VALUES 
-            ('Logitech H390 USB Headphone', 'MAT-LOG-01', 1, 'Logitech', 'NOS', 'Comfortable USB Headset with noise-canceling mic', 2414.41, 2849.00, '851830', false, 50, 10, '8901234567890', '1 Year', true, 'Active'),
-            ('Cotton Fabric Rolls 100m', 'MAT-CTN-01', 2, 'Simcha Textiles', 'Meter', '100% Pure Cotton fabric for apparel', 450.00, 520.00, '5208', true, 120, 20, '8901234567891', 'No Warranty', false, 'Active'),
-            ('Heavy Duty Cardboard Box (Large)', 'MAT-PKG-02', 3, 'PackPro', 'Box', 'Corrugated heavy grade carton packaging', 85.00, 110.00, '4819', false, 500, 50, '8909876543210', 'No Warranty', false, 'Active'),
-            ('Stainless Steel Screws 100pcs Pack', 'MAT-HDW-03', 4, 'Apex Hardware', 'Nos', 'Grade 304 anti-rust screws', 280.00, 350.00, '7318', true, 80, 15, '8904567891234', '6 Months', false, 'Active')
-          `)
-          console.log('✨ Seeded sample materials.')
-        }
 
         // Step 9: Create Settings table if not exists
         await pool.query(`
@@ -367,59 +341,6 @@ try {
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         `)
         console.log('✅ "inventory_serials" table ready.')
-
-        // Seed sample serials for material 1 (Logitech) if table is empty
-        const [serialCount] = await pool.query('SELECT COUNT(*) as count FROM inventory_serials')
-        if (serialCount[0].count === 0) {
-          const sampleSerials = [
-            '2528ME12EZG9',
-            '2528ME12EZ10',
-            '2528ME12EZ11',
-            'LOG-H390-1001',
-            'LOG-H390-1002',
-            'LOG-H390-1003',
-            '8901234567890',
-            '8901234567891',
-            '8909876543210',
-            '8904567891234'
-          ]
-          for (const sn of sampleSerials) {
-            try {
-              await pool.query(
-                'INSERT IGNORE INTO inventory_serials (material_id, serial_number, status) VALUES (1, ?, "Available")',
-                [sn]
-              )
-            } catch (e) {}
-          }
-          console.log('✨ Seeded initial inventory serial numbers.')
-        }
-
-        // Step 13: Seed sample initial bill if empty
-        const [billCount] = await pool.query('SELECT COUNT(*) as count FROM bills')
-        if (billCount[0].count === 0) {
-          const [billRes] = await pool.query(`
-            INSERT INTO bills (
-              invoice_number, invoice_date, invoice_type, copy_type,
-              customer_name, customer_phone, customer_address, place_of_supply,
-              taxable_amount, cgst_rate, cgst_amount, sgst_rate, sgst_amount, igst_amount,
-              total_tax, round_off, total_amount, amount_in_words, payment_mode, payment_status
-            ) VALUES (
-              'INV-92026002', '2026-09-11', 'NON_GST', 'DUPLICATE',
-              'Mrs. Sathya Shree', '8870551040', '11A, Sivakami Nagar, Ranganathapuram, Coimbatore - 641 402.', '33-Tamil Nadu',
-              2414.41, 9.00, 217.30, 9.00, 217.30, 0.00,
-              434.59, 0.00, 2849.00, 'Two Thousand Eight Hundred Forty Nine Rupees Only', 'Cash', 'Paid'
-            )
-          `)
-          
-          await pool.query(`
-            INSERT INTO bill_items (
-              bill_id, item_name, serial_number, hsn_code, quantity, unit, rate, tax_rate, tax_amount, amount
-            ) VALUES (
-              ?, 'Logitech H390 USB Headphone', '2528ME12EZG9', '851830', 1.00, 'NOS', 2414.41, 18.00, 434.59, 2849.00
-            )
-          `, [billRes.insertId])
-          console.log('✨ Seeded sample initial invoice: INV-92026002 (Mrs. Sathya Shree)')
-        }
 
         // Step 14: Create email_configs table if not exists
         await pool.query(`
@@ -745,20 +666,6 @@ try {
         } catch {}
         console.log('✅ "returns_registry" table ready.')
 
-        // Seed initial sample returns if empty
-        const [returnCount] = await pool.query('SELECT COUNT(*) as count FROM returns_registry')
-        if (returnCount[0].count === 0) {
-          await pool.query(`
-            INSERT INTO returns_registry (
-              return_number, return_date, bill_number, customer_name, customer_phone,
-              item_name, material_id, quantity, unit, unit_price, total_amount,
-              reason, qc_status, qc_decision, qc_condition, qc_notes, resolution_ref, refund_amount
-            ) VALUES 
-            ('RET-2026-0001', '2026-09-18', 'INV-92026002', 'Mrs. Sathya Shree', '8870551040', 'Logitech H390 USB Headphone', 1, 1, 'NOS', 2414.41, 2849.00, 'Defective Sound / Mic Issue', 'Pending QC', NULL, NULL, '', '', 0.00),
-            ('RET-2026-0002', '2026-09-19', 'INV-92026002', 'Mrs. Sathya Shree', '8870551040', 'Logitech H390 USB Headphone', 1, 1, 'NOS', 2414.41, 2849.00, 'Wrong Color / Unopened Box', 'Completed', 'STOCK', 'Good', 'Factory seal intact. Returned to inventory shelf (+1).', 'RESTOCK-LOG-004', 0.00)
-          `)
-          console.log('✨ Seeded sample returns in returns_registry.')
-        }
 
         return pool
       } catch (error) {
