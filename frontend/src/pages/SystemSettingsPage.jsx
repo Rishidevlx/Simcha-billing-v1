@@ -75,6 +75,13 @@ export default function SystemSettingsPage() {
   const [returnPaddingDigits, setReturnPaddingDigits] = useState('4')
   const [returnSeparator, setReturnSeparator] = useState('/')
 
+  // Dynamic Credit Note Numbering Settings
+  const [creditNotePrefix, setCreditNotePrefix] = useState('SIS-CN')
+  const [creditNoteFinancialYear, setCreditNoteFinancialYear] = useState('2026-27')
+  const [creditNoteStartingNumber, setCreditNoteStartingNumber] = useState('0001')
+  const [creditNotePaddingDigits, setCreditNotePaddingDigits] = useState('4')
+  const [creditNoteSeparator, setCreditNoteSeparator] = useState('/')
+
   // Tax Rates
   const [cgstRate, setCgstRate] = useState('9.00')
   const [sgstRate, setSgstRate] = useState('9.00')
@@ -159,6 +166,13 @@ export default function SystemSettingsPage() {
     setReturnStartingNumber(s.return_starting_number !== undefined ? String(s.return_starting_number).padStart(parseInt(s.return_padding_digits || 4, 10), '0') : '0001')
     setReturnPaddingDigits(s.return_padding_digits !== undefined ? String(s.return_padding_digits) : '4')
     setReturnSeparator(s.return_separator || '/')
+
+    // Credit Note numbering
+    setCreditNotePrefix(s.credit_note_prefix !== undefined ? s.credit_note_prefix : 'SIS-CN')
+    setCreditNoteFinancialYear(s.credit_note_financial_year || '2026-27')
+    setCreditNoteStartingNumber(s.credit_note_starting_number !== undefined ? String(s.credit_note_starting_number).padStart(parseInt(s.credit_note_padding_digits || 4, 10), '0') : '0001')
+    setCreditNotePaddingDigits(s.credit_note_padding_digits !== undefined ? String(s.credit_note_padding_digits) : '4')
+    setCreditNoteSeparator(s.credit_note_separator || '/')
 
     setCgstRate(s.cgst_rate !== undefined ? String(s.cgst_rate) : '9.00')
     setSgstRate(s.sgst_rate !== undefined ? String(s.sgst_rate) : '9.00')
@@ -549,6 +563,37 @@ export default function SystemSettingsPage() {
         })
         return
       }
+
+      if (!creditNotePrefix.trim() || creditNotePrefix.trim().length > 10) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Invalid Credit Note Prefix',
+          text: 'Credit Note Prefix is required (maximum 10 characters).',
+          confirmButtonColor: '#043486'
+        })
+        return
+      }
+
+      if (!creditNoteFinancialYear.trim() || creditNoteFinancialYear.trim().length > 7) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Invalid Financial Year',
+          text: 'Credit Note Financial Year is required (maximum 7 characters, e.g. 2026-27).',
+          confirmButtonColor: '#043486'
+        })
+        return
+      }
+
+      const cnStart = parseInt(creditNoteStartingNumber, 10)
+      if (isNaN(cnStart) || cnStart < 1 || cnStart > 999999) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Invalid Starting Number',
+          text: 'Credit Note starting number must be between 1 and 999999.',
+          confirmButtonColor: '#043486'
+        })
+        return
+      }
     }
 
     if (tabId === 'bank') {
@@ -608,6 +653,11 @@ export default function SystemSettingsPage() {
         return_starting_number: parseInt(returnStartingNumber, 10) || 1,
         return_padding_digits: parseInt(returnPaddingDigits, 10) || 4,
         return_separator: returnSeparator || '/',
+        credit_note_prefix: creditNotePrefix.trim(),
+        credit_note_financial_year: creditNoteFinancialYear.trim(),
+        credit_note_starting_number: parseInt(creditNoteStartingNumber, 10) || 1,
+        credit_note_padding_digits: parseInt(creditNotePaddingDigits, 10) || 4,
+        credit_note_separator: creditNoteSeparator || '/',
         cgst_rate: parseFloat(cgstRate) || 9.00,
         sgst_rate: parseFloat(sgstRate) || 9.00,
         igst_rate: parseFloat(igstRate) || 18.00,
@@ -1397,6 +1447,114 @@ export default function SystemSettingsPage() {
                       <div className="p-1.5 bg-gray-50/60 dark:bg-slate-850 border-l-2 border-gray-300 dark:border-slate-700 flex items-center justify-between text-gray-700 dark:text-slate-300">
                         <span className="truncate">{returnPrefix || 'SIS-RET'}{returnSeparator}{returnFinancialYear || '2026-27'}{returnSeparator}{String((parseInt(returnStartingNumber, 10) || 1) + 1).padStart(parseInt(returnPaddingDigits, 10) || 4, '0')}</span>
                         <span className="text-[9px] text-gray-400 font-sans font-normal ml-1 shrink-0">(2nd Return)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* --- CARD 5: CREDIT NOTE & RETURN VOUCHER NUMBERING CONFIGURATION --- */}
+                <div className="bg-gray-50/50 dark:bg-slate-950/50 border border-gray-200 dark:border-slate-800 p-5 rounded-none space-y-4">
+                  <div className="pb-2 border-b border-gray-200 dark:border-slate-800">
+                    <h3 className="text-sm font-bold text-gray-800 dark:text-slate-200">
+                      Credit Note Settings
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                        Prefix *
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!editStates.company}
+                        value={creditNotePrefix}
+                        maxLength={10}
+                        onChange={(e) => setCreditNotePrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 10))}
+                        placeholder="SIS-CN"
+                        className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none uppercase transition-all ${
+                          editStates.company
+                            ? 'bg-white dark:bg-slate-900 text-gray-800 dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'
+                            : 'bg-gray-100 dark:bg-slate-900 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-800 cursor-not-allowed'
+                        }`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                        Financial Year *
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!editStates.company}
+                        value={creditNoteFinancialYear}
+                        maxLength={7}
+                        onChange={(e) => setCreditNoteFinancialYear(e.target.value.replace(/[^0-9-]/g, '').slice(0, 7))}
+                        placeholder="2026-27"
+                        className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none transition-all ${
+                          editStates.company
+                            ? 'bg-white dark:bg-slate-900 text-[#292424] dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'
+                            : 'bg-gray-100 dark:bg-slate-900 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-800 cursor-not-allowed'
+                        }`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                        Starting Number *
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="999999"
+                        disabled={!editStates.company}
+                        value={creditNoteStartingNumber}
+                        onChange={(e) => setCreditNoteStartingNumber(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="1"
+                        className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none transition-all ${
+                          editStates.company
+                            ? 'bg-white dark:bg-slate-900 text-[#292424] dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'
+                            : 'bg-gray-100 dark:bg-slate-900 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-800 cursor-not-allowed'
+                        }`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                        Separator / Delimiter
+                      </label>
+                      <select
+                        disabled={!editStates.company}
+                        value={creditNoteSeparator}
+                        onChange={(e) => setCreditNoteSeparator(e.target.value)}
+                        className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none transition-all ${
+                          editStates.company
+                            ? 'bg-white dark:bg-slate-900 text-[#292424] dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486] cursor-pointer'
+                            : 'bg-gray-100 dark:bg-slate-900 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-800 cursor-not-allowed'
+                        }`}
+                      >
+                        <option value="/">Slash ( / )</option>
+                        <option value="-">Hyphen ( - )</option>
+                        <option value=".">Dot ( . )</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Live Credit Note Preview Box */}
+                  <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                        Credit Note Preview:
+                      </span>
+                    </div>
+                    <div className="space-y-1 font-mono text-[11px] font-bold text-gray-800 dark:text-slate-200">
+                      <div className="p-1.5 bg-gray-50 dark:bg-slate-800 border-l-2 border-gray-400 dark:border-slate-600 flex items-center justify-between">
+                        <span className="truncate">{creditNotePrefix || 'SIS-CN'}{creditNoteSeparator}{creditNoteFinancialYear || '2026-27'}{creditNoteSeparator}{String(parseInt(creditNoteStartingNumber, 10) || 1).padStart(parseInt(creditNotePaddingDigits, 10) || 4, '0')}</span>
+                        <span className="text-[9px] text-gray-400 font-sans font-normal ml-1 shrink-0">(1st Credit Note)</span>
+                      </div>
+                      <div className="p-1.5 bg-gray-50/60 dark:bg-slate-850 border-l-2 border-gray-300 dark:border-slate-700 flex items-center justify-between text-gray-700 dark:text-slate-300">
+                        <span className="truncate">{creditNotePrefix || 'SIS-CN'}{creditNoteSeparator}{creditNoteFinancialYear || '2026-27'}{creditNoteSeparator}{String((parseInt(creditNoteStartingNumber, 10) || 1) + 1).padStart(parseInt(creditNotePaddingDigits, 10) || 4, '0')}</span>
+                        <span className="text-[9px] text-gray-400 font-sans font-normal ml-1 shrink-0">(2nd Credit Note)</span>
                       </div>
                     </div>
                   </div>
