@@ -7,9 +7,12 @@ import categoryRoutes from '../backend/src/routes/categoryRoutes.js'
 import materialRoutes from '../backend/src/routes/materialRoutes.js'
 import settingsRoutes from '../backend/src/routes/settingsRoutes.js'
 import billRoutes from '../backend/src/routes/billRoutes.js'
+import emailRoutes from '../backend/src/routes/emailRoutes.js'
 import inwardRoutes from '../backend/src/routes/inwardRoutes.js'
 import cloudinaryRoutes from '../backend/src/routes/cloudinaryRoutes.js'
 import inventoryRoutes from '../backend/src/routes/inventoryRoutes.js'
+import serviceRoutes from '../backend/src/routes/serviceRoutes.js'
+import returnRoutes from '../backend/src/routes/returnRoutes.js'
 
 dotenv.config()
 
@@ -19,23 +22,21 @@ const app = express()
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }))
+app.options('*', cors())
 app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ extended: true, limit: '50mb' }))
 
 // Database Connection Middleware for Serverless
-let isDbReady = false
 app.use(async (req, res, next) => {
-  if (!isDbReady) {
-    try {
-      await initDatabase()
-      isDbReady = true
-    } catch (err) {
-      console.error('Serverless TiDB connection error:', err)
-    }
+  try {
+    await initDatabase()
+    next()
+  } catch (err) {
+    console.error('Serverless TiDB connection error:', err)
+    res.status(500).json({ success: false, message: 'Database connection failed: ' + err.message })
   }
-  next()
 })
 
 // Health check endpoint
@@ -50,9 +51,11 @@ app.use('/api/materials', materialRoutes)
 app.use('/api/settings', settingsRoutes)
 app.use('/api/bills', billRoutes)
 app.use('/api/inwards', inwardRoutes)
+app.use('/api/email-config', emailRoutes)
 app.use('/api/cloudinary', cloudinaryRoutes)
 app.use('/api/inventory', inventoryRoutes)
-
+app.use('/api/services', serviceRoutes)
+app.use('/api/returns', returnRoutes)
 
 // Error Handler
 app.use((err, req, res, next) => {
@@ -61,3 +64,4 @@ app.use((err, req, res, next) => {
 })
 
 export default app
+
