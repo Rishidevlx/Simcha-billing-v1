@@ -17,6 +17,7 @@ import ReturnsAdjustmentsPage from './pages/ReturnsAdjustmentsPage'
 import ProfileSettingsPage from './pages/ProfileSettingsPage'
 import SystemSettingsPage from './pages/SystemSettingsPage'
 import ConfigurationsSettingsPage from './pages/ConfigurationsSettingsPage'
+import UserManualPage from './pages/UserManualPage'
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -172,6 +173,10 @@ export default function App() {
 
           <Route path="settings/configurations" element={<ConfigurationsSettingsPage />} />
           <Route path="configurations-settings" element={<Navigate to="/settings/configurations" replace />} />
+
+          {/* User Manual Route */}
+          <Route path="user-manual" element={<UserManualPage />} />
+          <Route path="manual" element={<Navigate to="/user-manual" replace />} />
 
           {/* Fallback Wildcard Route */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

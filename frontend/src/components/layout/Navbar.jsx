@@ -24,9 +24,9 @@ import {
   RotateCcw
 } from 'lucide-react'
 import { API_ENDPOINTS } from '../../config/api'
-import defaultPfp from '../../assets/avatar/Deafult Pfp.jpg'
-import maleAvatar from '../../assets/avatar/Male avatar.png'
-import femaleAvatar from '../../assets/avatar/Female Avatar.png'
+import defaultPfp from '../../assets/avatar/Deafult Pfp.webp'
+import maleAvatar from '../../assets/avatar/Male avatar.webp'
+import femaleAvatar from '../../assets/avatar/Female Avatar.webp'
 
 const AVATAR_MAP = {
   default: defaultPfp,

@@ -1,5 +1,5 @@
 import React from 'react'
-import logoImg from '../../assets/Logo/Logo-bg-remove.png'
+import logoImg from '../../assets/Logo/Logo-bg-remove.webp'
 import faviconWatermark from '../../assets/Logo/Favicon.jpeg'
 import { Phone, Mail, MapPin } from 'lucide-react'
 

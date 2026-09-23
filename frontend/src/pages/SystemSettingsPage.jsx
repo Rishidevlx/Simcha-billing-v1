@@ -107,6 +107,7 @@ export default function SystemSettingsPage() {
     'Goods Once Sold will not be taken back or exchanged.'
   ])
   const [returnDays, setReturnDays] = useState('7')
+  const [returnClause, setReturnClause] = useState('')
   const [dueDateDays, setDueDateDays] = useState('15')
   const [newTermInput, setNewTermInput] = useState('')
 
@@ -185,6 +186,7 @@ export default function SystemSettingsPage() {
     setBranch(s.branch || '')
     setBankImageUrl(s.bank_image_url || '')
     setReturnDays(s.return_days !== undefined && s.return_days !== null ? String(s.return_days) : '7')
+    setReturnClause(s.return_policy_clause || '')
     setDueDateDays(s.due_date_days !== undefined && s.due_date_days !== null ? String(s.due_date_days) : '15')
 
     if (Array.isArray(s.terms_conditions)) {
@@ -668,6 +670,7 @@ export default function SystemSettingsPage() {
         branch: branch.trim(),
         bank_image_url: bankImageUrl || null,
         return_days: parseInt(returnDays, 10) || 7,
+        return_policy_clause: returnClause ? returnClause.trim() : null,
         due_date_days: parseInt(dueDateDays, 10) || 15,
         terms_conditions: terms.filter(t => t.trim())
       }
@@ -2040,7 +2043,7 @@ export default function SystemSettingsPage() {
                 Configure the return window duration for returnable materials. This clause will be automatically printed on Tax Invoices and Payment Receipts <strong>only if</strong> the bill contains items marked with <em>"Enable Return Policy"</em>.
               </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center bg-gray-50 dark:bg-slate-950 p-4 border border-gray-200 dark:border-slate-800">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start bg-gray-50 dark:bg-slate-950 p-4 border border-gray-200 dark:border-slate-800">
                 <div className="md:col-span-1 space-y-1">
                   <label className="block text-xs font-bold text-[#292424] dark:text-white">
                     Return Policy Window (Days) <span className="text-red-500">*</span>
@@ -2064,15 +2067,48 @@ export default function SystemSettingsPage() {
                       Days
                     </span>
                   </div>
+                  <p className="text-[11px] text-gray-500 dark:text-slate-400 pt-1">
+                    Tip: Use <code className="text-[#043486] dark:text-blue-400 font-bold bg-blue-50 dark:bg-slate-800 px-1 py-0.5 rounded-none">{'{days}'}</code> in the clause to dynamically insert days.
+                  </p>
                 </div>
 
-                <div className="md:col-span-2 space-y-1 bg-white dark:bg-slate-900 p-3 border border-blue-100 dark:border-slate-800">
-                  <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#043486] dark:text-blue-400 block">
-                    Dynamic Bill Clause Preview:
-                  </span>
-                  <p className="text-xs text-gray-700 dark:text-slate-300 font-medium">
-                    &bull; Products eligible for return must be returned within <strong>{returnDays || 7} days</strong> of purchase with original invoice copy.
-                  </p>
+                <div className="md:col-span-2 space-y-1.5 bg-white dark:bg-slate-900 p-3.5 border border-blue-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#043486] dark:text-blue-400 block">
+                      Dynamic Bill Clause (Editable):
+                    </span>
+                    {editStates.terms && (
+                      <button
+                        type="button"
+                        onClick={() => setReturnClause('Products eligible for return must be returned within {days} days of purchase with original invoice copy.')}
+                        className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-semibold cursor-pointer"
+                      >
+                        Reset to Default
+                      </button>
+                    )}
+                  </div>
+                  
+                  {editStates.terms ? (
+                    <div className="space-y-2">
+                      <textarea
+                        rows={2}
+                        value={returnClause}
+                        onChange={(e) => setReturnClause(e.target.value)}
+                        placeholder="Products eligible for return must be returned within {days} days of purchase with original invoice copy."
+                        className="w-full px-3 py-2 text-xs sm:text-sm text-slate-900 dark:text-white font-medium bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 resize-none transition-colors"
+                      />
+                      <div className="p-2 bg-blue-50/60 dark:bg-slate-800/60 border border-blue-100 dark:border-slate-700">
+                        <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block mb-0.5">Live Invoice Print Preview:</span>
+                        <p className="text-xs text-slate-800 dark:text-slate-200 font-medium">
+                          &bull; {(returnClause.trim() || 'Products eligible for return must be returned within {days} days of purchase with original invoice copy.').replace('{days}', `${returnDays || 7} days`)}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-700 dark:text-slate-300 font-medium pt-1 leading-relaxed">
+                      &bull; {(returnClause.trim() || 'Products eligible for return must be returned within {days} days of purchase with original invoice copy.').replace('{days}', `${returnDays || 7} days`)}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

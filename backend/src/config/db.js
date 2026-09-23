@@ -19,6 +19,25 @@ const dbName = process.env.TIDB_DATABASE || 'simcha_billing'
 
 let pool = null
 let initPromise = null
+let pingTimer = null
+
+function startKeepAlivePing() {
+  if (pingTimer) return
+  // Ping database every 45 seconds to prevent serverless sleep & socket timeout
+  pingTimer = setInterval(async () => {
+    try {
+      if (pool) {
+        await pool.query('SELECT 1;')
+      }
+    } catch {
+      // Non-critical background ping
+    }
+  }, 45000)
+
+  if (pingTimer.unref) {
+    pingTimer.unref() // Allow graceful Node process shutdown
+  }
+}
 
 export async function initDatabase() {
   if (pool) return pool
@@ -34,16 +53,20 @@ export async function initDatabase() {
         await initConnection.end()
         console.log(`✅ Database "${dbName}" verified / created successfully.`)
 
-        // Step 2: Initialize connection pool with the database
+        // Step 2: Initialize connection pool with keepAlive & connection warmers
         pool = mysql.createPool({
           ...dbConfig,
           database: dbName,
           waitForConnections: true,
           connectionLimit: 10,
+          maxIdle: 10,
+          idleTimeout: 60000,
           queueLimit: 0,
           enableKeepAlive: true,
-          keepAliveInitialDelay: 10000
+          keepAliveInitialDelay: 5000
         })
+
+        startKeepAlivePing()
 
         // Step 3: Create Users table if not exists
         await pool.query(`
@@ -214,6 +237,7 @@ export async function initDatabase() {
         } catch {}
         try {
           await pool.query(`ALTER TABLE settings ADD COLUMN return_days INT DEFAULT 7;`)
+          await pool.query(`ALTER TABLE settings ADD COLUMN return_policy_clause TEXT NULL AFTER return_days;`)
         } catch {}
         try {
           await pool.query(`ALTER TABLE settings ADD COLUMN service_prefix VARCHAR(50) DEFAULT 'SIS-SR';`)
@@ -687,11 +711,15 @@ export function getPool() {
       database: dbName,
       waitForConnections: true,
       connectionLimit: 10,
+      maxIdle: 10,
+      idleTimeout: 60000,
       queueLimit: 0,
       enableKeepAlive: true,
-      keepAliveInitialDelay: 10000
+      keepAliveInitialDelay: 5000
     })
+    startKeepAlivePing()
   }
   return pool
 }
+
 

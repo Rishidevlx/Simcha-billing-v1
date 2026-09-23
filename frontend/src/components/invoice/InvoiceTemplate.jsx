@@ -1,5 +1,5 @@
 import React from 'react'
-import logoImg from '../../assets/Logo/Logo-bg-remove.png'
+import logoImg from '../../assets/Logo/Logo-bg-remove.webp'
 import faviconWatermark from '../../assets/Logo/Favicon.jpeg'
 import { Phone, Mail, MapPin } from 'lucide-react'
 
@@ -66,7 +66,9 @@ export default function InvoiceTemplate({ bill, settings }) {
   const items = Array.isArray(bill.items) ? bill.items : []
   const hasReturnableItems = items.some(it => it.return_policy === true || it.return_policy === 1 || it.return_policy === '1')
   const returnDays = settings?.return_days || 7
-  const returnClause = `Products eligible for return must be returned within ${returnDays} days of purchase with original invoice copy.`
+  const returnClause = settings?.return_policy_clause
+    ? settings.return_policy_clause.replace('{days}', `${returnDays} days`)
+    : `Products eligible for return must be returned within ${returnDays} days of purchase with original invoice copy.`
 
   const termsList = hasReturnableItems
     ? [returnClause, ...defaultTermsList.filter(t => !t.toLowerCase().includes('will not be taken back'))]

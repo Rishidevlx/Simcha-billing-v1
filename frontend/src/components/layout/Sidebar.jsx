@@ -9,9 +9,10 @@ import {
   ChevronDown,
   ChevronRight,
   Circle,
-  Wrench
+  Wrench,
+  BookOpen
 } from 'lucide-react'
-import logoImg from '../../assets/Logo/Logo-bg-remove.png'
+import logoImg from '../../assets/Logo/Logo-bg-remove.webp'
 import faviconImg from '../../assets/Logo/Favicon.jpeg'
 
 export default function Sidebar({
@@ -134,8 +135,16 @@ export default function Sidebar({
         { id: 'system-settings', title: 'System Settings', path: '/settings/system' },
         { id: 'configurations-settings', title: 'Configurations Settings', path: '/settings/configurations' }
       ]
+    },
+    {
+      id: 'user-manual',
+      title: 'User Manual',
+      icon: BookOpen,
+      path: '/user-manual',
+      single: true
     }
   ]
+
 
   const isSubActive = (sub) => {
     if (currentPath === sub.path) return true

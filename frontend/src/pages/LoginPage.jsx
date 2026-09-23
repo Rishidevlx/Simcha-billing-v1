@@ -4,7 +4,7 @@ import { Eye, EyeOff, Lock, User, AlertCircle } from 'lucide-react'
 import Input from '../components/ui/Input'
 import Button from '../components/ui/Button'
 import Checkbox from '../components/ui/Checkbox'
-import logoImg from '../assets/Logo/Logo-bg-remove.png'
+import logoImg from '../assets/Logo/Logo-bg-remove.webp'
 import growthAnimation from '../assets/lottiefiles/growth-software.json'
 import { API_ENDPOINTS } from '../config/api'
 
