@@ -44,6 +44,7 @@ import ListKpiCard from '../components/common/ListKpiCard'
 import ListDateRangeFilter from '../components/common/ListDateRangeFilter'
 import ListPagePagination from '../components/common/ListPagePagination'
 import { API_ENDPOINTS } from '../config/api'
+import { getUserPermissions } from '../utils/access'
 
 export const SERVICE_STATUS_STAGES = [
   'Received',
@@ -56,6 +57,12 @@ export const SERVICE_STATUS_STAGES = [
 ]
 
 export default function AllServicesPage({ setActiveRoute }) {
+  const { can, hasAny } = getUserPermissions()
+  const canAdd = can('services_new', 'Add') || can('services_list', 'Add') || can('services', 'Add')
+  const canEdit = hasAny('services_list', ['Edit']) || hasAny('services_new', ['Edit']) || hasAny('services', ['Edit'])
+  const canDelete = hasAny('services_list', ['Delete']) || hasAny('services_new', ['Delete']) || hasAny('services', ['Delete'])
+  const canDownload = hasAny('services_list', ['Download']) || hasAny('services_new', ['Download']) || hasAny('services', ['Download'])
+
   const navigate = useNavigate()
   const [services, setServices] = useState([])
   const [stats, setStats] = useState({
@@ -597,7 +604,8 @@ export default function AllServicesPage({ setActiveRoute }) {
         subtitle="Manage end-to-end service requests, track lifecycle stages, process invoices & dispatch receipts"
         actions={
           <>
-            <button
+            {canDownload && (
+<button
               onClick={handleExportExcel}
               className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold text-xs rounded-none shadow-xs transition-all active:scale-[0.99] cursor-pointer"
               title={selectedServiceIds.length > 0 ? `Export ${selectedServiceIds.length} Selected Record(s)` : 'Export All Filtered Records'}
@@ -607,16 +615,19 @@ export default function AllServicesPage({ setActiveRoute }) {
                 {selectedServiceIds.length > 0 ? `EXPORT SELECTED (${selectedServiceIds.length})` : 'EXPORT TO EXCEL'}
               </span>
             </button>
-            <button
-              onClick={() => {
-                if (setActiveRoute) setActiveRoute('new-service')
-                navigate('/services/new')
-              }}
-              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#043486] hover:bg-[#0248BC] text-white font-bold text-xs rounded-none shadow-xs transition-all active:scale-[0.99] cursor-pointer"
-            >
-              <Plus size={15} />
-              <span>NEW REQUEST</span>
-            </button>
+            )}
+            {canAdd && (
+              <button
+                onClick={() => {
+                  if (setActiveRoute) setActiveRoute('new-service')
+                  navigate('/services/new')
+                }}
+                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#043486] hover:bg-[#0248BC] text-white font-bold text-xs rounded-none shadow-xs transition-all active:scale-[0.99] cursor-pointer"
+              >
+                <Plus size={15} />
+                <span>NEW REQUEST</span>
+              </button>
+            )}
           </>
         }
       />
@@ -944,27 +955,31 @@ export default function AllServicesPage({ setActiveRoute }) {
                           </button>
 
                           {/* 5. Edit Service Record (Amber / Orange box matching Stock) */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (setActiveRoute) setActiveRoute('new-service')
-                              navigate(`/services/new?editId=${service.id}`)
-                            }}
-                            title="Edit Service Request"
-                            className="p-1.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white border border-amber-200 dark:border-amber-800 rounded-none transition-all cursor-pointer shadow-2xs"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (setActiveRoute) setActiveRoute('new-service')
+                                navigate(`/services/new?editId=${service.id}`)
+                              }}
+                              title="Edit Service Request"
+                              className="p-1.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white border border-amber-200 dark:border-amber-800 rounded-none transition-all cursor-pointer shadow-2xs"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                          )}
 
                           {/* 6. Delete Service Record (Red) */}
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteService(service.id, service.service_number)}
-                            title="Delete Service Record"
-                            className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {canDelete && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteService(service.id, service.service_number)}
+                              title="Delete Service Record"
+                              className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

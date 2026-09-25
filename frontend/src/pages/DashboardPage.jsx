@@ -50,6 +50,60 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
   const navigate = useNavigate()
 
   const setActiveRoute = (route) => {
+    // Check Access Rights
+    const simchaUser = JSON.parse(localStorage.getItem('simcha_user') || '{}')
+    const userAdminAccess = simchaUser.admin_access || []
+    const userPermissions = simchaUser.permissions || {}
+    const hasFullAccess = userAdminAccess.includes('Full Admin Access') || simchaUser.role === 'Administrator'
+
+    const permIdMap = {
+      'inward': 'inward',
+      'inward-reports': 'inward_list',
+      'inward-list': 'inward_list',
+      'create-bill': 'outward',
+      'outward': 'outward',
+      'all-bills': 'outward_list',
+      'outward-list': 'outward_list',
+      'new-service': 'services_new',
+      'all-services': 'services_list',
+      'categories': 'categories_create',
+      'add-material': 'materials_add',
+      'materials': 'materials_list',
+      'all-materials': 'materials_list',
+      'inventory': 'inventory_main',
+      'stock': 'inventory_main',
+      'returns': 'inventory_returns'
+    }
+
+    const checkAccess = (targetRoute) => {
+      if (hasFullAccess) return true
+      if (targetRoute === 'dashboard') return true // always allow if they can see dashboard
+      
+      let routeKey = targetRoute
+      if (targetRoute.startsWith('/inward/edit/')) routeKey = 'inward'
+      else if (targetRoute.startsWith('/services/new')) routeKey = 'new-service'
+      else if (targetRoute.startsWith('/services/list')) routeKey = 'all-services'
+      else if (targetRoute.startsWith('/inventory/returns')) routeKey = 'returns'
+
+      const targetPermId = permIdMap[routeKey]
+      if (!targetPermId) return true // unmapped route (e.g. some settings)
+
+      const perms = userPermissions[targetPermId] || []
+      return perms.length > 0
+    }
+
+    if (!checkAccess(route)) {
+      import('sweetalert2').then(Swal => {
+        Swal.default.fire({
+          icon: 'error',
+          title: 'Access Denied',
+          text: 'You do not have permission to view this module.',
+          confirmButtonColor: '#043486'
+        })
+      })
+      return
+    }
+
     if (setActiveRouteProp) {
       setActiveRouteProp(route)
     } else {
@@ -757,7 +811,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
 
               <button
                 type="button"
-                onClick={() => navigate('/services/new')}
+                onClick={() => setActiveRoute('/services/new')}
                 className="p-3.5 bg-gray-50 dark:bg-slate-950 hover:bg-cyan-50 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800 hover:border-cyan-600 text-left transition-all group cursor-pointer"
               >
                 <div className="flex items-center justify-between mb-1">
@@ -896,7 +950,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
                         <td className="py-2.5 px-3 text-center whitespace-nowrap">
                           <button
                             type="button"
-                            onClick={() => navigate(`/inward/edit/${inw.id}`)}
+                            onClick={() => setActiveRoute(`/inward/edit/${inw.id}`)}
                             className="p-1 text-gray-500 hover:text-[#043486] dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-none transition-colors cursor-pointer"
                             title="View / Edit Inward"
                           >
@@ -943,7 +997,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950/60 text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px] tracking-wider">
-                    <th className="py-2.5 px-3">Invoice #</th>
+                    <th className="py-2.5 px-3">Invoice ID</th>
                     <th className="py-2.5 px-3">Customer</th>
                     <th className="py-2.5 px-3">Date</th>
                     <th className="py-2.5 px-3 text-right">Total Amt</th>
@@ -1017,7 +1071,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
               </div>
               <button
                 type="button"
-                onClick={() => navigate('/services/list')}
+                onClick={() => setActiveRoute('/services/list')}
                 className="text-xs font-bold text-[#043486] dark:text-blue-400 hover:underline cursor-pointer flex items-center gap-1"
               >
                 <span>View All Services</span>
@@ -1065,7 +1119,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
                         <td className="py-2.5 px-3 text-center whitespace-nowrap">
                           <button
                             type="button"
-                            onClick={() => navigate('/services/list')}
+                            onClick={() => setActiveRoute('/services/list')}
                             className="p-1 text-gray-500 hover:text-[#043486] dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-none transition-colors cursor-pointer"
                             title="View Service Details"
                           >
@@ -1100,7 +1154,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
               </div>
               <button
                 type="button"
-                onClick={() => navigate('/inventory/returns')}
+                onClick={() => setActiveRoute('/inventory/returns')}
                 className="text-xs font-bold text-[#043486] dark:text-blue-400 hover:underline cursor-pointer flex items-center gap-1"
               >
                 <span>View All Credit Notes</span>

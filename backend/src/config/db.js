@@ -45,15 +45,9 @@ export async function initDatabase() {
   if (!initPromise) {
     initPromise = (async () => {
       try {
-        console.log('🔄 Connecting to TiDB Cloud Serverless...')
+        console.log('⚡ Initializing TiDB Cloud Connection Pool...')
         
-        // Step 1: Connect to server to ensure database exists
-        const initConnection = await mysql.createConnection(dbConfig)
-        await initConnection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`)
-        await initConnection.end()
-        console.log(`✅ Database "${dbName}" verified / created successfully.`)
-
-        // Step 2: Initialize connection pool with keepAlive & connection warmers
+        // Initialize high-performance connection pool with keepAlive & connection warmers
         pool = mysql.createPool({
           ...dbConfig,
           database: dbName,
@@ -67,20 +61,117 @@ export async function initDatabase() {
         })
 
         startKeepAlivePing()
+        console.log('✅ TiDB Cloud Connection Pool ready.')
 
-        // Step 3: Create Users table if not exists
+        // Ensure departments table & department column exist
+        try {
+          await pool.query(`
+            CREATE TABLE IF NOT EXISTS departments (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              name VARCHAR(100) NOT NULL UNIQUE,
+              description TEXT,
+              status ENUM('Active', 'Inactive') DEFAULT 'Active',
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+          `)
+        } catch (e) {
+          console.error('Departments table check notice:', e.message)
+        }
+
+        try {
+          await pool.query("ALTER TABLE users ADD COLUMN department VARCHAR(100) DEFAULT NULL")
+        } catch (e) {
+          // Column already exists
+        }
+
+        // Note: Full table creation / DDL migration logic is preserved in runDatabaseMigrations() 
+        // below for on-demand execution, saving latency on cold start.
+        if (process.env.RUN_MIGRATIONS === 'true') {
+          await runDatabaseMigrations()
+        }
+
+        return pool
+      } catch (error) {
+        initPromise = null // Allow retry on failure
+        console.error('❌ Failed to initialize TiDB database:', error)
+        throw error
+      }
+    })()
+  }
+
+  return initPromise
+}
+
+/**
+ * Run Table Schemas & DDL Migrations (Preserved for manual / on-demand setup)
+ */
+export async function runDatabaseMigrations() {
+  const currentPool = getPool()
+  console.log('🔄 Running Database Schema Migrations...')
+  try {
+    // Step 3: Create Users table if not exists
+    await currentPool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(191) NOT NULL UNIQUE,
+        password VARCHAR(255) NOT NULL,
+        role VARCHAR(50) DEFAULT 'Administrator',
+        phone VARCHAR(20) DEFAULT NULL,
+        designation VARCHAR(100) DEFAULT NULL,
+        avatar VARCHAR(50) DEFAULT 'default',
+        status ENUM('Active', 'Inactive') DEFAULT 'Active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `)
+
+        // Safe Alter Table for existing installations
+        try {
+          await pool.query("ALTER TABLE users ADD COLUMN phone VARCHAR(20) DEFAULT NULL")
+        } catch (e) { /* Ignore if exists */ }
+        try {
+          await pool.query("ALTER TABLE users ADD COLUMN designation VARCHAR(100) DEFAULT NULL")
+        } catch (e) { /* Ignore if exists */ }
+        try {
+          await pool.query("ALTER TABLE users ADD COLUMN avatar VARCHAR(50) DEFAULT 'default'")
+        } catch (e) { /* Ignore if exists */ }
+        try {
+          await pool.query("ALTER TABLE users ADD COLUMN status ENUM('Active', 'Inactive') DEFAULT 'Active'")
+        } catch (e) { /* Ignore if exists */ }
+        try {
+          // Alter the existing column default to 'default'
+          await pool.query("ALTER TABLE users ALTER COLUMN avatar SET DEFAULT 'default'")
+        } catch (e) { /* Ignore errors */ }
+
+        console.log('✅ "users" table ready.')
+
+        // Create Roles table if not exists
         await pool.query(`
-          CREATE TABLE IF NOT EXISTS users (
+          CREATE TABLE IF NOT EXISTS roles (
             id INT AUTO_INCREMENT PRIMARY KEY,
-            name VARCHAR(100) NOT NULL,
-            email VARCHAR(191) NOT NULL UNIQUE,
-            password VARCHAR(255) NOT NULL,
-            role VARCHAR(50) DEFAULT 'Administrator',
+            name VARCHAR(100) NOT NULL UNIQUE,
+            description TEXT,
+            permissions JSON,
+            admin_access JSON,
+            status ENUM('Active', 'Inactive') DEFAULT 'Active',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         `)
-        console.log('✅ "users" table ready.')
+        console.log('✅ "roles" table ready.')
+
+        // Seed default Administrator role if not exists
+        const [existingRole] = await pool.query('SELECT * FROM roles WHERE name = ?', ['Administrator'])
+        if (existingRole.length === 0) {
+          const defaultAdminAccess = JSON.stringify(['Full Admin Access', 'Dashboard', 'Bills', 'Services', 'Categories', 'Materials', 'Stock & Inventory', 'Settings', 'Roles & Access'])
+          await pool.query(
+            'INSERT INTO roles (name, description, permissions, admin_access) VALUES (?, ?, ?, ?)',
+            ['Administrator', 'Full system access', JSON.stringify({}), defaultAdminAccess]
+          )
+          console.log('✨ Seeded default Administrator role.')
+        }
 
         // Step 4: Seed default Admin user if not exists
         const [existing] = await pool.query('SELECT * FROM users WHERE email = ?', ['admin@simcha.com'])
@@ -690,17 +781,69 @@ try {
         } catch {}
         console.log('✅ "returns_registry" table ready.')
 
+        // Step 21: Create ai_configs table if not exists (Zero Plaintext Secrets Seeded)
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS ai_configs (
+            id INT PRIMARY KEY DEFAULT 1,
+            provider VARCHAR(50) DEFAULT 'groq',
+            groq_api_key VARCHAR(500) NULL,
+            key_name VARCHAR(150) NULL DEFAULT '',
+            model_name VARCHAR(100) DEFAULT 'llama-3.3-70b-versatile',
+            is_enabled BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        `)
 
-        return pool
+        try {
+          await currentPool.query(`ALTER TABLE ai_configs ADD COLUMN key_name VARCHAR(150) NULL DEFAULT '' AFTER groq_api_key;`)
+        } catch {}
+
+        const [aiCount] = await currentPool.query('SELECT COUNT(*) as count FROM ai_configs')
+        if (aiCount[0].count === 0) {
+          await currentPool.query(`
+            INSERT INTO ai_configs (id, provider, groq_api_key, key_name, model_name, is_enabled)
+            VALUES (1, 'groq', NULL, '', 'llama-3.3-70b-versatile', TRUE)
+          `)
+          console.log('✨ Seeded default AI configuration (No plain-text key stored).')
+        }
+
+        // Step 22: Create password_reset_tokens table for 15-minute password setup/reset
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            token VARCHAR(255) NOT NULL UNIQUE,
+            expires_at TIMESTAMP NOT NULL,
+            is_used BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        `)
+        console.log('✅ "password_reset_tokens" table ready.')
+
+        // Step 23: Create password_otps table for Forgot Password OTP Verification
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS password_otps (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            email VARCHAR(191) NOT NULL,
+            otp_code VARCHAR(10) NOT NULL,
+            expires_at TIMESTAMP NOT NULL,
+            is_used BOOLEAN DEFAULT FALSE,
+            attempts INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        `)
+        console.log('✅ "password_otps" table ready.')
+
+        console.log('✅ All database migrations finished successfully.')
+        return true
       } catch (error) {
-        initPromise = null // Allow retry on failure
-        console.error('❌ Failed to initialize TiDB database:', error)
+        console.error('❌ Failed to run database migrations:', error)
         throw error
       }
-    })()
-  }
-
-  return initPromise
 }
 
 export function getPool() {

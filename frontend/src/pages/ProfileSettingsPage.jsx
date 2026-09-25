@@ -38,7 +38,7 @@ export default function ProfileSettingsPage({ user, onUpdateUser }) {
   const [email, setEmail] = useState(user?.email || 'admin@simcha.com')
   const [designation, setDesignation] = useState(user?.role || 'Administrator')
   const [phone, setPhone] = useState(user?.phone || '8122022060')
-  const [selectedAvatarId, setSelectedAvatarId] = useState(user?.avatar || 'male')
+  const [selectedAvatarId, setSelectedAvatarId] = useState(user?.avatar || 'default')
   const [isSavingProfile, setIsSavingProfile] = useState(false)
 
   // Security / Password State
@@ -56,7 +56,7 @@ export default function ProfileSettingsPage({ user, onUpdateUser }) {
       setEmail(user.email || 'admin@simcha.com')
       setDesignation(user.role || 'Administrator')
       setPhone(user.phone || '8122022060')
-      setSelectedAvatarId(user.avatar || 'male')
+      setSelectedAvatarId(user.avatar || 'default')
     }
   }, [user])
 
@@ -132,10 +132,7 @@ export default function ProfileSettingsPage({ user, onUpdateUser }) {
 
       const updatedUser = {
         ...user,
-        name: data.user.name,
-        email: data.user.email,
-        role: data.user.role,
-        phone: phone.trim(),
+        ...data.user,
         avatar: selectedAvatarId
       }
 

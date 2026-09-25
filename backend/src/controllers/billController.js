@@ -365,21 +365,21 @@ export async function getAllBills(req, res) {
   try {
     const pool = getPool()
     
-    // Fetch all bills chronologically latest first
-    const [bills] = await pool.query(`
-      SELECT 
-        b.*,
-        COUNT(bi.id) AS total_items
-      FROM bills b
-      LEFT JOIN bill_items bi ON b.id = bi.bill_id
-      GROUP BY b.id
-      ORDER BY b.id DESC
-    `)
-
-    // Fetch all line items for exported bills
-    const [allItems] = await pool.query(`
-      SELECT * FROM bill_items ORDER BY id ASC
-    `)
+    // Fetch bills and line items in parallel for maximum performance
+    const [ [bills], [allItems] ] = await Promise.all([
+      pool.query(`
+        SELECT 
+          b.*,
+          COUNT(bi.id) AS total_items
+        FROM bills b
+        LEFT JOIN bill_items bi ON b.id = bi.bill_id
+        GROUP BY b.id
+        ORDER BY b.id DESC
+      `),
+      pool.query(`
+        SELECT * FROM bill_items ORDER BY id ASC
+      `)
+    ])
 
     const itemsByBillId = {}
     allItems.forEach(item => {

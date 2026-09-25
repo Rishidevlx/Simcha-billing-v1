@@ -10,7 +10,9 @@ import {
   User,
   Building2,
   Sliders,
-  ChevronRight
+  ChevronRight,
+  ShieldCheck,
+  Users
 } from 'lucide-react'
 
 // Sleek, vector-sharp professional flowchart arrow with comfortable vertical breathing room
@@ -79,7 +81,7 @@ function BranchMerge() {
 export default function UserManualPage() {
   const navigate = useNavigate()
 
-  // 5 Main Tabs
+  // 6 Main Tabs
   const [activeTab, setActiveTab] = useState('setup')
 
   const TABS = [
@@ -87,11 +89,12 @@ export default function UserManualPage() {
     { id: 'product', label: '2. How to Add a Product?' },
     { id: 'billing', label: '3. How to Create a Bill?' },
     { id: 'service', label: '4. How to Bill a Service?' },
-    { id: 'returns', label: '5. How to Return a Product?' }
+    { id: 'returns', label: '5. How to Return a Product?' },
+    { id: 'roles_users', label: '6. How to Manage Roles & Users?' }
   ]
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 sm:p-6 lg:p-8 space-y-6 transition-colors">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 sm:p-6 lg:p-8 space-y-6 transition-colors font-['Poppins',sans-serif]">
 
       {/* 1. Simple Clean Header */}
       <div>
@@ -103,8 +106,8 @@ export default function UserManualPage() {
         </p>
       </div>
 
-      {/* 2. Simple 5 Tabs Bar */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto">
+      {/* 2. Scrollable Slim Tabs Bar */}
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-slate-100 dark:[&::-webkit-scrollbar-track]:bg-slate-900 [&::-webkit-scrollbar-thumb]:bg-slate-300 dark:[&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full">
         {TABS.map((tab) => {
           const isActive = activeTab === tab.id
           return (
@@ -1023,6 +1026,148 @@ export default function UserManualPage() {
 
             </div>
 
+          </div>
+
+        </div>
+      )}
+
+      {/* ================= TAB 6: HOW TO MANAGE ROLES & USERS? ================= */}
+      {activeTab === 'roles_users' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 items-stretch bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
+
+          {/* LEFT SIDE: Step-by-Step Guidance & Crisp Points */}
+          <div className="lg:col-span-6 p-6 sm:p-8 lg:p-10 space-y-8">
+
+            {/* Step 1: Create Department */}
+            <div className="space-y-3">
+              <div
+                onClick={() => navigate('/departments')}
+                className="group flex items-center justify-between cursor-pointer border-b border-slate-100 dark:border-slate-800 pb-3 hover:border-[#043486] transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="w-7 h-7 rounded-full bg-[#043486] text-white flex items-center justify-center text-xs font-bold shadow-2xs">1</span>
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-[#043486] dark:group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
+                    Step 1: Create Department
+                  </h2>
+                </div>
+                <span className="text-xs text-[#043486] dark:text-blue-400 font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  Open Page <ExternalLink size={13} />
+                </span>
+              </div>
+
+              <ul className="space-y-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 pl-9 list-disc list-outside leading-relaxed">
+                <li>Navigate to <b>Roles &amp; Access &gt; Departments</b>.</li>
+                <li>Enter the <b>Department Name</b> (e.g., <i>Warehouse, Billing, Accounts, Technical Services</i>) and an optional description.</li>
+                <li>Set status to <b>Active</b> and click <b>SAVE DEPARTMENT</b>.</li>
+              </ul>
+            </div>
+
+            {/* Step 2: Create Role */}
+            <div className="space-y-3">
+              <div
+                onClick={() => navigate('/roles')}
+                className="group flex items-center justify-between cursor-pointer border-b border-slate-100 dark:border-slate-800 pb-3 hover:border-[#043486] transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="w-7 h-7 rounded-full bg-[#043486] text-white flex items-center justify-center text-xs font-bold shadow-2xs">2</span>
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-[#043486] dark:group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
+                    Step 2: Create Role &amp; Set Permissions
+                  </h2>
+                </div>
+                <span className="text-xs text-[#043486] dark:text-blue-400 font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  Open Page <ExternalLink size={13} />
+                </span>
+              </div>
+
+              <ul className="space-y-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 pl-9 list-disc list-outside leading-relaxed">
+                <li>Navigate to <b>Roles &amp; Access &gt; Roles</b>.</li>
+                <li>Enter the <b>Role Name</b> (e.g., <i>Cashier, Store Keeper, Branch Manager</i>) and description.</li>
+                <li>In the <b>Permissions Matrix</b>, toggle individual module actions (<code>Add</code>, <code>View</code>, <code>Edit</code>, <code>Delete</code>, <code>Download</code>) across Bills, Services, Categories, Materials, Inventory, and Settings.</li>
+                <li>Set Role Status to <b>Active</b> and click <b>SAVE ROLE</b>.</li>
+                <li><i>Note: The default <b>Administrator</b> role is protected with permanent 100% full system access.</i></li>
+              </ul>
+            </div>
+
+            {/* Step 3: Create User Account & Auto Dispatch Email */}
+            <div className="space-y-3">
+              <div
+                onClick={() => navigate('/users')}
+                className="group flex items-center justify-between cursor-pointer border-b border-slate-100 dark:border-slate-800 pb-3 hover:border-[#043486] transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="w-7 h-7 rounded-full bg-[#043486] text-white flex items-center justify-center text-xs font-bold shadow-2xs">3</span>
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-[#043486] dark:group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
+                    Step 3: Create User Account &amp; Auto Dispatch Credentials
+                  </h2>
+                </div>
+                <span className="text-xs text-[#043486] dark:text-blue-400 font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  Open Page <ExternalLink size={13} />
+                </span>
+              </div>
+
+              <ul className="space-y-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 pl-9 list-disc list-outside leading-relaxed">
+                <li>Navigate to <b>Roles &amp; Access &gt; Users</b> and fill in the <b>Create Operator Account</b> form.</li>
+                <li>Enter <b>Full Name</b>, <b>Email Address</b>, and valid <b>10-digit Phone Number</b>.</li>
+                <li>Select the <b>Assigned Department</b> and <b>Assigned Role</b> created in Steps 1 &amp; 2.</li>
+                <li>Click <b>SAVE USER</b>.</li>
+                <li><b>🚀 Automatic Email Delivery:</b> The system instantly generates a temporary password and dispatches a welcome email containing credentials and a <b>15-Minute Direct Password Setup Link</b> directly to the operator&apos;s inbox.</li>
+              </ul>
+            </div>
+
+          </div>
+
+          {/* RIGHT SIDE: Visual Step-by-Step Flowchart Diagram */}
+          <div className="lg:col-span-6 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 p-6 sm:p-8 lg:p-10 flex flex-col items-center justify-start">
+            <div className="w-full max-w-sm flex flex-col items-center space-y-2 sticky top-6">
+
+              {/* START OVAL */}
+              <div className="w-52 py-2 px-4 rounded-full border-2 border-[#043486] bg-blue-50 dark:bg-slate-800 text-center font-bold text-xs sm:text-[13px] text-[#043486] dark:text-blue-300 shadow-2xs">
+                Start User &amp; Access Setup
+              </div>
+
+              <FlowArrow />
+
+              {/* STEP 1: CREATE DEPT */}
+              <div className="w-68 py-2.5 px-4 border border-slate-700 dark:border-slate-300 bg-white dark:bg-slate-950 text-center text-xs sm:text-[12.5px] font-semibold text-slate-800 dark:text-slate-100 shadow-2xs">
+                1. Create Department (e.g. Warehouse, Billing)
+              </div>
+
+              <FlowArrow />
+
+              {/* STEP 2: CREATE ROLE */}
+              <div className="w-68 py-2.5 px-4 border border-slate-700 dark:border-slate-300 bg-white dark:bg-slate-950 text-center text-xs sm:text-[12.5px] font-semibold text-slate-800 dark:text-slate-100 shadow-2xs">
+                2. Create Role &amp; Configure Permissions Matrix
+              </div>
+
+              <FlowArrow />
+
+              {/* STEP 3: CREATE USER */}
+              <div className="w-68 py-2.5 px-4 border border-slate-700 dark:border-slate-300 bg-white dark:bg-slate-950 text-center text-xs sm:text-[12.5px] font-semibold text-slate-800 dark:text-slate-100 shadow-2xs">
+                3. Create User (Select Dept &amp; Role + 10-Digit Phone)
+              </div>
+
+              <FlowArrow />
+
+              {/* STEP 4: AUTO CREDENTIALS */}
+              <div className="w-68 py-2.5 px-4 border border-slate-700 dark:border-slate-300 bg-white dark:bg-slate-950 text-center text-xs sm:text-[12.5px] font-semibold text-slate-800 dark:text-slate-100 shadow-2xs">
+                4. System Auto-Generates Temporary Credentials
+              </div>
+
+              <FlowArrow />
+
+              {/* STEP 5: DISPATCH EMAIL */}
+              <div className="w-68 py-2.5 px-4 border border-blue-400 dark:border-blue-600 bg-blue-50/60 dark:bg-blue-950/40 text-center text-xs sm:text-[12.5px] font-semibold text-[#043486] dark:text-blue-300 shadow-2xs">
+                5. Auto-Dispatch Email + 15-Min Setup Link
+              </div>
+
+              <FlowArrow />
+
+              {/* END OVAL */}
+              <div className="w-56 py-2 px-4 rounded-full border-2 border-emerald-600 bg-emerald-50 dark:bg-emerald-950 text-center font-bold text-xs sm:text-[13px] text-emerald-700 dark:text-emerald-300 shadow-2xs">
+                User Ready &amp; Access Protected (End)
+              </div>
+
+            </div>
           </div>
 
         </div>

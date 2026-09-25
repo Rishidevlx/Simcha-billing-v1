@@ -27,6 +27,7 @@ import { API_ENDPOINTS } from '../../config/api'
 import defaultPfp from '../../assets/avatar/Deafult Pfp.webp'
 import maleAvatar from '../../assets/avatar/Male avatar.webp'
 import femaleAvatar from '../../assets/avatar/Female Avatar.webp'
+import { getUserPermissions } from '../../utils/access'
 
 const AVATAR_MAP = {
   default: defaultPfp,
@@ -43,6 +44,10 @@ export default function Navbar({
   user = { name: 'Rishi', role: 'Administrator', avatar: 'male' },
   setActiveRoute
 }) {
+  const { can, hasFullAccess } = getUserPermissions()
+  const canViewProfile = hasFullAccess || can('settings_profile', 'View') || can('settings', 'View')
+  const canViewSystemSettings = hasFullAccess || can('settings_system', 'View') || can('settings_config', 'View') || can('settings', 'View')
+
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isNotifOpen, setIsNotifOpen] = useState(false)
@@ -525,29 +530,35 @@ export default function Navbar({
                   <p className="text-[10px] text-gray-400 dark:text-slate-400">{user.role}</p>
                 </div>
                 
-                <button
-                  onClick={() => {
-                    setIsProfileOpen(false)
-                    if (setActiveRoute) setActiveRoute('profile-settings')
-                  }}
-                  className="w-full px-4 py-2 text-left text-xs text-gray-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-[#043486] dark:hover:text-blue-400 flex items-center gap-2.5 transition-colors cursor-pointer"
-                >
-                  <User size={14} />
-                  <span>Profile Settings</span>
-                </button>
+                {canViewProfile && (
+                  <button
+                    onClick={() => {
+                      setIsProfileOpen(false)
+                      if (setActiveRoute) setActiveRoute('profile-settings')
+                    }}
+                    className="w-full px-4 py-2 text-left text-xs text-gray-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-[#043486] dark:hover:text-blue-400 flex items-center gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <User size={14} />
+                    <span>Profile Settings</span>
+                  </button>
+                )}
 
-                <button
-                  onClick={() => {
-                    setIsProfileOpen(false)
-                    if (setActiveRoute) setActiveRoute('system-settings')
-                  }}
-                  className="w-full px-4 py-2 text-left text-xs text-gray-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-[#043486] dark:hover:text-blue-400 flex items-center gap-2.5 transition-colors cursor-pointer"
-                >
-                  <SettingsIcon size={14} />
-                  <span>System Settings</span>
-                </button>
+                {canViewSystemSettings && (
+                  <button
+                    onClick={() => {
+                      setIsProfileOpen(false)
+                      if (setActiveRoute) setActiveRoute('system-settings')
+                    }}
+                    className="w-full px-4 py-2 text-left text-xs text-gray-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-[#043486] dark:hover:text-blue-400 flex items-center gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <SettingsIcon size={14} />
+                    <span>System Settings</span>
+                  </button>
+                )}
 
-                <div className="my-1 border-t border-gray-100 dark:border-slate-700" />
+                {(canViewProfile || canViewSystemSettings) && (
+                  <div className="my-1 border-t border-gray-100 dark:border-slate-700" />
+                )}
 
                 <button
                   onClick={() => {

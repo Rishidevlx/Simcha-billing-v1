@@ -13,6 +13,10 @@ import cloudinaryRoutes from './routes/cloudinaryRoutes.js'
 import inventoryRoutes from './routes/inventoryRoutes.js'
 import serviceRoutes from './routes/serviceRoutes.js'
 import returnRoutes from './routes/returnRoutes.js'
+import aiRoutes from './routes/aiRoutes.js'
+import rolesRoutes from './routes/rolesRoutes.js'
+import usersRoutes from './routes/usersRoutes.js'
+import departmentRoutes from './routes/departmentRoutes.js'
 
 dotenv.config()
 
@@ -57,6 +61,10 @@ app.use('/api/cloudinary', cloudinaryRoutes)
 app.use('/api/inventory', inventoryRoutes)
 app.use('/api/services', serviceRoutes)
 app.use('/api/returns', returnRoutes)
+app.use('/api/ai', aiRoutes)
+app.use('/api/roles', rolesRoutes)
+app.use('/api/users', usersRoutes)
+app.use('/api/departments', departmentRoutes)
 
 
 // Global Error Handler

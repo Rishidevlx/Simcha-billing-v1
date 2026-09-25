@@ -24,9 +24,16 @@ import {
 } from 'lucide-react'
 import Swal from 'sweetalert2'
 import { API_ENDPOINTS } from '../config/api'
+import { getUserPermissions } from '../utils/access'
 import ListKpiCard from '../components/common/ListKpiCard'
 
 export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, onEditMaterial }) {
+  const { can, hasAny } = getUserPermissions()
+  const canAdd = can('materials_add', 'Add') || can('materials_list', 'Add') || can('materials', 'Add')
+  const canEdit = hasAny('materials_list', ['Edit']) || hasAny('materials_add', ['Edit']) || hasAny('materials', ['Edit'])
+  const canDelete = hasAny('materials_list', ['Delete']) || hasAny('materials_add', ['Delete']) || hasAny('materials', ['Delete'])
+  const canDownload = hasAny('materials_list', ['Download']) || hasAny('materials_add', ['Download']) || hasAny('materials', ['Download'])
+
   const navigate = useNavigate()
 
   const handleAddMaterial = () => {
@@ -309,13 +316,15 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleAddMaterial}
-            className="px-4 py-2 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] dark:bg-blue-600 dark:hover:bg-blue-500 border border-[#043486] dark:border-blue-600 rounded-sm shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
-          >
-            <Plus size={15} />
-            <span>Add New Material</span>
-          </button>
+          {canAdd && (
+            <button
+              onClick={handleAddMaterial}
+              className="px-4 py-2 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] dark:bg-blue-600 dark:hover:bg-blue-500 border border-[#043486] dark:border-blue-600 rounded-sm shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus size={15} />
+              <span>Add New Material</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -627,21 +636,25 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
                       {/* Actions */}
                       <td className="py-3.5 px-3.5 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => handleEdit(mat.id)}
-                            title="Edit Material"
-                            className="p-1.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white border border-amber-200 dark:border-amber-800 rounded-none transition-all cursor-pointer shadow-2xs"
-                          >
-                            <Edit2 size={13} />
-                          </button>
+                          {canEdit && (
+                            <button
+                              onClick={() => handleEdit(mat.id)}
+                              title="Edit Material"
+                              className="p-1.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white border border-amber-200 dark:border-amber-800 rounded-none transition-all cursor-pointer shadow-2xs"
+                            >
+                              <Edit2 size={13} />
+                            </button>
+                          )}
 
-                          <button
-                            onClick={() => handleDelete(mat.id, mat.name)}
-                            title="Delete Material"
-                            className="p-1.5 text-red-600 dark:text-red-400 hover:text-white hover:bg-red-600 border border-red-200 dark:border-red-800/60 rounded-none transition-colors cursor-pointer"
-                          >
-                            <Trash2 size={13} />
-                          </button>
+                          {canDelete && (
+                            <button
+                              onClick={() => handleDelete(mat.id, mat.name)}
+                              title="Delete Material"
+                              className="p-1.5 text-red-600 dark:text-red-400 hover:text-white hover:bg-red-600 border border-red-200 dark:border-red-800/60 rounded-none transition-colors cursor-pointer"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

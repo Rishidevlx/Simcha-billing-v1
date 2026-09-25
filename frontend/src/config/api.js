@@ -46,6 +46,9 @@ export const API_ENDPOINTS = {
   RETURN_BY_ID: (id) => `${API_BASE_URL}/api/returns/${id}`,
   NEXT_RETURN_NUMBER: `${API_BASE_URL}/api/returns/meta/next-number`,
   RETURN_QC_DECISION: (id) => `${API_BASE_URL}/api/returns/${id}/qc`,
+  AI_CONFIG: `${API_BASE_URL}/api/ai/config`,
+  AI_TEST: `${API_BASE_URL}/api/ai/test`,
+  AI_CHAT: `${API_BASE_URL}/api/ai/chat`,
   HEALTH: `${API_BASE_URL}/api/health`
 }
 

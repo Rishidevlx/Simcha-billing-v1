@@ -387,19 +387,20 @@ export async function getServiceBills(req, res) {
   try {
     const pool = getPool()
 
-    const [services] = await pool.query(`
-      SELECT 
-        s.*,
-        COUNT(si.id) as total_items
-      FROM service_bills s
-      LEFT JOIN service_bill_items si ON s.id = si.service_bill_id
-      GROUP BY s.id
-      ORDER BY s.id DESC
-    `)
-
-    const [allItems] = await pool.query(`
-      SELECT * FROM service_bill_items ORDER BY id ASC
-    `)
+    const [ [services], [allItems] ] = await Promise.all([
+      pool.query(`
+        SELECT 
+          s.*,
+          COUNT(si.id) as total_items
+        FROM service_bills s
+        LEFT JOIN service_bill_items si ON s.id = si.service_bill_id
+        GROUP BY s.id
+        ORDER BY s.id DESC
+      `),
+      pool.query(`
+        SELECT * FROM service_bill_items ORDER BY id ASC
+      `)
+    ])
 
     const itemsByServiceId = {}
     allItems.forEach(item => {

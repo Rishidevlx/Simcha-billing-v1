@@ -265,19 +265,20 @@ export async function getAllInwardBills(req, res) {
   try {
     const pool = getPool()
 
-    const [inwards] = await pool.query(`
-      SELECT 
-        ib.*,
-        COUNT(ibi.id) AS line_items_count
-      FROM inward_bills ib
-      LEFT JOIN inward_bill_items ibi ON ib.id = ibi.inward_id
-      GROUP BY ib.id
-      ORDER BY ib.id DESC
-    `)
-
-    const [allItems] = await pool.query(`
-      SELECT * FROM inward_bill_items ORDER BY id ASC
-    `)
+    const [ [inwards], [allItems] ] = await Promise.all([
+      pool.query(`
+        SELECT 
+          ib.*,
+          COUNT(ibi.id) AS line_items_count
+        FROM inward_bills ib
+        LEFT JOIN inward_bill_items ibi ON ib.id = ibi.inward_id
+        GROUP BY ib.id
+        ORDER BY ib.id DESC
+      `),
+      pool.query(`
+        SELECT * FROM inward_bill_items ORDER BY id ASC
+      `)
+    ])
 
     const itemsByInwardId = {}
     allItems.forEach(item => {

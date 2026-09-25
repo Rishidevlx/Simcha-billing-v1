@@ -56,6 +56,18 @@ export default function InwardReportsPage() {
   const [stats, setStats] = useState({ totalInwards: 0, totalAmount: 0, totalItems: 0 })
   const [isLoading, setIsLoading] = useState(true)
 
+  // Get User Permissions
+  const simchaUser = JSON.parse(localStorage.getItem('simcha_user') || '{}')
+  const hasFullAccess = simchaUser.role === 'Administrator' || (simchaUser.admin_access || []).includes('Full Admin Access')
+  
+  const inwardListPerms = (simchaUser.permissions || {})['inward_list'] || []
+  const inwardPerms = (simchaUser.permissions || {})['inward'] || []
+  
+  const canAdd = hasFullAccess || inwardPerms.includes('Add')
+  const canEdit = hasFullAccess || inwardListPerms.includes('Edit') || inwardPerms.includes('Edit')
+  const canDelete = hasFullAccess || inwardListPerms.includes('Delete') || inwardPerms.includes('Delete')
+  const canDownload = hasFullAccess || inwardListPerms.includes('Download')
+
   // Filters State
   const [searchTerm, setSearchTerm] = useState('')
   const [datePreset, setDatePreset] = useState('ALL')
@@ -372,24 +384,28 @@ export default function InwardReportsPage() {
         subtitle="Comprehensive log of all inward inventory purchases, supplier details, and material records."
         actions={
           <>
-            <button
-              onClick={handleExportExcel}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold text-xs rounded-none shadow-xs transition-all active:scale-[0.99] cursor-pointer"
-              title={selectedIds.length > 0 ? `Export ${selectedIds.length} Selected Record(s)` : 'Export All Filtered Records'}
-            >
-              <Download size={15} />
-              <span>{selectedIds.length > 0 ? `EXPORT SELECTED (${selectedIds.length})` : 'EXPORT TO EXCEL'}</span>
-            </button>
-            <button
-              onClick={() => {
-                if (setActiveRoute) setActiveRoute('inward')
-                navigate('/inward')
-              }}
-              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#043486] hover:bg-[#0248BC] text-white font-bold text-xs rounded-none shadow-xs transition-all active:scale-[0.99] cursor-pointer"
-            >
-              <Plus size={15} />
-              <span>CREATE NEW INWARD</span>
-            </button>
+            {canDownload && (
+              <button
+                onClick={handleExportExcel}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold text-xs rounded-none shadow-xs transition-all active:scale-[0.99] cursor-pointer"
+                title={selectedIds.length > 0 ? `Export ${selectedIds.length} Selected Record(s)` : 'Export All Filtered Records'}
+              >
+                <Download size={15} />
+                <span>{selectedIds.length > 0 ? `EXPORT SELECTED (${selectedIds.length})` : 'EXPORT TO EXCEL'}</span>
+              </button>
+            )}
+            {canAdd && (
+              <button
+                onClick={() => {
+                  if (setActiveRoute) setActiveRoute('inward')
+                  navigate('/inward')
+                }}
+                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#043486] hover:bg-[#0248BC] text-white font-bold text-xs rounded-none shadow-xs transition-all active:scale-[0.99] cursor-pointer"
+              >
+                <Plus size={15} />
+                <span>CREATE NEW INWARD</span>
+              </button>
+            )}
           </>
         }
       />
@@ -430,7 +446,7 @@ export default function InwardReportsPage() {
                 setSearchTerm(e.target.value)
                 setCurrentPage(1)
               }}
-              placeholder="Search by supplier name, phone, inward #, GSTIN..."
+              placeholder="Search by supplier name, phone, inward ID, GSTIN..."
               className="w-full pl-9 pr-4 py-2.5 text-xs text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 font-medium placeholder:text-gray-400"
             />
           </div>
@@ -526,7 +542,7 @@ export default function InwardReportsPage() {
                       className="w-4 h-4 text-[#043486] rounded-none border-gray-300 dark:border-slate-600 focus:ring-0 cursor-pointer accent-[#043486]"
                     />
                   </th>
-                  <th className="py-3 px-3 w-12 text-center">#</th>
+                  <th className="py-3 px-3 w-12 text-center">ID</th>
                   <th className="py-3 px-4">Inward Date</th>
                   <th className="py-3 px-4">Inward No</th>
                   <th className="py-3 px-4">Supplier Name</th>
@@ -619,28 +635,32 @@ export default function InwardReportsPage() {
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1.5">
                           {/* Attached Hardcopy Button */}
-                          <button
-                            type="button"
-                            onClick={() => handleDownloadHardcopy(inv.hardcopy_url, inv.inward_number)}
-                            className={`p-1.5 rounded-none border transition-all cursor-pointer shadow-2xs ${
-                              inv.hardcopy_url
-                                ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 dark:hover:text-white border-emerald-200 dark:border-emerald-800'
-                                : 'text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700'
-                            }`}
-                            title={inv.hardcopy_url ? 'Download Hardcopy / Bill Document' : 'No Hardcopy Document Attached'}
-                          >
-                            <ImageDown size={15} />
-                          </button>
+                          {canDownload && (
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadHardcopy(inv.hardcopy_url, inv.inward_number)}
+                              className={`p-1.5 rounded-none border transition-all cursor-pointer shadow-2xs ${
+                                inv.hardcopy_url
+                                  ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 dark:hover:text-white border-emerald-200 dark:border-emerald-800'
+                                  : 'text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700'
+                              }`}
+                              title={inv.hardcopy_url ? 'Download Hardcopy / Bill Document' : 'No Hardcopy Document Attached'}
+                            >
+                              <ImageDown size={15} />
+                            </button>
+                          )}
 
                           {/* Quick Edit Inward Record (Orange / Amber) */}
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/inward/edit/${inv.id}`)}
-                            className="p-1.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white border border-amber-200 dark:border-amber-800 rounded-none transition-all cursor-pointer shadow-2xs"
-                            title="Edit Inward Record"
-                          >
-                            <Edit2 size={15} />
-                          </button>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/inward/edit/${inv.id}`)}
+                              className="p-1.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white border border-amber-200 dark:border-amber-800 rounded-none transition-all cursor-pointer shadow-2xs"
+                              title="Edit Inward Record"
+                            >
+                              <Edit2 size={15} />
+                            </button>
+                          )}
 
                           {/* View Inward Details (Blue) */}
                           <button
@@ -653,14 +673,16 @@ export default function InwardReportsPage() {
                           </button>
 
                           {/* Delete Inward Record */}
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteInward(inv.id, inv.inward_number, inv.supplier_name)}
-                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border border-gray-200 dark:border-slate-700 rounded-none transition-all cursor-pointer shadow-2xs"
-                            title="Delete Inward Record"
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                          {canDelete && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteInward(inv.id, inv.inward_number, inv.supplier_name)}
+                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border border-gray-200 dark:border-slate-700 rounded-none transition-all cursor-pointer shadow-2xs"
+                              title="Delete Inward Record"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -783,7 +805,7 @@ export default function InwardReportsPage() {
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
                       <tr className="bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 font-semibold text-[11px]">
-                        <th className="py-2.5 px-3 w-10 text-center">#</th>
+                        <th className="py-2.5 px-3 w-10 text-center">ID</th>
                         <th className="py-2.5 px-3">Item / Description</th>
                         <th className="py-2.5 px-3">HSN</th>
                         <th className="py-2.5 px-3 text-center">Qty</th>

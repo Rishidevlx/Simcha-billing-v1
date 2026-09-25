@@ -10,7 +10,8 @@ import {
   ChevronRight,
   Circle,
   Wrench,
-  BookOpen
+  BookOpen,
+  UserKey
 } from 'lucide-react'
 import logoImg from '../../assets/Logo/Logo-bg-remove.webp'
 import faviconImg from '../../assets/Logo/Favicon.jpeg'
@@ -26,11 +27,12 @@ export default function Sidebar({
   // State for open dropdown menus when expanded
   const [openMenus, setOpenMenus] = useState({
     bills: false,
-    services: true,
-    categories: true,
-    materials: true,
-    inventory: true,
-    settings: true
+    services: false,
+    categories: false,
+    materials: false,
+    inventory: false,
+    settings: false,
+    rolesPermissions: false
   })
 
   // State for hover flyout when collapsed
@@ -60,6 +62,11 @@ export default function Sidebar({
       currentPath.includes('bill')
     ) {
       setOpenMenus(prev => ({ ...prev, bills: true }))
+    } else if (
+      currentPath.includes('role') ||
+      currentPath.includes('user')
+    ) {
+      setOpenMenus(prev => ({ ...prev, rolesPermissions: true }))
     }
   }, [currentPath])
 
@@ -127,6 +134,16 @@ export default function Sidebar({
       ]
     },
     {
+      id: 'roles-permissions',
+      title: 'Roles & Access',
+      icon: UserKey,
+      subItems: [
+        { id: 'departments-menu', title: 'Departments', path: '/departments' },
+        { id: 'roles-menu', title: 'Roles', path: '/roles' },
+        { id: 'users-menu', title: 'Users', path: '/users' }
+      ]
+    },
+    {
       id: 'settings',
       title: 'Settings',
       icon: Settings,
@@ -161,6 +178,13 @@ export default function Sidebar({
     if (sub.id === 'profile-settings' && (currentPath === '/profile-settings' || currentPath === '/settings/profile' || currentPath === '/profile')) return true
     if (sub.id === 'system-settings' && (currentPath === '/system-settings' || currentPath === '/settings/system')) return true
     if (sub.id === 'configurations-settings' && (currentPath === '/configurations-settings' || currentPath === '/settings/configurations')) return true
+    if (sub.id === 'departments-menu' && (currentPath === '/departments' || currentPath.startsWith('/departments'))) return true
+    if (sub.id === 'roles-menu' && (currentPath === '/roles' || currentPath.startsWith('/roles'))) return true
+    if (sub.id === 'users-menu' && (currentPath === '/users' || currentPath.startsWith('/users'))) return true
+    if (sub.id === 'add-role' && currentPath === '/roles/add') return true
+    if (sub.id === 'role-list' && (currentPath === '/roles/list' || currentPath === '/roles')) return true
+    if (sub.id === 'add-user' && currentPath === '/users/add') return true
+    if (sub.id === 'users-list' && (currentPath === '/users/list' || currentPath === '/users')) return true
     return false
   }
 
@@ -171,6 +195,78 @@ export default function Sidebar({
     setHoveredMenuId(null)
     if (closeMobileSidebar) closeMobileSidebar()
   }
+
+  // Filter Menus based on Access Rights
+  const simchaUser = JSON.parse(localStorage.getItem('simcha_user') || '{}')
+  const userAdminAccess = simchaUser.admin_access || []
+  const userPermissions = simchaUser.permissions || {}
+  const hasFullAccess = userAdminAccess.includes('Full Admin Access') || simchaUser.role === 'Administrator'
+
+  const hasAccessToSubItem = (subId) => {
+    if (hasFullAccess) return true
+    
+    // Map sidebar sub item IDs to permission IDs
+    const permIdMap = {
+      'inward': 'inward',
+      'inward-reports': 'inward_list',
+      'create-bill': 'outward',
+      'all-bills': 'outward_list',
+      'new-service': 'services_new',
+      'all-services': 'services_list',
+      'create-category': 'categories_create',
+      'add-material': 'materials_add',
+      'all-materials': 'materials_list',
+      'inventory-stock': 'inventory_main',
+      'returns-adjustments': 'inventory_returns',
+      'profile-settings': 'settings_profile',
+      'system-settings': 'settings_system',
+      'configurations-settings': 'settings_configs',
+      'departments-menu': 'departments_list',
+      'roles-menu': 'roles_list',
+      'users-menu': 'users_list',
+      'add-role': 'roles_add',
+      'role-list': 'roles_list',
+      'add-user': 'users_add',
+      'users-list': 'users_list'
+    }
+
+    const targetPermId = permIdMap[subId] || subId
+    const perms = userPermissions[targetPermId] || []
+    return perms.length > 0
+  }
+
+  const hasAccessToMenu = (menu) => {
+    if (hasFullAccess) return true
+    
+    // Check if the menu title is explicitly in admin_access
+    if (userAdminAccess.includes(menu.title)) return true
+
+    // Make User Manual globally accessible
+    if (menu.id === 'user-manual') return true
+
+    // If it's a single menu item (e.g. Dashboard), check permissions
+    if (menu.single) {
+      const perms = userPermissions[menu.id] || []
+      return perms.length > 0
+    }
+
+    // If it has subItems, check if ANY subItem has permissions
+    if (menu.subItems) {
+      return menu.subItems.some(sub => hasAccessToSubItem(sub.id))
+    }
+
+    return false
+  }
+
+  const visibleMenuConfig = menuConfig
+    .filter(menu => hasAccessToMenu(menu))
+    .map(menu => {
+      if (menu.single) return menu
+      return {
+        ...menu,
+        subItems: menu.subItems.filter(sub => hasAccessToSubItem(sub.id))
+      }
+    })
 
   return (
     <>
@@ -217,7 +313,7 @@ export default function Sidebar({
             )}
 
             <nav className="space-y-1.5">
-              {menuConfig.map((item) => {
+              {visibleMenuConfig.map((item) => {
                 const Icon = item.icon
                 const isSingle = item.single
                 const isMenuOpen = openMenus[item.id]
@@ -266,7 +362,7 @@ export default function Sidebar({
                         >
                           <div className="flex items-center gap-3.5">
                             <Icon size={19} className={isActiveParent ? 'text-white dark:text-blue-400' : 'text-blue-200/80 dark:text-slate-400'} />
-                            {!isCollapsed && <span className="tracking-wide">{item.title}</span>}
+                            {!isCollapsed && <span className="tracking-wide whitespace-nowrap">{item.title}</span>}
                           </div>
                           {!isCollapsed && (
                             <span className="text-blue-200 dark:text-slate-400">

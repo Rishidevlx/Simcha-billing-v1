@@ -28,11 +28,18 @@ import {
 import * as XLSX from 'xlsx'
 import Swal from 'sweetalert2'
 import { API_ENDPOINTS } from '../config/api'
+import { getUserPermissions } from '../utils/access'
 import ListPageHeader from '../components/common/ListPageHeader'
 import ListKpiCard from '../components/common/ListKpiCard'
 import ListPagePagination from '../components/common/ListPagePagination'
 
 export default function InventoryPage({ setActiveRoute }) {
+  const { can, hasAny } = getUserPermissions()
+  const canAdd = can('inventory', 'Add') || can('inventory', 'Add') || can('inventory', 'Add')
+  const canEdit = hasAny('inventory', ['Edit']) || hasAny('inventory', ['Edit']) || hasAny('inventory', ['Edit'])
+  const canDelete = hasAny('inventory', ['Delete']) || hasAny('inventory', ['Delete']) || hasAny('inventory', ['Delete'])
+  const canDownload = hasAny('inventory', ['Download']) || hasAny('inventory', ['Download']) || hasAny('inventory', ['Download'])
+
   const navigate = useNavigate()
   // Active Tab: 'overview' | 'reorder' | 'scrap'
   const [activeTab, setActiveTab] = useState('overview')
@@ -546,7 +553,8 @@ export default function InventoryPage({ setActiveRoute }) {
         actions={
           <div className="flex items-center gap-2.5 flex-wrap">
             {/* Green Export Excel Button matching Inward & Outward List */}
-            <button
+            {canDownload && (
+<button
               onClick={handleExportExcel}
               className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold text-xs rounded-none shadow-xs transition-all active:scale-[0.99] cursor-pointer"
               title={selectedIds.length > 0 ? `Export ${selectedIds.length} Selected Item(s)` : 'Export All Filtered Items'}
@@ -556,6 +564,7 @@ export default function InventoryPage({ setActiveRoute }) {
                 {selectedIds.length > 0 ? `EXPORT SELECTED (${selectedIds.length})` : 'EXPORT TO EXCEL'}
               </span>
             </button>
+)}
 
             <button
               onClick={() => {
@@ -766,10 +775,10 @@ export default function InventoryPage({ setActiveRoute }) {
                       className="w-4 h-4 text-[#043486] rounded-none border-gray-300 dark:border-slate-600 focus:ring-0 cursor-pointer accent-[#043486]"
                     />
                   </th>
-                  <th className="py-3 px-3 w-12 text-center">#</th>
+                  <th className="py-3 px-3 w-12 text-center">ID</th>
                   <th className="py-3 px-4">Material Name</th>
                   <th className="py-3 px-4">Category</th>
-                  <th className="py-3 px-4 font-mono">HSN Code</th>
+                  <th className="py-3 px-4 uppercase font-bold text-[11px] tracking-wider">HSN Code</th>
                   <th className="py-3 px-4 text-right">Available Stock</th>
                   <th className="py-3 px-4 text-center">Unit</th>
                   <th className="py-3 px-4 text-center">Reorder Threshold</th>
@@ -877,14 +886,20 @@ export default function InventoryPage({ setActiveRoute }) {
 
                         {/* Reorder Threshold */}
                         <td className="py-3 px-4 text-center">
-                          <button
-                            onClick={() => handleOpenEditModal(item)}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-bold text-gray-700 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 hover:bg-blue-100 dark:hover:bg-blue-950 border border-gray-200 dark:border-slate-700 rounded-none transition-colors cursor-pointer group"
-                            title="Click to edit stock or alert threshold"
-                          >
-                            <span>{reorder}</span>
-                            <Edit3 size={11} className="text-gray-400 group-hover:text-[#043486] dark:group-hover:text-blue-400" />
-                          </button>
+                          {canEdit ? (
+                            <button
+                              onClick={() => handleOpenEditModal(item)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-bold text-gray-700 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 hover:bg-blue-100 dark:hover:bg-blue-950 border border-gray-200 dark:border-slate-700 rounded-none transition-colors cursor-pointer group"
+                              title="Click to edit stock or alert threshold"
+                            >
+                              <span>{reorder}</span>
+                              <Edit3 size={11} className="text-gray-400 group-hover:text-[#043486] dark:group-hover:text-blue-400" />
+                            </button>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-bold text-gray-700 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-none">
+                              {reorder}
+                            </span>
+                          )}
                         </td>
 
                         {/* Unit Price */}
@@ -944,13 +959,15 @@ export default function InventoryPage({ setActiveRoute }) {
                             </button>
 
                             {/* Quick Edit Stock & Threshold Action (Edit3) */}
-                            <button
-                              onClick={() => handleOpenEditModal(item)}
-                              className="p-1.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white border border-amber-200 dark:border-amber-800 rounded-none transition-all cursor-pointer shadow-2xs"
-                              title="Quick Edit Stock & Threshold"
-                            >
-                              <Edit3 size={15} />
-                            </button>
+                            {canEdit && (
+                              <button
+                                onClick={() => handleOpenEditModal(item)}
+                                className="p-1.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white border border-amber-200 dark:border-amber-800 rounded-none transition-all cursor-pointer shadow-2xs"
+                                title="Quick Edit Stock & Threshold"
+                              >
+                                <Edit3 size={15} />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -986,7 +1003,7 @@ export default function InventoryPage({ setActiveRoute }) {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={15} />
               <input
                 type="text"
-                placeholder="Search Defective Serial, Material, Return #, Reason..."
+                placeholder="Search Defective Serial, Material, Return ID, Reason..."
                 value={scrapSearch}
                 onChange={(e) => {
                   setScrapSearch(e.target.value)
@@ -1041,12 +1058,12 @@ export default function InventoryPage({ setActiveRoute }) {
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-950 text-[11px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider">
-                  <th className="py-3 px-3 text-center w-10 whitespace-nowrap">#</th>
+                  <th className="py-3 px-3 text-center w-10 whitespace-nowrap">ID</th>
                   <th className="py-3 px-4 text-center whitespace-nowrap">Date</th>
                   <th className="py-3 px-4 whitespace-nowrap">Product Name</th>
                   <th className="py-3 px-4 whitespace-nowrap">Serial Number</th>
-                  <th className="py-3 px-4 whitespace-nowrap">Return Bill #</th>
-                  <th className="py-3 px-4 whitespace-nowrap">Original Inv #</th>
+                  <th className="py-3 px-4 whitespace-nowrap">Return Bill ID</th>
+                  <th className="py-3 px-4 whitespace-nowrap">Original Inv ID</th>
                   <th className="py-3 px-4 whitespace-nowrap">Customer</th>
                   <th className="py-3 px-4 whitespace-nowrap">QC Findings / Notes</th>
                   <th className="py-3 px-4 text-center whitespace-nowrap">Return Reason</th>

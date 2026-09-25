@@ -43,6 +43,7 @@ import ListKpiCard from '../components/common/ListKpiCard'
 import ListDateRangeFilter from '../components/common/ListDateRangeFilter'
 import ListPagePagination from '../components/common/ListPagePagination'
 import { API_ENDPOINTS } from '../config/api'
+import { getUserPermissions } from '../utils/access'
 
 export default function AllBillsPage({ setActiveRoute }) {
   const navigate = useNavigate()
@@ -50,6 +51,12 @@ export default function AllBillsPage({ setActiveRoute }) {
   const [stats, setStats] = useState({ totalBills: 0, totalRevenue: 0, paidCount: 0, pendingCount: 0 })
   const [isLoading, setIsLoading] = useState(true)
   const [settings, setSettings] = useState(null)
+  
+  const { can, hasAny } = getUserPermissions()
+  const canAdd = can('outward', 'Add') || can('outward_list', 'Add')
+  const canEdit = hasAny('outward_list', ['Edit']) || hasAny('outward', ['Edit'])
+  const canDelete = hasAny('outward_list', ['Delete']) || hasAny('outward', ['Delete'])
+  const canDownload = hasAny('outward_list', ['Download']) || hasAny('outward', ['Download'])
 
   // Selection state for Excel export & batch actions
   const [selectedBillIds, setSelectedBillIds] = useState([])
@@ -619,26 +626,30 @@ export default function AllBillsPage({ setActiveRoute }) {
         subtitle="Manage billing records, export customer receipts, and review payment status."
         actions={
           <>
-            <button
-              onClick={handleExportExcel}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold text-xs rounded-none shadow-xs transition-all active:scale-[0.99] cursor-pointer"
-              title={selectedBillIds.length > 0 ? `Export ${selectedBillIds.length} Selected Bill(s)` : 'Export All Filtered Bills'}
-            >
-              <Download size={15} />
-              <span>
-                {selectedBillIds.length > 0 ? `EXPORT SELECTED (${selectedBillIds.length})` : 'EXPORT TO EXCEL'}
-              </span>
-            </button>
-            <button
-              onClick={() => {
-                if (setActiveRoute) setActiveRoute('create-bill')
-                navigate('/outward')
-              }}
-              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#043486] hover:bg-[#0248BC] text-white font-bold text-xs rounded-none shadow-xs transition-all active:scale-[0.99] cursor-pointer"
-            >
-              <Plus size={15} />
-              <span>CREATE NEW BILL</span>
-            </button>
+            {canDownload && (
+              <button
+                onClick={handleExportExcel}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold text-xs rounded-none shadow-xs transition-all active:scale-[0.99] cursor-pointer"
+                title={selectedBillIds.length > 0 ? `Export ${selectedBillIds.length} Selected Bill(s)` : 'Export All Filtered Bills'}
+              >
+                <Download size={15} />
+                <span>
+                  {selectedBillIds.length > 0 ? `EXPORT SELECTED (${selectedBillIds.length})` : 'EXPORT TO EXCEL'}
+                </span>
+              </button>
+            )}
+            {canAdd && (
+              <button
+                onClick={() => {
+                  if (setActiveRoute) setActiveRoute('create-bill')
+                  navigate('/outward')
+                }}
+                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#043486] hover:bg-[#0248BC] text-white font-bold text-xs rounded-none shadow-xs transition-all active:scale-[0.99] cursor-pointer"
+              >
+                <Plus size={15} />
+                <span>CREATE NEW BILL</span>
+              </button>
+            )}
           </>
         }
       />
@@ -687,7 +698,7 @@ export default function AllBillsPage({ setActiveRoute }) {
                 setSearchTerm(e.target.value)
                 setCurrentPage(1)
               }}
-              placeholder="Search invoice #, customer name, phone..."
+              placeholder="Search invoice ID, customer name, phone..."
               className="w-full pl-9 pr-4 py-2.5 text-xs text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 font-medium placeholder:text-gray-400"
             />
           </div>
@@ -805,7 +816,7 @@ export default function AllBillsPage({ setActiveRoute }) {
                       title="Select / Deselect all on this page"
                     />
                   </th>
-                  <th className="py-3 px-4">Invoice #</th>
+                  <th className="py-3 px-4">Invoice ID</th>
                   <th className="py-3 px-4">Date</th>
                   <th className="py-3 px-4">Customer Name</th>
                   <th className="py-3 px-4">Mobile Number</th>
@@ -973,24 +984,26 @@ export default function AllBillsPage({ setActiveRoute }) {
                           </button>
 
                           {/* 4. Edit Invoice (Inactive if Paid or Cancelled) */}
-                          <button
-                            onClick={() => !isEditDeleteDisabled && navigate(`/outward?editId=${bill.id}`)}
-                            disabled={isEditDeleteDisabled}
-                            className={`p-1.5 rounded-none border transition-all shadow-2xs ${
-                              isEditDeleteDisabled
-                                ? 'text-gray-300 dark:text-slate-700 bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 cursor-not-allowed opacity-30'
-                                : 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white border-amber-200 dark:border-amber-800 cursor-pointer'
-                            }`}
-                            title={
-                              isCancelled
-                                ? 'Cannot edit a cancelled invoice'
-                                : isPaid
-                                ? 'Cannot edit a paid invoice'
-                                : 'Edit Invoice'
-                            }
-                          >
-                            <Pencil size={15} />
-                          </button>
+                          {canEdit && (
+                            <button
+                              onClick={() => !isEditDeleteDisabled && navigate(`/outward?editId=${bill.id}`)}
+                              disabled={isEditDeleteDisabled}
+                              className={`p-1.5 rounded-none border transition-all shadow-2xs ${
+                                isEditDeleteDisabled
+                                  ? 'text-gray-300 dark:text-slate-700 bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 cursor-not-allowed opacity-30'
+                                  : 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white border-amber-200 dark:border-amber-800 cursor-pointer'
+                              }`}
+                              title={
+                                isCancelled
+                                  ? 'Cannot edit a cancelled invoice'
+                                  : isPaid
+                                  ? 'Cannot edit a paid invoice'
+                                  : 'Edit Invoice'
+                              }
+                            >
+                              <Pencil size={15} />
+                            </button>
+                          )}
 
                           {/* 5. View Invoice Modal / PDF */}
                           <button
@@ -1002,24 +1015,26 @@ export default function AllBillsPage({ setActiveRoute }) {
                           </button>
 
                           {/* 6. Delete Invoice (Inactive if Paid or Cancelled) */}
-                          <button
-                            onClick={() => !isEditDeleteDisabled && handleDeleteBill(bill.id, bill.invoice_number)}
-                            disabled={isEditDeleteDisabled}
-                            className={`p-1.5 transition-colors ${
-                              isEditDeleteDisabled
-                                ? 'text-gray-300 dark:text-slate-700 cursor-not-allowed opacity-30'
-                                : 'text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer'
-                            }`}
-                            title={
-                              isCancelled
-                                ? 'Cannot delete a cancelled invoice'
-                                : isPaid
-                                ? 'Cannot delete a paid invoice'
-                                : 'Delete Invoice'
-                            }
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                          {canDelete && (
+                            <button
+                              onClick={() => !isEditDeleteDisabled && handleDeleteBill(bill.id, bill.invoice_number)}
+                              disabled={isEditDeleteDisabled}
+                              className={`p-1.5 transition-colors ${
+                                isEditDeleteDisabled
+                                  ? 'text-gray-300 dark:text-slate-700 cursor-not-allowed opacity-30'
+                                  : 'text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer'
+                              }`}
+                              title={
+                                isCancelled
+                                  ? 'Cannot delete a cancelled invoice'
+                                  : isPaid
+                                  ? 'Cannot delete a paid invoice'
+                                  : 'Delete Invoice'
+                              }
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

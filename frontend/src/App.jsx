@@ -18,6 +18,12 @@ import ProfileSettingsPage from './pages/ProfileSettingsPage'
 import SystemSettingsPage from './pages/SystemSettingsPage'
 import ConfigurationsSettingsPage from './pages/ConfigurationsSettingsPage'
 import UserManualPage from './pages/UserManualPage'
+import AddRolePage from './pages/AddRolePage'
+import RoleListPage from './pages/RoleListPage'
+import AddUserPage from './pages/AddUserPage'
+import UserListPage from './pages/UserListPage'
+import DepartmentListPage from './pages/DepartmentListPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -94,6 +100,12 @@ export default function App() {
           }
         />
 
+        {/* Public 15-Minute Password Setup / Reset Route */}
+        <Route
+          path="/reset-password"
+          element={<ResetPasswordPage />}
+        />
+
         {/* Protected Dashboard Routes */}
         <Route
           path="/"
@@ -159,6 +171,17 @@ export default function App() {
           <Route path="inventory/returns" element={<ReturnsAdjustmentsPage />} />
           <Route path="returns" element={<Navigate to="/inventory/returns" replace />} />
           <Route path="returns-adjustments" element={<Navigate to="/inventory/returns" replace />} />
+
+          {/* Roles, Users & Departments Routes (Tabbed) */}
+          <Route path="departments" element={<DepartmentListPage />} />
+          <Route path="departments/list" element={<Navigate to="/departments" replace />} />
+          <Route path="departments/add" element={<DepartmentListPage />} />
+          <Route path="roles" element={<RoleListPage />} />
+          <Route path="roles/list" element={<Navigate to="/roles" replace />} />
+          <Route path="roles/add" element={<RoleListPage />} />
+          <Route path="users" element={<UserListPage />} />
+          <Route path="users/list" element={<Navigate to="/users" replace />} />
+          <Route path="users/add" element={<UserListPage />} />
 
           {/* Settings Routes */}
           <Route

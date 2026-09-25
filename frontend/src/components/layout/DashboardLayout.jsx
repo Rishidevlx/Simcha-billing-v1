@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Navbar from './Navbar'
+import AiAssistantChatbot from '../ai/AiAssistantChatbot'
+import { API_ENDPOINTS } from '../../config/api'
 
 export default function DashboardLayout({
   onLogout,
@@ -11,12 +13,39 @@ export default function DashboardLayout({
 }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const [isAiEnabled, setIsAiEnabled] = useState(true)
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return localStorage.getItem('simcha_theme') === 'dark' || document.documentElement.classList.contains('dark')
   })
 
   const location = useLocation()
   const navigate = useNavigate()
+
+  // Fetch AI Config and listen to live toggle updates
+  useEffect(() => {
+    const checkAiStatus = async () => {
+      try {
+        const res = await fetch(API_ENDPOINTS.AI_CONFIG)
+        const data = await res.json()
+        if (data.success && data.config) {
+          setIsAiEnabled(Boolean(data.config.is_enabled))
+        }
+      } catch (err) {
+        console.error('Failed to check AI config status:', err)
+      }
+    }
+
+    checkAiStatus()
+
+    const handleAiConfigChange = (e) => {
+      if (e.detail && e.detail.is_enabled !== undefined) {
+        setIsAiEnabled(Boolean(e.detail.is_enabled))
+      }
+    }
+
+    window.addEventListener('ai_config_updated', handleAiConfigChange)
+    return () => window.removeEventListener('ai_config_updated', handleAiConfigChange)
+  }, [])
 
   const ROUTE_MAP = {
     'dashboard': '/dashboard',
@@ -118,6 +147,9 @@ export default function DashboardLayout({
           </span>
         </footer>
       </div>
+
+      {/* Floating Simcha AI Assistant Chatbot (Only if Enabled) */}
+      {isAiEnabled && <AiAssistantChatbot user={user} onNavigate={setActiveRoute} />}
     </div>
   )
 }

@@ -20,13 +20,15 @@ import {
   ShieldCheck,
   Zap,
   RotateCcw,
-  Sparkles
+  Sparkles,
+  Bot,
+  Cpu
 } from 'lucide-react'
 import Swal from 'sweetalert2'
 import { API_ENDPOINTS } from '../config/api'
 
 export default function ConfigurationsSettingsPage() {
-  const [activeTab, setActiveTab] = useState('mail') // 'mail' | 'cloudinary'
+  const [activeTab, setActiveTab] = useState('mail') // 'mail' | 'cloudinary' | 'ai'
   const [isLoading, setIsLoading] = useState(true)
 
   // Mail Section States
@@ -68,18 +70,37 @@ export default function ConfigurationsSettingsPage() {
   })
   const [originalCloudinaryData, setOriginalCloudinaryData] = useState({ ...cloudinaryFormData })
 
+  // Virtual Assistant AI Section States
+  const [isSavingAi, setIsSavingAi] = useState(false)
+  const [isTestingAi, setIsTestingAi] = useState(false)
+  const [isEditingAi, setIsEditingAi] = useState(false)
+  const [showAiKey, setShowAiKey] = useState(false)
+
+  const [aiFormData, setAiFormData] = useState({
+    is_enabled: true,
+    provider: 'groq',
+    key_name: '',
+    model_name: 'llama-3.3-70b-versatile',
+    groq_api_key: '',
+    masked_api_key: '',
+    api_key_configured: false
+  })
+  const [originalAiData, setOriginalAiData] = useState({ ...aiFormData })
+
   // Fetch configs on mount
   useEffect(() => {
     const fetchAllConfigs = async () => {
       try {
         setIsLoading(true)
-        const [emailRes, cloudRes] = await Promise.all([
+        const [emailRes, cloudRes, aiRes] = await Promise.all([
           fetch(API_ENDPOINTS.EMAIL_CONFIG),
-          fetch(API_ENDPOINTS.CLOUDINARY_CONFIG)
+          fetch(API_ENDPOINTS.CLOUDINARY_CONFIG),
+          fetch(API_ENDPOINTS.AI_CONFIG)
         ])
 
         const emailData = await emailRes.json()
         const cloudData = await cloudRes.json()
+        const aiData = await aiRes.json()
 
         if (emailData.success && emailData.config) {
           const loadedMail = {
@@ -110,6 +131,20 @@ export default function ConfigurationsSettingsPage() {
           setCloudinaryFormData(loadedCloud)
           setOriginalCloudinaryData(loadedCloud)
         }
+
+        if (aiData.success && aiData.config) {
+          const loadedAi = {
+            is_enabled: aiData.config.is_enabled !== undefined ? Boolean(aiData.config.is_enabled) : true,
+            provider: aiData.config.provider || 'groq',
+            key_name: aiData.config.key_name || '',
+            model_name: aiData.config.model_name || 'llama-3.3-70b-versatile',
+            groq_api_key: '',
+            masked_api_key: aiData.config.masked_api_key || '',
+            api_key_configured: Boolean(aiData.config.api_key_configured)
+          }
+          setAiFormData(loadedAi)
+          setOriginalAiData(loadedAi)
+        }
       } catch (err) {
         console.error('Failed to load configurations:', err)
       } finally {
@@ -119,6 +154,128 @@ export default function ConfigurationsSettingsPage() {
 
     fetchAllConfigs()
   }, [])
+
+  // ==================== VIRTUAL ASSISTANT HANDLERS ====================
+  const handleAiChange = (field, value) => {
+    setAiFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleToggleAiEnabled = async (checked) => {
+    const updated = { ...aiFormData, is_enabled: checked }
+    setAiFormData(updated)
+    try {
+      const res = await fetch(API_ENDPOINTS.AI_CONFIG, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      })
+      const data = await res.json()
+      if (data.success) {
+        setOriginalAiData(updated)
+        window.dispatchEvent(new CustomEvent('ai_config_updated', { detail: updated }))
+        Swal.mixin({
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 2500,
+          timerProgressBar: true
+        }).fire({
+          icon: 'success',
+          title: `Virtual Assistant ${checked ? 'Enabled' : 'Disabled'}`
+        })
+      }
+    } catch (err) {
+      console.error('Failed to toggle AI assistant:', err)
+    }
+  }
+
+  const handleTestAiConnection = async () => {
+    setIsTestingAi(true)
+    try {
+      const res = await fetch(API_ENDPOINTS.AI_TEST, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          groq_api_key: aiFormData.groq_api_key || undefined,
+          model_name: aiFormData.model_name
+        })
+      })
+      const data = await res.json()
+      if (data.success) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Connection Successful!',
+          text: 'Groq Cloud API credentials verified. Virtual Assistant is ready.',
+          confirmButtonColor: '#0248BC'
+        })
+      } else {
+        throw new Error(data.message || 'Connection test failed.')
+      }
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Connection Failed',
+        text: err.message || 'Unable to connect to Groq API. Please check your key.',
+        confirmButtonColor: '#0248BC'
+      })
+    } finally {
+      setIsTestingAi(false)
+    }
+  }
+
+  const handleSaveAi = async () => {
+    setIsSavingAi(true)
+    try {
+      const res = await fetch(API_ENDPOINTS.AI_CONFIG, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(aiFormData)
+      })
+      const data = await res.json()
+      if (data.success && data.config) {
+        setAiFormData(prev => ({
+          ...prev,
+          groq_api_key: '',
+          key_name: data.config.key_name !== undefined ? data.config.key_name : prev.key_name,
+          masked_api_key: data.config.masked_api_key,
+          api_key_configured: data.config.api_key_configured,
+          is_enabled: data.config.is_enabled,
+          model_name: data.config.model_name
+        }))
+        setOriginalAiData({
+          ...aiFormData,
+          key_name: data.config.key_name !== undefined ? data.config.key_name : aiFormData.key_name,
+          groq_api_key: '',
+          masked_api_key: data.config.masked_api_key,
+          api_key_configured: data.config.api_key_configured
+        })
+        setIsEditingAi(false)
+        window.dispatchEvent(new CustomEvent('ai_config_updated', { detail: data.config }))
+        Swal.fire({
+          icon: 'success',
+          title: 'Virtual Assistant Saved',
+          text: 'AI settings and credentials updated securely with AES-256 encryption.',
+          confirmButtonColor: '#0248BC'
+        })
+      } else {
+        throw new Error(data.message || 'Failed to save configuration.')
+      }
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Save Failed',
+        text: err.message,
+        confirmButtonColor: '#0248BC'
+      })
+    } finally {
+      setIsSavingAi(false)
+    }
+  }
+
+  const handleCancelAi = () => {
+    setAiFormData({ ...originalAiData, groq_api_key: '' })
+    setIsEditingAi(false)
+  }
 
   // ==================== MAIL HANDLERS ====================
   const handleMailChange = (field, value) => {
@@ -488,14 +645,25 @@ export default function ConfigurationsSettingsPage() {
               <span>{isTestingCloudinary ? 'Testing...' : 'Test Cloudinary Connection'}</span>
             </button>
           )}
+
+          {activeTab === 'ai' && (
+            <button
+              onClick={handleTestAiConnection}
+              disabled={isTestingAi || isLoading}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-[#0248BC] dark:border-blue-500 text-[#0248BC] dark:text-blue-400 hover:bg-[#0248BC] hover:text-white text-xs font-bold rounded-none shadow-xs transition-all cursor-pointer disabled:opacity-50"
+            >
+              <Zap size={14} />
+              <span>{isTestingAi ? 'Testing...' : 'Test AI Connection'}</span>
+            </button>
+          )}
         </div>
       </div>
 
       {/* 2. Top Tab Navigation Strip */}
-      <div className="flex border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+      <div className="flex border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-x-auto">
         <button
           onClick={() => setActiveTab('mail')}
-          className={`flex items-center gap-2.5 px-6 py-3.5 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer ${
+          className={`flex items-center gap-2.5 px-6 py-3.5 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap ${
             activeTab === 'mail'
               ? 'border-[#043486] text-[#043486] dark:border-blue-400 dark:text-blue-400 bg-blue-50/40 dark:bg-blue-900/20'
               : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/50'
@@ -503,14 +671,11 @@ export default function ConfigurationsSettingsPage() {
         >
           <Mail size={17} />
           <span>Mail Settings</span>
-          {/* {mailFormData.auto_email_on_create && (
-            <span className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-emerald-200 dark:ring-emerald-950" />
-          )} */}
         </button>
 
         <button
           onClick={() => setActiveTab('cloudinary')}
-          className={`flex items-center gap-2.5 px-6 py-3.5 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer ${
+          className={`flex items-center gap-2.5 px-6 py-3.5 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap ${
             activeTab === 'cloudinary'
               ? 'border-[#043486] text-[#043486] dark:border-blue-400 dark:text-blue-400 bg-blue-50/40 dark:bg-blue-900/20'
               : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/50'
@@ -518,8 +683,20 @@ export default function ConfigurationsSettingsPage() {
         >
           <Cloud size={17} />
           <span>Cloudinary Configurations</span>
-          {/* {cloudinaryFormData.cloud_name && (
-            <span className="w-2 h-2 rounded-full bg-sky-500 ring-2 ring-sky-200 dark:ring-sky-950" />
+        </button>
+
+        <button
+          onClick={() => setActiveTab('ai')}
+          className={`flex items-center gap-2.5 px-6 py-3.5 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap ${
+            activeTab === 'ai'
+              ? 'border-[#043486] text-[#043486] dark:border-blue-400 dark:text-blue-400 bg-blue-50/40 dark:bg-blue-900/20'
+              : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/50'
+          }`}
+        >
+          <Bot size={17} />
+          <span>Activate Virtual Assistant</span>
+          {/* {aiFormData.is_enabled && (
+            <span className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-emerald-200 dark:ring-emerald-950" />
           )} */}
         </button>
       </div>
@@ -1111,6 +1288,240 @@ export default function ConfigurationsSettingsPage() {
                     >
                       <Save size={13} />
                       <span>{isSavingCloudinary ? 'Saving...' : 'Save Configuration'}</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* TAB 3: VIRTUAL ASSISTANT (SIMCHA AI) SETTINGS             */}
+      {/* ========================================================= */}
+      {activeTab === 'ai' && (
+        <div className="space-y-6 animate-in fade-in duration-200 font-['Poppins',sans-serif]">
+
+          {/* Quick Status & Master Activation Card */}
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm flex flex-col justify-between transition-colors">
+            <div className="flex items-start gap-3.5">
+              <div className="p-2.5 bg-blue-50 dark:bg-blue-900/30 text-[#0248BC] dark:text-blue-400 rounded-none border border-blue-100 dark:border-blue-800/40">
+                <Bot size={22} />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-[#292424] dark:text-white flex items-center gap-2">
+                  Activate Virtual Assistant
+                  {aiFormData.is_enabled ? (
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
+                      ACTIVE
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-300 dark:border-slate-700">
+                      DISABLED
+                    </span>
+                  )}
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 leading-relaxed">
+                  When enabled, the floating{' '}
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new CustomEvent('open_simcha_ai'))}
+                    className="font-bold text-[#0248BC] dark:text-blue-400 underline underline-offset-2 cursor-pointer inline"
+                    title="Click to open Simcha AI Assistant"
+                  >
+                    Ask Simcha AI
+                  </button>{' '}
+                  assistant button is visible globally across all billing pages to assist with sales summaries, stock checks, pending invoices, user guides, and verified HSN/GST lookups.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 pt-3.5 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between">
+              <span className="text-[11px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                Virtual Assistant Status:
+              </span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={aiFormData.is_enabled}
+                  onChange={(e) => handleToggleAiEnabled(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-hidden rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#0248BC]"></div>
+                <span className="ml-3 text-xs font-bold text-[#043486] dark:text-blue-400">
+                  {aiFormData.is_enabled ? 'ENABLED' : 'DISABLED'}
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* AI Credentials & Model Configuration Card */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm space-y-5 transition-colors">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <Cpu size={18} className="text-[#0248BC] dark:text-blue-400" />
+                <h3 className="text-sm font-bold text-[#292424] dark:text-white uppercase tracking-wider">
+                  Groq Cloud Credentials &amp; Model Setup
+                </h3>
+              </div>
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 border border-emerald-200 dark:border-emerald-800">
+                <ShieldCheck size={12} />
+                <span>AES-256 Encrypted</span>
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              
+              {/* AI Provider */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5 uppercase">
+                  AI Provider
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    disabled
+                    value="Groq Cloud (Ultra-Fast LPU Inference)"
+                    className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 text-xs font-medium rounded-none cursor-not-allowed"
+                  />
+                </div>
+              </div>
+
+              {/* Key Name / Account Label */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5 uppercase">
+                  Key Name / Account Identifier
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    disabled={!isEditingAi}
+                    value={aiFormData.key_name || ''}
+                    onChange={(e) => handleAiChange('key_name', e.target.value)}
+                    placeholder={isEditingAi ? "e.g. Primary Account, Personal Groq, Work Key" : (aiFormData.key_name || "No key name set")}
+                    className={`w-full px-3.5 py-2.5 text-xs font-medium rounded-none transition-colors ${
+                      isEditingAi
+                        ? 'bg-white dark:bg-slate-900 border border-[#0248BC] dark:border-blue-500 text-gray-900 dark:text-white focus:outline-none'
+                        : 'bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 cursor-not-allowed'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Model Selection */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5 uppercase">
+                  Model Selection
+                </label>
+                <select
+                  disabled={!isEditingAi}
+                  value={aiFormData.model_name}
+                  onChange={(e) => handleAiChange('model_name', e.target.value)}
+                  className={`w-full px-3.5 py-2.5 border text-xs font-medium rounded-none transition-colors ${
+                    isEditingAi
+                      ? 'bg-white dark:bg-slate-900 border-[#0248BC] dark:border-blue-500 text-gray-900 dark:text-white'
+                      : 'bg-gray-50 dark:bg-slate-800/80 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 cursor-not-allowed'
+                  }`}
+                >
+                  <option value="openai/gpt-oss-120b">GPT-OSS 120B (High Accuracy)</option>
+                  <option value="openai/gpt-oss-20b">GPT-OSS 20B (Fast & Balanced)</option>
+                  <option value="qwen/qwen3.8-27b">Qwen 3.8 27B (Ultra-Fast)</option>
+                </select>
+              </div>
+
+              {/* Groq API Key */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase">
+                    Groq API Key <span className="text-red-500">*</span>
+                  </label>
+                  {aiFormData.api_key_configured && !isEditingAi && (
+                    <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <CheckCircle2 size={12} /> Configured
+                    </span>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <input
+                    type={isEditingAi ? (showAiKey ? 'text' : 'password') : 'text'}
+                    disabled={!isEditingAi}
+                    value={isEditingAi ? aiFormData.groq_api_key : (aiFormData.masked_api_key || 'No API key configured')}
+                    onChange={(e) => handleAiChange('groq_api_key', e.target.value)}
+                    placeholder={isEditingAi ? 'Paste your Groq API key (gsk_...)' : 'gsk_••••••••••••••••'}
+                    className={`w-full px-3.5 py-2.5 pr-10 border text-xs font-medium rounded-none transition-colors ${
+                      isEditingAi
+                        ? 'bg-white dark:bg-slate-900 border-[#0248BC] dark:border-blue-500 text-gray-900 dark:text-white'
+                        : 'bg-gray-50 dark:bg-slate-800/80 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 font-mono cursor-not-allowed'
+                    }`}
+                  />
+                  {isEditingAi && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAiKey(!showAiKey)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 cursor-pointer"
+                      title={showAiKey ? 'Hide key' : 'Show key'}
+                    >
+                      {showAiKey ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Encrypted Note */}
+              <div className="md:col-span-2">
+                <p className="text-[11px] text-gray-400 dark:text-slate-500 flex items-center gap-1">
+                  <Info size={12} />
+                  Your API key is securely encrypted on the server before storage and never returned in plain text.
+                </p>
+              </div>
+
+            </div>
+
+            {/* Bottom Action Controls: Save, Cancel, Test Connection */}
+            <div className="pt-4 border-t border-gray-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <button
+                  type="button"
+                  onClick={handleTestAiConnection}
+                  disabled={isTestingAi}
+                  className="px-4 py-2 border border-[#0248BC] text-[#0248BC] hover:bg-blue-50 dark:hover:bg-blue-950/40 text-xs font-bold rounded-none transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Zap size={14} />
+                  <span>{isTestingAi ? 'Testing...' : 'Test AI Connection'}</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                {!isEditingAi ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingAi(true)}
+                    className="px-5 py-2 text-xs font-bold text-white bg-[#0248BC] hover:bg-[#043486] rounded-none transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Edit2 size={13} />
+                    <span>Edit Credentials</span>
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleCancelAi}
+                      className="px-4 py-2 text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-none transition-colors cursor-pointer border border-gray-300 dark:border-slate-700"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveAi}
+                      disabled={isSavingAi}
+                      className="px-5 py-2 text-xs font-bold text-white bg-[#0248BC] hover:bg-[#043486] rounded-none transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
+                    >
+                      <Save size={13} />
+                      <span>{isSavingAi ? 'Saving...' : 'Save Configuration'}</span>
                     </button>
                   </>
                 )}

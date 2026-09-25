@@ -10,8 +10,15 @@ import {
 } from 'lucide-react'
 import Swal from 'sweetalert2'
 import { API_ENDPOINTS } from '../config/api'
+import { getUserPermissions } from '../utils/access'
 
 export default function CategoriesPage() {
+  const { can, hasAny } = getUserPermissions()
+  const canAdd = can('categories_create', 'Add') || can('categories', 'Add') || can('categories', 'Add')
+  const canEdit = hasAny('categories', ['Edit']) || hasAny('categories_create', ['Edit']) || hasAny('categories', ['Edit'])
+  const canDelete = hasAny('categories', ['Delete']) || hasAny('categories_create', ['Delete']) || hasAny('categories', ['Delete'])
+  const canDownload = hasAny('categories', ['Download']) || hasAny('categories_create', ['Download']) || hasAny('categories', ['Download'])
+
   const [categories, setCategories] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -306,7 +313,7 @@ export default function CategoriesPage() {
 
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || (!editingId && !canAdd) || (editingId && !canEdit)}
                 className="px-5 py-2.5 text-xs font-semibold text-white bg-[#043486] hover:bg-[#0248BC] dark:bg-blue-600 dark:hover:bg-blue-500 border border-[#043486] dark:border-blue-600 rounded-sm shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
               >
                 {isSubmitting ? (
@@ -430,21 +437,25 @@ export default function CategoriesPage() {
 
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleEdit(cat)}
-                            title="Edit Category"
-                            className="p-1.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white border border-amber-200 dark:border-amber-800 rounded-none transition-all cursor-pointer shadow-2xs"
-                          >
-                            <Edit2 size={13} />
-                          </button>
+                          {canEdit && (
+                            <button
+                              onClick={() => handleEdit(cat)}
+                              title="Edit Category"
+                              className="p-1.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white border border-amber-200 dark:border-amber-800 rounded-none transition-all cursor-pointer shadow-2xs"
+                            >
+                              <Edit2 size={13} />
+                            </button>
+                          )}
 
-                          <button
-                            onClick={() => handleDelete(cat.id, cat.name)}
-                            title="Delete Category"
-                            className="p-1.5 rounded-sm text-red-600 dark:text-red-400 hover:text-white hover:bg-red-600 border border-red-200 dark:border-red-800/60 transition-colors cursor-pointer"
-                          >
-                            <Trash2 size={13} />
-                          </button>
+                          {canDelete && (
+                            <button
+                              onClick={() => handleDelete(cat.id, cat.name)}
+                              title="Delete Category"
+                              className="p-1.5 rounded-sm text-red-600 dark:text-red-400 hover:text-white hover:bg-red-600 border border-red-200 dark:border-red-800/60 transition-colors cursor-pointer"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

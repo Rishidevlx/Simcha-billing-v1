@@ -24,6 +24,7 @@ import {
   BadgeCheck,
   CreditCard,
   FileText,
+  HelpCircle,
   Printer,
   ChevronDown,
   User,
@@ -37,97 +38,27 @@ import {
 import * as XLSX from 'xlsx'
 import Swal from 'sweetalert2'
 import { API_ENDPOINTS } from '../config/api'
+import { getUserPermissions } from '../utils/access'
 import ListPageHeader from '../components/common/ListPageHeader'
 import ListKpiCard from '../components/common/ListKpiCard'
 import ListPagePagination from '../components/common/ListPagePagination'
 import ReturnVoucherTemplate from '../components/invoice/ReturnVoucherTemplate'
 import InvoiceModal from '../components/invoice/InvoiceModal'
 
-// Initial standard sample data for Returns & Adjustments
-const DEFAULT_RETURNS = [
-  {
-    id: 1,
-    return_number: 'RET-2026-0001',
-    return_date: '2026-09-18',
-    bill_number: 'INV-2026-0042',
-    customer_name: 'Anand Kumar',
-    customer_phone: '9876543210',
-    item_name: 'Dell 24" IPS Monitor',
-    material_id: 1,
-    quantity: 1,
-    unit: 'Nos',
-    reason: 'Defective Screen Panel',
-    qc_status: 'Completed', // 'Pending QC' | 'Completed' | 'Rejected'
-    qc_decision: 'REPLACE', // 'STOCK' | 'REPLACE' | 'REFUND'
-    qc_notes: 'Panel flickering verified. Replaced with brand new sealed unit.',
-    resolution_ref: 'DISP-2026-0881',
-    refund_amount: 0,
-    created_at: '2026-09-18T10:30:00Z'
-  },
-  {
-    id: 2,
-    return_number: 'RET-2026-0002',
-    return_date: '2026-09-19',
-    bill_number: 'INV-2026-0048',
-    customer_name: 'Priya Sharma',
-    customer_phone: '9840123456',
-    item_name: 'Logitech MX Wireless Mouse',
-    material_id: 2,
-    quantity: 1,
-    unit: 'Nos',
-    reason: 'Wrong Color / Unopened Box',
-    qc_status: 'Completed',
-    qc_decision: 'STOCK',
-    qc_notes: 'Factory seal intact. Returned to inventory shelf (+1).',
-    resolution_ref: 'RESTOCK-LOG-004',
-    refund_amount: 0,
-    created_at: '2026-09-19T09:15:00Z'
-  },
-  {
-    id: 3,
-    return_number: 'RET-2026-0003',
-    return_date: '2026-09-19',
-    bill_number: 'INV-2026-0051',
-    customer_name: 'Venkatesh S',
-    customer_phone: '9790887766',
-    item_name: 'Kingston 16GB DDR4 RAM',
-    material_id: 3,
-    quantity: 2,
-    unit: 'Nos',
-    reason: 'Customer Requested Refund',
-    qc_status: 'Completed',
-    qc_decision: 'REFUND',
-    qc_notes: 'RAM modules verified functional. Credit Note issued to customer ledger.',
-    resolution_ref: 'CN-2026-0001',
-    refund_amount: 6400.00,
-    created_at: '2026-09-19T11:45:00Z'
-  },
-  {
-    id: 4,
-    return_number: 'RET-2026-0004',
-    return_date: '2026-09-19',
-    bill_number: 'INV-2026-0055',
-    customer_name: 'Karthik Raja',
-    customer_phone: '9444112233',
-    item_name: 'SanDisk 1TB NVMe SSD',
-    material_id: 4,
-    quantity: 1,
-    unit: 'Nos',
-    reason: 'Read/Write Speed issue reported',
-    qc_status: 'Pending QC',
-    qc_decision: null,
-    qc_notes: '',
-    resolution_ref: '',
-    refund_amount: 0,
-    created_at: '2026-09-19T13:00:00Z'
-  }
-]
+// Initial default empty data for Returns & Adjustments
+const DEFAULT_RETURNS = []
 
 export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
+  const { can, hasAny } = getUserPermissions()
+  const canAdd = can('returns_new', 'Add') || can('returns_list', 'Add') || can('returns', 'Add')
+  const canEdit = hasAny('returns_list', ['Edit']) || hasAny('returns_new', ['Edit']) || hasAny('returns', ['Edit'])
+  const canDelete = hasAny('returns_list', ['Delete']) || hasAny('returns_new', ['Delete']) || hasAny('returns', ['Delete'])
+  const canDownload = hasAny('returns_list', ['Download']) || hasAny('returns_new', ['Download']) || hasAny('returns', ['Download'])
+
   const navigate = useNavigate()
 
   // Active Tab: 'entry' | 'all' | 'pending' | 'restocked' | 'refunded'
-  const [activeTab, setActiveTab] = useState('entry')
+  const [activeTab, setActiveTab] = useState(canAdd ? 'entry' : 'pending')
 
   // Data States
   const [loading, setLoading] = useState(false)
@@ -1052,7 +983,8 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
         actions={
           <div className="flex items-center gap-2.5 flex-wrap">
             {/* Green Export Excel Button */}
-            <button
+            {canDownload && (
+<button
               onClick={handleExportExcel}
               className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold text-xs rounded-none shadow-xs transition-all active:scale-[0.99] cursor-pointer"
               title={selectedIds.length > 0 ? `Export ${selectedIds.length} Selected Record(s)` : 'Export All Filtered Records'}
@@ -1062,19 +994,22 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                 {selectedIds.length > 0 ? `EXPORT SELECTED (${selectedIds.length})` : 'EXPORT TO EXCEL'}
               </span>
             </button>
+)}
 
             {/* Blue New Return Request Button */}
-            <button
-              onClick={() => {
-                setActiveTab('entry')
-                handleClearSelectedBill()
-                window.scrollTo({ top: 0, behavior: 'smooth' })
-              }}
-              className="px-4 py-2.5 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] dark:bg-blue-600 dark:hover:bg-blue-500 border border-[#043486] dark:border-blue-600 rounded-none shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <Plus size={15} />
-              <span>NEW RETURN REQUEST</span>
-            </button>
+            {canAdd && (
+              <button
+                onClick={() => {
+                  setActiveTab('entry')
+                  handleClearSelectedBill()
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
+                className="px-4 py-2.5 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] dark:bg-blue-600 dark:hover:bg-blue-500 border border-[#043486] dark:border-blue-600 rounded-none shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus size={15} />
+                <span>NEW RETURN REQUEST</span>
+              </button>
+            )}
           </div>
         }
       />
@@ -1111,24 +1046,26 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
       <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-none shadow-xs flex items-center justify-between px-2 pt-2 transition-colors">
         <div className="flex items-center gap-1 flex-wrap">
           {/* 1. Return Entry Tab (Primary Intake) */}
-          <button
-            onClick={() => {
-              setActiveTab('entry')
-              setCurrentPage(1)
-              setSelectedIds([])
-            }}
-            className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'entry'
-                ? 'border-[#043486] text-[#043486] dark:border-blue-400 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30'
-                : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
-            }`}
-          >
-            <PackagePlus size={14} />
-            <span>Return Entry</span>
-            <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/60 text-[#043486] dark:text-blue-300 text-[10px] font-extrabold">
-              NEW
-            </span>
-          </button>
+          {canAdd && (
+            <button
+              onClick={() => {
+                setActiveTab('entry')
+                setCurrentPage(1)
+                setSelectedIds([])
+              }}
+              className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === 'entry'
+                  ? 'border-[#043486] text-[#043486] dark:border-blue-400 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30'
+                  : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              <PackagePlus size={14} />
+              <span>Return Entry</span>
+              <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/60 text-[#043486] dark:text-blue-300 text-[10px] font-extrabold">
+                NEW
+              </span>
+            </button>
+          )}
 
           {/* 2. Pending QC Inspection */}
           <button
@@ -1748,7 +1685,7 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                   <th className="py-3 px-3 w-12 text-center">S.NO</th>
                   <th className="py-3 px-4">Return ID &amp; Date</th>
                   <th className="py-3 px-4">Customer</th>
-                  <th className="py-3 px-4">Bill #</th>
+                  <th className="py-3 px-4">Bill ID</th>
                   {activeTab === 'defective' && (
                     <>
                       <th className="py-3 px-4">Defective Item</th>
@@ -1765,7 +1702,7 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                   )}
                   {activeTab === 'credit_notes' && (
                     <>
-                      <th className="py-3 px-4">Credit Note #</th>
+                      <th className="py-3 px-4">Credit Note ID</th>
                       <th className="py-3 px-4">Returned Product &amp; QTY</th>
                       <th className="py-3 px-4">Serial Number</th>
                       <th className="py-3 px-4 text-right">Refund Amount (₹)</th>
@@ -2002,20 +1939,22 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                             <div className="flex items-center justify-center gap-1.5">
                               {activeTab === 'pending' && (
                                 <>
-                                  <button
-                                    onClick={() => handleOpenQcModal(item)}
-                                    className="p-1.5 text-white bg-[#043486] hover:bg-[#0248BC] dark:bg-blue-600 dark:hover:bg-blue-500 rounded-none transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center"
-                                    title="Perform Quality Inspection (QC)"
-                                  >
-                                    <BadgeCheck size={16} />
-                                  </button>
+                                  {canEdit && (
+                                    <button
+                                      onClick={() => handleOpenQcModal(item)}
+                                      className="p-1.5 text-white bg-[#043486] hover:bg-[#0248BC] dark:bg-blue-600 dark:hover:bg-blue-500 rounded-none transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center"
+                                      title="Perform Quality Inspection (QC)"
+                                    >
+                                      <HelpCircle size={16} />
+                                    </button>
+                                  )}
                                   <button
                                     onClick={() => {
                                       setSelectedReturnView(item)
                                       setViewModalOpen(true)
                                     }}
-                                    className="p-1.5 text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-700 rounded-none transition-all cursor-pointer shadow-2xs"
-                                    title="View Return Details Slip"
+                                    className="p-1.5 text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-700 rounded-none transition-all cursor-pointer shadow-2xs flex items-center justify-center"
+                                    title="View Return Voucher Slip"
                                   >
                                     <FileText size={15} />
                                   </button>
@@ -2648,15 +2587,17 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
               )}
             </div>
 
-            <div className="pt-3 border-t border-gray-200 dark:border-slate-800 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-none cursor-pointer flex items-center gap-1.5"
-              >
-                <Printer size={14} />
-                <span>Print Slip</span>
-              </button>
+            <div className={`pt-3 border-t border-gray-200 dark:border-slate-800 flex items-center ${selectedReturnView.qc_status === 'Pending QC' ? 'justify-end' : 'justify-between'}`}>
+              {selectedReturnView.qc_status !== 'Pending QC' && (
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-none cursor-pointer flex items-center gap-1.5"
+                >
+                  <Printer size={14} />
+                  <span>Print Slip</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setViewModalOpen(false)}
