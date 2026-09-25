@@ -26,8 +26,12 @@ import {
 } from 'lucide-react'
 import Swal from 'sweetalert2'
 import { API_ENDPOINTS } from '../config/api'
+import { getUserPermissions } from '../utils/access'
 
 export default function SystemSettingsPage() {
+  const { can, hasAny } = getUserPermissions()
+  const canEdit = hasAny('settings_system', ['Edit']) || hasAny('settings', ['Edit']) || can('settings_system', 'Edit') || can('settings', 'Edit')
+
   const [activeTab, setActiveTab] = useState('company') // 'company' | 'taxes' | 'bank' | 'terms'
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -199,6 +203,7 @@ export default function SystemSettingsPage() {
   }, [])
 
   const toggleEditTab = (tabId, state) => {
+    if (!canEdit && state !== false) return
     setEditStates(prev => ({
       ...prev,
       [tabId]: state !== undefined ? state : !prev[tabId]
@@ -759,7 +764,7 @@ export default function SystemSettingsPage() {
               </div>
               <div className="min-w-0 flex-1 flex items-center justify-between">
                 <span className="text-xs font-bold truncate">{tab.label}</span>
-                {isTabEditing ? (
+                {canEdit && isTabEditing ? (
                   <span className="text-[9px] font-bold px-1.5 py-0.2 bg-amber-400 text-slate-900 rounded-none animate-pulse ml-1 shrink-0">
                     EDITING
                   </span>
@@ -788,19 +793,21 @@ export default function SystemSettingsPage() {
                 </div>
                 
                 {/* Tab Header Edit Button */}
-                {!editStates.company ? (
-                  <button
-                    type="button"
-                    onClick={() => toggleEditTab('company', true)}
-                    className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] rounded-none transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    <Edit2 size={13} />
-                    <span>Edit Profile</span>
-                  </button>
-                ) : (
-                  <span className="text-xs px-2.5 py-1 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 font-bold">
-                    Editing Mode Active
-                  </span>
+                {canEdit && (
+                  !editStates.company ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleEditTab('company', true)}
+                      className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] rounded-none transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <Edit2 size={13} />
+                      <span>Edit Profile</span>
+                    </button>
+                  ) : (
+                    <span className="text-xs px-2.5 py-1 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 font-bold">
+                      Editing Mode Active
+                    </span>
+                  )
                 )}
               </div>
 
@@ -1578,19 +1585,21 @@ export default function SystemSettingsPage() {
               </div>
               
               {/* Tab Header Edit Button */}
-              {!editStates.taxes ? (
-                <button
-                  type="button"
-                  onClick={() => toggleEditTab('taxes', true)}
-                  className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] rounded-none transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-                >
-                  <Edit2 size={13} />
-                  <span>Edit Tax Rates</span>
-                </button>
-              ) : (
-                <span className="text-xs px-2.5 py-1 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 font-bold">
-                  Editing Mode Active
-                </span>
+              {canEdit && (
+                !editStates.taxes ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleEditTab('taxes', true)}
+                    className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] rounded-none transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Edit2 size={13} />
+                    <span>Edit Tax Rates</span>
+                  </button>
+                ) : (
+                  <span className="text-xs px-2.5 py-1 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 font-bold">
+                    Editing Mode Active
+                  </span>
+                )
               )}
             </div>
 
@@ -1683,19 +1692,21 @@ export default function SystemSettingsPage() {
               </div>
               
               {/* Tab Header Edit Button */}
-              {!editStates.bank ? (
-                <button
-                  type="button"
-                  onClick={() => toggleEditTab('bank', true)}
-                  className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] rounded-none transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-                >
-                  <Edit2 size={13} />
-                  <span>Edit Bank Details</span>
-                </button>
-              ) : (
-                <span className="text-xs px-2.5 py-1 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 font-bold">
-                  Editing Mode Active
-                </span>
+              {canEdit && (
+                !editStates.bank ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleEditTab('bank', true)}
+                    className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] rounded-none transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Edit2 size={13} />
+                    <span>Edit Bank Details</span>
+                  </button>
+                ) : (
+                  <span className="text-xs px-2.5 py-1 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 font-bold">
+                    Editing Mode Active
+                  </span>
+                )
               )}
             </div>
 
@@ -1952,19 +1963,21 @@ export default function SystemSettingsPage() {
               </div>
               
               {/* Tab Header Edit Button */}
-              {!editStates.terms ? (
-                <button
-                  type="button"
-                  onClick={() => toggleEditTab('terms', true)}
-                  className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] rounded-none transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-                >
-                  <Edit2 size={13} />
-                  <span>Edit Terms</span>
-                </button>
-              ) : (
-                <span className="text-xs px-2.5 py-1 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 font-bold">
-                  Editing Mode Active
-                </span>
+              {canEdit && (
+                !editStates.terms ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleEditTab('terms', true)}
+                    className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] rounded-none transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Edit2 size={13} />
+                    <span>Edit Terms</span>
+                  </button>
+                ) : (
+                  <span className="text-xs px-2.5 py-1 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 font-bold">
+                    Editing Mode Active
+                  </span>
+                )
               )}
             </div>
 
@@ -2116,7 +2129,7 @@ export default function SystemSettingsPage() {
         )}
 
         {/* Bottom Save Action - Only shown when current active tab is being edited */}
-        {isCurrentTabEditing && (
+        {canEdit && isCurrentTabEditing && (
           <div className="flex items-center justify-end gap-3 pt-2 animate-in fade-in duration-150">
             <button
               type="button"

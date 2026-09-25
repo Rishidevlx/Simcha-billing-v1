@@ -34,15 +34,21 @@ import defaultAvatar from '../assets/avatar/Deafult Pfp.webp'
 
 export default function DepartmentListPage({ setActiveRoute }) {
   const { can, hasAny } = getUserPermissions()
-  const canAdd = can('departments_add', 'Add') || can('departments_list', 'Add') || can('departments', 'Add') || true
-  const canEdit = hasAny('departments_list', ['Edit']) || hasAny('departments', ['Edit']) || true
-  const canDelete = hasAny('departments_list', ['Delete']) || hasAny('departments', ['Delete']) || true
-  const canDownload = hasAny('departments_list', ['Download']) || hasAny('departments', ['Download']) || true
+  const canAdd = can('departments_add', 'Add') || can('departments_list', 'Add') || can('departments', 'Add')
+  const canEdit = hasAny('departments_list', ['Edit']) || hasAny('departments_add', ['Edit']) || hasAny('departments', ['Edit'])
+  const canDelete = hasAny('departments_list', ['Delete']) || hasAny('departments_add', ['Delete']) || hasAny('departments', ['Delete'])
+  const canDownload = hasAny('departments_list', ['Download']) || hasAny('departments_add', ['Download']) || hasAny('departments', ['Download'])
 
-  // Active Tab: Tab 1 = 'add' (+ ADD DEPARTMENT), Tab 2 = 'list' (DEPARTMENT LIST)
-  const [activeTab, setActiveTab] = useState('add')
+  // Active Tab: If user has Add permission, defaults to 'add', otherwise 'list'
+  const [activeTab, setActiveTab] = useState(canAdd ? 'add' : 'list')
   const [editingDeptId, setEditingDeptId] = useState(null)
   const [expandedDeptId, setExpandedDeptId] = useState(null)
+
+  useEffect(() => {
+    if (!canAdd && !editingDeptId && activeTab === 'add') {
+      setActiveTab('list')
+    }
+  }, [canAdd, editingDeptId, activeTab])
 
   // Departments & Users List State
   const [departments, setDepartments] = useState([])
@@ -364,22 +370,24 @@ export default function DepartmentListPage({ setActiveRoute }) {
 
       {/* 2. Top Navigation Tabs: Tab 1 = Add Department, Tab 2 = Department List */}
       <div className="flex items-center border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 pt-2 shadow-2xs">
-        <button
-          onClick={() => {
-            if (activeTab !== 'add') {
-              handleClearForm()
-            }
-            setActiveTab('add')
-          }}
-          className={`flex items-center gap-2 px-5 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
-            activeTab === 'add'
-              ? 'border-[#043486] dark:border-blue-500 text-[#043486] dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30'
-              : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200'
-          }`}
-        >
-          {editingDeptId ? <Edit2 size={16} /> : <Plus size={16} />}
-          <span>{editingDeptId ? 'Edit Department' : 'Add Department'}</span>
-        </button>
+        {(canAdd || editingDeptId) && (
+          <button
+            onClick={() => {
+              if (activeTab !== 'add') {
+                handleClearForm()
+              }
+              setActiveTab('add')
+            }}
+            className={`flex items-center gap-2 px-5 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+              activeTab === 'add'
+                ? 'border-[#043486] dark:border-blue-500 text-[#043486] dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30'
+                : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200'
+            }`}
+          >
+            {editingDeptId ? <Edit2 size={16} /> : <Plus size={16} />}
+            <span>{editingDeptId ? 'Edit Department' : 'Add Department'}</span>
+          </button>
+        )}
 
         <button
           onClick={() => {

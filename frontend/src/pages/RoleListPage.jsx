@@ -131,10 +131,16 @@ export default function RoleListPage({ setActiveRoute }) {
   const canDelete = hasAny('roles_list', ['Delete']) || hasAny('roles_add', ['Delete']) || hasAny('roles', ['Delete'])
   const canDownload = hasAny('roles_list', ['Download']) || hasAny('roles_add', ['Download']) || hasAny('roles', ['Download'])
 
-  // Active Tab: 1st Tab = 'add' (Add Role), 2nd Tab = 'list' (Role List)
-  const [activeTab, setActiveTab] = useState('add')
+  // Active Tab: If user has Add permission, defaults to 'add', otherwise 'list'
+  const [activeTab, setActiveTab] = useState(canAdd ? 'add' : 'list')
   const [editingRoleId, setEditingRoleId] = useState(null)
   const [expandedRoleId, setExpandedRoleId] = useState(null)
+
+  useEffect(() => {
+    if (!canAdd && !editingRoleId && activeTab === 'add') {
+      setActiveTab('list')
+    }
+  }, [canAdd, editingRoleId, activeTab])
 
   // Roles & Users List State
   const [roles, setRoles] = useState([])
@@ -467,7 +473,7 @@ export default function RoleListPage({ setActiveRoute }) {
               </button>
             )}
 
-            {canAdd && (
+            {(canAdd || (editingRoleId && activeTab === 'add')) && (
               <button
                 type="button"
                 onClick={() => {
@@ -497,7 +503,7 @@ export default function RoleListPage({ setActiveRoute }) {
 
       {/* Navigation Tabs */}
       <div className="flex border-b border-gray-200 dark:border-slate-800">
-        {canAdd && (
+        {(canAdd || editingRoleId) && (
           <button
             type="button"
             onClick={() => {

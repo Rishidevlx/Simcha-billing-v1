@@ -26,8 +26,12 @@ import {
 } from 'lucide-react'
 import Swal from 'sweetalert2'
 import { API_ENDPOINTS } from '../config/api'
+import { getUserPermissions } from '../utils/access'
 
 export default function ConfigurationsSettingsPage() {
+  const { can, hasAny } = getUserPermissions()
+  const canEdit = hasAny('settings_config', ['Edit']) || hasAny('settings', ['Edit']) || can('settings_config', 'Edit') || can('settings', 'Edit')
+
   const [activeTab, setActiveTab] = useState('mail') // 'mail' | 'cloudinary' | 'ai'
   const [isLoading, setIsLoading] = useState(true)
 
@@ -796,34 +800,36 @@ export default function ConfigurationsSettingsPage() {
                   </div>
                 </div>
 
-                {!isEditingSmtp ? (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingSmtp(true)}
-                    className="px-3 py-1.5 text-xs font-bold text-[#043486] dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-none border border-blue-200 dark:border-blue-900/50 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    <Edit2 size={13} />
-                    <span>Edit</span>
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-2">
+                {canEdit && (
+                  !isEditingSmtp ? (
                     <button
                       type="button"
-                      onClick={handleCancelSmtp}
-                      className="px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-none transition-colors cursor-pointer"
+                      onClick={() => setIsEditingSmtp(true)}
+                      className="px-3 py-1.5 text-xs font-bold text-[#043486] dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-none border border-blue-200 dark:border-blue-900/50 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
                     >
-                      Cancel
+                      <Edit2 size={13} />
+                      <span>Edit</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={handleSaveSmtp}
-                      disabled={isSavingSmtp}
-                      className="px-3 py-1 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] rounded-none transition-colors flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-50"
-                    >
-                      <Save size={12} />
-                      <span>{isSavingSmtp ? 'Saving...' : 'Save'}</span>
-                    </button>
-                  </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleCancelSmtp}
+                        className="px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-none transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveSmtp}
+                        disabled={isSavingSmtp}
+                        className="px-3 py-1 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] rounded-none transition-colors flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-50"
+                      >
+                        <Save size={12} />
+                        <span>{isSavingSmtp ? 'Saving...' : 'Save'}</span>
+                      </button>
+                    </div>
+                  )
                 )}
               </div>
 
@@ -982,34 +988,36 @@ export default function ConfigurationsSettingsPage() {
                   </div>
                 </div>
 
-                {!isEditingRecipient ? (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingRecipient(true)}
-                    className="px-3 py-1.5 text-xs font-bold text-[#043486] dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-none border border-blue-200 dark:border-blue-900/50 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    <Edit2 size={13} />
-                    <span>Edit</span>
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-2">
+                {canEdit && (
+                  !isEditingRecipient ? (
                     <button
                       type="button"
-                      onClick={handleCancelRecipient}
-                      className="px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-none transition-colors cursor-pointer"
+                      onClick={() => setIsEditingRecipient(true)}
+                      className="px-3 py-1.5 text-xs font-bold text-[#043486] dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-none border border-blue-200 dark:border-blue-900/50 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
                     >
-                      Cancel
+                      <Edit2 size={13} />
+                      <span>Edit</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={handleSaveRecipient}
-                      disabled={isSavingRecipient}
-                      className="px-3 py-1 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] rounded-none transition-colors flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-50"
-                    >
-                      <Save size={12} />
-                      <span>{isSavingRecipient ? 'Saving...' : 'Save'}</span>
-                    </button>
-                  </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleCancelRecipient}
+                        className="px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-none transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveRecipient}
+                        disabled={isSavingRecipient}
+                        className="px-3 py-1 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] rounded-none transition-colors flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-50"
+                      >
+                        <Save size={12} />
+                        <span>{isSavingRecipient ? 'Saving...' : 'Save'}</span>
+                      </button>
+                    </div>
+                  )
                 )}
               </div>
 
@@ -1262,34 +1270,36 @@ export default function ConfigurationsSettingsPage() {
               </div>
 
               <div className="flex items-center gap-2.5">
-                {!isEditingCloudinary ? (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingCloudinary(true)}
-                    className="px-5 py-2 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-none transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    <Edit2 size={13} />
-                    <span>Edit Credentials</span>
-                  </button>
-                ) : (
-                  <>
+                {canEdit && (
+                  !isEditingCloudinary ? (
                     <button
                       type="button"
-                      onClick={handleCancelCloudinary}
-                      className="px-4 py-2 text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-none transition-colors cursor-pointer border border-gray-300 dark:border-slate-700"
+                      onClick={() => setIsEditingCloudinary(true)}
+                      className="px-5 py-2 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-none transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
                     >
-                      Cancel
+                      <Edit2 size={13} />
+                      <span>Edit Credentials</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={handleSaveCloudinary}
-                      disabled={isSavingCloudinary}
-                      className="px-5 py-2 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-none transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
-                    >
-                      <Save size={13} />
-                      <span>{isSavingCloudinary ? 'Saving...' : 'Save Configuration'}</span>
-                    </button>
-                  </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleCancelCloudinary}
+                        className="px-4 py-2 text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-none transition-colors cursor-pointer border border-gray-300 dark:border-slate-700"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveCloudinary}
+                        disabled={isSavingCloudinary}
+                        className="px-5 py-2 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-none transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
+                      >
+                        <Save size={13} />
+                        <span>{isSavingCloudinary ? 'Saving...' : 'Save Configuration'}</span>
+                      </button>
+                    </>
+                  )
                 )}
               </div>
             </div>
@@ -1496,34 +1506,36 @@ export default function ConfigurationsSettingsPage() {
               </div>
 
               <div className="flex items-center gap-2.5">
-                {!isEditingAi ? (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingAi(true)}
-                    className="px-5 py-2 text-xs font-bold text-white bg-[#0248BC] hover:bg-[#043486] rounded-none transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    <Edit2 size={13} />
-                    <span>Edit Credentials</span>
-                  </button>
-                ) : (
-                  <>
+                {canEdit && (
+                  !isEditingAi ? (
                     <button
                       type="button"
-                      onClick={handleCancelAi}
-                      className="px-4 py-2 text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-none transition-colors cursor-pointer border border-gray-300 dark:border-slate-700"
+                      onClick={() => setIsEditingAi(true)}
+                      className="px-5 py-2 text-xs font-bold text-white bg-[#0248BC] hover:bg-[#043486] rounded-none transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
                     >
-                      Cancel
+                      <Edit2 size={13} />
+                      <span>Edit Credentials</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={handleSaveAi}
-                      disabled={isSavingAi}
-                      className="px-5 py-2 text-xs font-bold text-white bg-[#0248BC] hover:bg-[#043486] rounded-none transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
-                    >
-                      <Save size={13} />
-                      <span>{isSavingAi ? 'Saving...' : 'Save Configuration'}</span>
-                    </button>
-                  </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleCancelAi}
+                        className="px-4 py-2 text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-none transition-colors cursor-pointer border border-gray-300 dark:border-slate-700"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveAi}
+                        disabled={isSavingAi}
+                        className="px-5 py-2 text-xs font-bold text-white bg-[#0248BC] hover:bg-[#043486] rounded-none transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
+                      >
+                        <Save size={13} />
+                        <span>{isSavingAi ? 'Saving...' : 'Save Configuration'}</span>
+                      </button>
+                    </>
+                  )
                 )}
               </div>
             </div>

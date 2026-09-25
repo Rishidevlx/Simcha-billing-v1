@@ -145,12 +145,14 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
 
   // Select / Deselect Handlers
   const handleToggleSelect = (id) => {
+    if (!canDelete) return
     setSelectedIds(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     )
   }
 
   const handleSelectAll = () => {
+    if (!canDelete) return
     if (selectedIds.length === filteredMaterials.length && filteredMaterials.length > 0) {
       setSelectedIds([])
     } else {
@@ -158,8 +160,8 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
     }
   }
 
-  const isAllSelected = filteredMaterials.length > 0 && selectedIds.length === filteredMaterials.length
-  const isPartiallySelected = selectedIds.length > 0 && selectedIds.length < filteredMaterials.length
+  const isAllSelected = canDelete && filteredMaterials.length > 0 && selectedIds.length === filteredMaterials.length
+  const isPartiallySelected = canDelete && selectedIds.length > 0 && selectedIds.length < filteredMaterials.length
 
   // Execute Actual Permanent Backend Deletion
   const executePermanentDelete = async (ids) => {
@@ -246,6 +248,8 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
 
   // Single Material Delete
   const handleDelete = async (id, matName) => {
+    if (!canDelete) return
+
     const result = await Swal.fire({
       title: 'Are you sure?',
       text: `Do you want to delete material "${matName}"?`,
@@ -264,7 +268,7 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
 
   // Bulk Delete Action
   const handleBulkDelete = async () => {
-    if (selectedIds.length === 0) return
+    if (!canDelete || selectedIds.length === 0) return
 
     const count = selectedIds.length
     const result = await Swal.fire({
@@ -351,8 +355,8 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
       </div>
 
 
-      {/* Bulk Action Bar (White BG / Dark Slate, Clean Design Without Blinking) */}
-      {selectedIds.length > 0 && (
+      {/* Bulk Action Bar (White BG / Dark Slate, Protected with canDelete) */}
+      {canDelete && selectedIds.length > 0 && (
         <div className="bg-white dark:bg-slate-900 text-[#292424] dark:text-white px-4 py-2.5 rounded-sm shadow-sm flex flex-wrap items-center justify-between gap-3 border border-gray-200 dark:border-slate-800 animate-in slide-in-from-top-2 duration-150">
           <div className="flex items-center gap-2.5">
             <span className="px-2.5 py-1 text-xs font-bold text-[#043486] dark:text-blue-300 bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-900 rounded-xs">
@@ -452,19 +456,21 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="bg-gray-100/80 dark:bg-slate-800/90 border-b border-gray-200 dark:border-slate-800 text-gray-600 dark:text-slate-300 font-bold uppercase text-[11px] tracking-wide">
-                {/* Select All Checkbox */}
-                <th className="py-3 px-3.5 w-10 text-center">
-                  <input
-                    type="checkbox"
-                    checked={isAllSelected}
-                    ref={input => {
-                      if (input) input.indeterminate = isPartiallySelected
-                    }}
-                    onChange={handleSelectAll}
-                    disabled={isLoading || filteredMaterials.length === 0}
-                    className="w-4 h-4 text-[#043486] rounded-xs border-gray-300 dark:border-slate-600 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-[#043486]"
-                  />
-                </th>
+                {/* Select All Checkbox (Only if canDelete) */}
+                {canDelete && (
+                  <th className="py-3 px-3.5 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      ref={input => {
+                        if (input) input.indeterminate = isPartiallySelected
+                      }}
+                      onChange={handleSelectAll}
+                      disabled={isLoading || filteredMaterials.length === 0}
+                      className="w-4 h-4 text-[#043486] rounded-xs border-gray-300 dark:border-slate-600 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-[#043486]"
+                    />
+                  </th>
+                )}
                 <th className="py-3 px-3.5 w-14">S.No</th>
                 <th className="py-3 px-3.5">Material Name</th>
                 <th className="py-3 px-3.5">Category</th>
@@ -483,9 +489,11 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
               {isLoading ? (
                 Array.from({ length: pageSize > 5 ? 5 : pageSize }).map((_, index) => (
                   <tr key={index} className="animate-pulse">
-                    <td className="py-3.5 px-3.5 text-center">
-                      <div className="w-4 h-4 bg-gray-200 dark:bg-slate-700/80 rounded-xs mx-auto" />
-                    </td>
+                    {canDelete && (
+                      <td className="py-3.5 px-3.5 text-center">
+                        <div className="w-4 h-4 bg-gray-200 dark:bg-slate-700/80 rounded-xs mx-auto" />
+                      </td>
+                    )}
                     <td className="py-3.5 px-3.5">
                       <div className="w-6 h-3 bg-gray-200 dark:bg-slate-700/80 rounded-xs" />
                     </td>
@@ -522,7 +530,7 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
                 ))
               ) : paginatedMaterials.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-12 text-gray-400 dark:text-slate-500">
+                  <td colSpan={canDelete ? 11 : 10} className="text-center py-12 text-gray-400 dark:text-slate-500">
                     <Boxes size={32} className="mx-auto text-gray-300 dark:text-slate-600 mb-2" />
                     <p className="font-semibold text-gray-600 dark:text-slate-400">No materials found.</p>
                     <p className="text-[11px] text-gray-400 mt-0.5">Click "Add New Material" to create your first item.</p>
@@ -541,15 +549,17 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
                           : 'hover:bg-blue-50/40 dark:hover:bg-slate-800/50'
                       }`}
                     >
-                      {/* Checkbox */}
-                      <td className="py-3.5 px-3.5 text-center">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleToggleSelect(mat.id)}
-                          className="w-4 h-4 text-[#043486] rounded-xs border-gray-300 dark:border-slate-600 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-[#043486]"
-                        />
-                      </td>
+                      {/* Checkbox (Only if canDelete) */}
+                      {canDelete && (
+                        <td className="py-3.5 px-3.5 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelect(mat.id)}
+                            className="w-4 h-4 text-[#043486] rounded-xs border-gray-300 dark:border-slate-600 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-[#043486]"
+                          />
+                        </td>
+                      )}
 
                       {/* S.No */}
                       <td className="py-3.5 px-3.5 text-gray-500 dark:text-slate-400 font-medium">
@@ -654,6 +664,10 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
                             >
                               <Trash2 size={13} />
                             </button>
+                          )}
+
+                          {!canEdit && !canDelete && (
+                            <span className="text-gray-400 dark:text-slate-500 text-xs italic">—</span>
                           )}
                         </div>
                       </td>

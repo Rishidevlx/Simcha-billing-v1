@@ -129,9 +129,15 @@ export default function UserListPage({ setActiveRoute }) {
   const canDelete = hasAny('users_list', ['Delete']) || hasAny('users_add', ['Delete']) || hasAny('users', ['Delete'])
   const canDownload = hasAny('users_list', ['Download']) || hasAny('users_add', ['Download']) || hasAny('users', ['Download'])
 
-  // Active Tab: Tab 1 = 'add' (+ ADD USER), Tab 2 = 'list' (USERS LIST)
-  const [activeTab, setActiveTab] = useState('add')
+  // Active Tab: If user has Add permission, defaults to 'add', otherwise 'list'
+  const [activeTab, setActiveTab] = useState(canAdd ? 'add' : 'list')
   const [editingUserId, setEditingUserId] = useState(null)
+
+  useEffect(() => {
+    if (!canAdd && !editingUserId && activeTab === 'add') {
+      setActiveTab('list')
+    }
+  }, [canAdd, editingUserId, activeTab])
 
   // Users List State
   const [users, setUsers] = useState([])
@@ -569,22 +575,24 @@ export default function UserListPage({ setActiveRoute }) {
 
       {/* 2. Top Navigation Tabs: Tab 1 = Add User, Tab 2 = Users List */}
       <div className="flex items-center border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 pt-2 shadow-2xs">
-        <button
-          onClick={() => {
-            if (activeTab !== 'add') {
-              handleClearForm()
-            }
-            setActiveTab('add')
-          }}
-          className={`flex items-center gap-2 px-5 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
-            activeTab === 'add'
-              ? 'border-[#043486] dark:border-blue-500 text-[#043486] dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30'
-              : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200'
-          }`}
-        >
-          {editingUserId ? <Edit2 size={16} /> : <Plus size={16} />}
-          <span>{editingUserId ? 'Edit User' : 'Add User'}</span>
-        </button>
+        {(canAdd || editingUserId) && (
+          <button
+            onClick={() => {
+              if (activeTab !== 'add') {
+                handleClearForm()
+              }
+              setActiveTab('add')
+            }}
+            className={`flex items-center gap-2 px-5 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+              activeTab === 'add'
+                ? 'border-[#043486] dark:border-blue-500 text-[#043486] dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30'
+                : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200'
+            }`}
+          >
+            {editingUserId ? <Edit2 size={16} /> : <Plus size={16} />}
+            <span>{editingUserId ? 'Edit User' : 'Add User'}</span>
+          </button>
+        )}
 
         <button
           onClick={() => {
