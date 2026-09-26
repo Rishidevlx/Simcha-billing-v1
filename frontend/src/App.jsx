@@ -17,6 +17,7 @@ import ReturnsAdjustmentsPage from './pages/ReturnsAdjustmentsPage'
 import ProfileSettingsPage from './pages/ProfileSettingsPage'
 import SystemSettingsPage from './pages/SystemSettingsPage'
 import ConfigurationsSettingsPage from './pages/ConfigurationsSettingsPage'
+import ThemeSettingsPage from './pages/ThemeSettingsPage'
 import UserManualPage from './pages/UserManualPage'
 import AddRolePage from './pages/AddRolePage'
 import RoleListPage from './pages/RoleListPage'
@@ -196,6 +197,9 @@ export default function App() {
 
           <Route path="settings/configurations" element={<ConfigurationsSettingsPage />} />
           <Route path="configurations-settings" element={<Navigate to="/settings/configurations" replace />} />
+
+          <Route path="settings/theme" element={<ThemeSettingsPage />} />
+          <Route path="theme-settings" element={<Navigate to="/settings/theme" replace />} />
 
           {/* User Manual Route */}
           <Route path="user-manual" element={<UserManualPage />} />

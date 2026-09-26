@@ -150,6 +150,7 @@ export default function Sidebar({
       subItems: [
         { id: 'profile-settings', title: 'Profile Settings', path: '/settings/profile' },
         { id: 'system-settings', title: 'System Settings', path: '/settings/system' },
+        { id: 'theme-settings', title: 'Theme Settings', path: '/settings/theme' },
         { id: 'configurations-settings', title: 'Configurations Settings', path: '/settings/configurations' }
       ]
     },
@@ -177,6 +178,7 @@ export default function Sidebar({
     if (sub.id === 'returns-adjustments' && (currentPath === '/inventory/returns' || currentPath === '/returns' || currentPath === '/returns-adjustments')) return true
     if (sub.id === 'profile-settings' && (currentPath === '/profile-settings' || currentPath === '/settings/profile' || currentPath === '/profile')) return true
     if (sub.id === 'system-settings' && (currentPath === '/system-settings' || currentPath === '/settings/system')) return true
+    if (sub.id === 'theme-settings' && (currentPath === '/theme-settings' || currentPath === '/settings/theme')) return true
     if (sub.id === 'configurations-settings' && (currentPath === '/configurations-settings' || currentPath === '/settings/configurations')) return true
     if (sub.id === 'departments-menu' && (currentPath === '/departments' || currentPath.startsWith('/departments'))) return true
     if (sub.id === 'roles-menu' && (currentPath === '/roles' || currentPath.startsWith('/roles'))) return true
