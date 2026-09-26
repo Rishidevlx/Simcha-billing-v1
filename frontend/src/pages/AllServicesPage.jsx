@@ -898,20 +898,10 @@ export default function AllServicesPage({ setActiveRoute }) {
                         </select>
                       </td>
 
-                      {/* 9. Actions (Print, View, Serial Numbers Check, Send, Delete) */}
+                      {/* 9. Actions (View, Serial Numbers Check, Send, Delete) */}
                       <td className="p-3 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1.5">
-                          {/* 1. Print Invoice Icon (Emerald) */}
-                          <button
-                            type="button"
-                            onClick={() => handleDirectPrintService(service.id)}
-                            title="Print Service Invoice"
-                            className="p-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                          >
-                            <Printer className="w-4 h-4" />
-                          </button>
-
-                          {/* 2. View Service Invoice Modal Icon (Purple) */}
+                          {/* 1. View Service Invoice Modal Icon (Purple) */}
                           <button
                             type="button"
                             onClick={() => handleViewService(service.id)}

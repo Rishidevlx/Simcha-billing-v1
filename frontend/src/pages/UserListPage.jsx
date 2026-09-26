@@ -565,7 +565,7 @@ export default function UserListPage({ setActiveRoute }) {
               onClick={() => {
                 setActiveTab('list')
               }}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-600 hover:bg-gray-700 text-white font-bold text-xs rounded-none shadow-xs transition-all cursor-pointer"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#043486] hover:bg-[#0248BC] text-white font-bold text-xs rounded-none shadow-xs transition-all cursor-pointer"
             >
               <List size={15} />
               <span>VIEW USERS LIST</span>

@@ -934,16 +934,7 @@ export default function AllBillsPage({ setActiveRoute }) {
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-center">
                         <div className="flex items-center justify-center gap-1">
-                          {/* 1. Direct Print Invoice */}
-                          <button
-                            onClick={() => handlePrintDirect(bill.id)}
-                            className="p-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                            title="Direct Print Invoice"
-                          >
-                            <Printer size={15} />
-                          </button>
-
-                          {/* 2. Direct Print Receipt (Active ONLY when Paid) */}
+                          {/* 1. Direct Print Receipt (Active ONLY when Paid) */}
                           <button
                             onClick={() => handlePrintReceipt(bill.id)}
                             disabled={!isPaid}
