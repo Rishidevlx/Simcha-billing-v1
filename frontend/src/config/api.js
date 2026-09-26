@@ -49,6 +49,22 @@ export const API_ENDPOINTS = {
   AI_CONFIG: `${API_BASE_URL}/api/ai/config`,
   AI_TEST: `${API_BASE_URL}/api/ai/test`,
   AI_CHAT: `${API_BASE_URL}/api/ai/chat`,
+  ROLES: `${API_BASE_URL}/api/roles`,
+  ROLE_BY_ID: (id) => `${API_BASE_URL}/api/roles/${id}`,
+  ROLE_STATUS: (id) => `${API_BASE_URL}/api/roles/${id}/status`,
+
+  USERS: `${API_BASE_URL}/api/users`,
+  USER_BY_ID: (id) => `${API_BASE_URL}/api/users/${id}`,
+  USER_RESEND_INVITE: (userId) => `${API_BASE_URL}/api/users/${userId}/resend-invite`,
+
+  DEPARTMENTS: `${API_BASE_URL}/api/departments`,
+  DEPARTMENT_BY_ID: (id) => `${API_BASE_URL}/api/departments/${id}`,
+
+  AUTH_FORGOT_PASSWORD_SEND_OTP: `${API_BASE_URL}/api/auth/forgot-password/send-otp`,
+  AUTH_FORGOT_PASSWORD_VERIFY_OTP: `${API_BASE_URL}/api/auth/forgot-password/verify-otp`,
+  AUTH_VERIFY_RESET_TOKEN: (query) => `${API_BASE_URL}/api/auth/verify-reset-token${query ? `?${query}` : ''}`,
+  AUTH_RESET_PASSWORD: `${API_BASE_URL}/api/auth/reset-password`,
+
   HEALTH: `${API_BASE_URL}/api/health`
 }
 

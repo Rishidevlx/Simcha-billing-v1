@@ -16,6 +16,7 @@ import {
 import Swal from 'sweetalert2'
 import logoImage from '../assets/Logo/Logo-bg-remove.webp'
 import resetIllustration from '../assets/reset_illustration.png'
+import { API_ENDPOINTS } from '../config/api'
 
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams()
@@ -53,7 +54,7 @@ export default function ResetPasswordPage() {
 
       try {
         const query = new URLSearchParams({ token, email: emailParam }).toString()
-        const res = await fetch(`/api/auth/verify-reset-token?${query}`)
+        const res = await fetch(API_ENDPOINTS.AUTH_VERIFY_RESET_TOKEN(query))
         const data = await res.json()
 
         if (data.success && data.valid) {
@@ -152,7 +153,7 @@ export default function ResetPasswordPage() {
     setIsSubmitting(true)
 
     try {
-      const res = await fetch('/api/auth/reset-password', {
+      const res = await fetch(API_ENDPOINTS.AUTH_RESET_PASSWORD, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

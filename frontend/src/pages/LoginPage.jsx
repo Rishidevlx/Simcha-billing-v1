@@ -89,7 +89,7 @@ export default function LoginPage({ onLogin }) {
     setForgotError('')
 
     try {
-      const res = await fetch('/api/auth/forgot-password/send-otp', {
+      const res = await fetch(API_ENDPOINTS.AUTH_FORGOT_PASSWORD_SEND_OTP, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail.trim() })
@@ -160,7 +160,7 @@ export default function LoginPage({ onLogin }) {
     setForgotError('')
 
     try {
-      const res = await fetch('/api/auth/forgot-password/verify-otp', {
+      const res = await fetch(API_ENDPOINTS.AUTH_FORGOT_PASSWORD_VERIFY_OTP, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

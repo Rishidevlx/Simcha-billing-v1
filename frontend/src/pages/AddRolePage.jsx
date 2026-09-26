@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Save, RefreshCw } from 'lucide-react'
 import Swal from 'sweetalert2'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { API_ENDPOINTS } from '../config/api'
 
 const PERMISSIONS_DATA = [
   {
@@ -122,7 +123,7 @@ export default function AddRolePage() {
   const fetchRoleDetails = async (id) => {
     setIsLoading(true)
     try {
-      const res = await fetch(`/api/roles/${id}`)
+      const res = await fetch(API_ENDPOINTS.ROLE_BY_ID(id))
       const data = await res.json()
       if (data.success && data.role) {
         setRoleName(data.role.name)
@@ -179,7 +180,7 @@ export default function AddRolePage() {
 
     setIsSaving(true)
     try {
-      const url = editId ? `/api/roles/${editId}` : '/api/roles'
+      const url = editId ? API_ENDPOINTS.ROLE_BY_ID(editId) : API_ENDPOINTS.ROLES
       const method = editId ? 'PUT' : 'POST'
 
       const res = await fetch(url, {

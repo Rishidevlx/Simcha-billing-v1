@@ -24,6 +24,7 @@ import ListPageHeader from '../components/common/ListPageHeader'
 import ListPagePagination from '../components/common/ListPagePagination'
 import ListKpiCard from '../components/common/ListKpiCard'
 import { getUserPermissions } from '../utils/access'
+import { API_ENDPOINTS } from '../config/api'
 import maleAvatar from '../assets/avatar/Male avatar.webp'
 import femaleAvatar from '../assets/avatar/Female Avatar.webp'
 import defaultAvatar from '../assets/avatar/Deafult Pfp.webp'
@@ -167,7 +168,7 @@ export default function RoleListPage({ setActiveRoute }) {
   const fetchRoles = async () => {
     setIsLoading(true)
     try {
-      const res = await fetch('/api/roles')
+      const res = await fetch(API_ENDPOINTS.ROLES)
       const data = await res.json()
       if (data.success && data.roles) {
         setRoles(data.roles)
@@ -184,7 +185,7 @@ export default function RoleListPage({ setActiveRoute }) {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/users')
+      const res = await fetch(API_ENDPOINTS.USERS)
       const data = await res.json()
       if (data.success) {
         setAllUsers(data.users || [])
@@ -209,7 +210,7 @@ export default function RoleListPage({ setActiveRoute }) {
   const loadRoleDetails = async (id) => {
     setIsFormLoading(true)
     try {
-      const res = await fetch(`/api/roles/${id}`)
+      const res = await fetch(API_ENDPOINTS.ROLE_BY_ID(id))
       const data = await res.json()
       if (data.success && data.role) {
         setRoleName(data.role.name || '')
@@ -302,7 +303,7 @@ export default function RoleListPage({ setActiveRoute }) {
 
     if (result.isConfirmed) {
       try {
-        const res = await fetch(`/api/roles/${role.id}/status`, { method: 'PATCH' })
+        const res = await fetch(API_ENDPOINTS.ROLE_STATUS(role.id), { method: 'PATCH' })
         const data = await res.json()
         if (data.success) {
           Swal.fire({
@@ -346,7 +347,7 @@ export default function RoleListPage({ setActiveRoute }) {
 
     if (result.isConfirmed) {
       try {
-        const res = await fetch(`/api/roles/${id}`, { method: 'DELETE' })
+        const res = await fetch(API_ENDPOINTS.ROLE_BY_ID(id), { method: 'DELETE' })
         const data = await res.json()
         if (data.success) {
           Swal.fire({ icon: 'success', title: 'Deleted!', text: 'Role deleted successfully.', timer: 1500, showConfirmButton: false })
@@ -412,7 +413,7 @@ export default function RoleListPage({ setActiveRoute }) {
 
     setIsSaving(true)
     try {
-      const url = editingRoleId ? `/api/roles/${editingRoleId}` : '/api/roles'
+      const url = editingRoleId ? API_ENDPOINTS.ROLE_BY_ID(editingRoleId) : API_ENDPOINTS.ROLES
       const method = editingRoleId ? 'PUT' : 'POST'
 
       const res = await fetch(url, {

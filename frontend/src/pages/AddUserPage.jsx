@@ -46,7 +46,7 @@ export default function AddUserPage() {
   const fetchUserData = async (id) => {
     setIsLoading(true)
     try {
-      const res = await fetch(`/api/users/${id}`)
+      const res = await fetch(API_ENDPOINTS.USER_BY_ID(id))
       const data = await res.json()
       if (data.success && data.user) {
         setFormData({
@@ -70,7 +70,7 @@ export default function AddUserPage() {
 
   const fetchRoles = async () => {
     try {
-      const res = await fetch('/api/roles') // Assuming this is defined
+      const res = await fetch(API_ENDPOINTS.ROLES)
       const data = await res.json()
       if (data.success && data.roles) {
         setAvailableRoles(data.roles)
@@ -115,7 +115,7 @@ export default function AddUserPage() {
     setIsSaving(true)
     
     try {
-      const url = editId ? `/api/users/${editId}` : '/api/users'
+      const url = editId ? API_ENDPOINTS.USER_BY_ID(editId) : API_ENDPOINTS.USERS
       const method = editId ? 'PUT' : 'POST'
       
       const res = await fetch(url, {

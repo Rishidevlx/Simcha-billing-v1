@@ -28,6 +28,7 @@ import ListPageHeader from '../components/common/ListPageHeader'
 import ListPagePagination from '../components/common/ListPagePagination'
 import ListKpiCard from '../components/common/ListKpiCard'
 import { getUserPermissions } from '../utils/access'
+import { API_ENDPOINTS } from '../config/api'
 import maleAvatar from '../assets/avatar/Male avatar.webp'
 import femaleAvatar from '../assets/avatar/Female Avatar.webp'
 import defaultAvatar from '../assets/avatar/Deafult Pfp.webp'
@@ -73,7 +74,7 @@ export default function DepartmentListPage({ setActiveRoute }) {
   const fetchDepartments = async () => {
     setIsLoading(true)
     try {
-      const res = await fetch('/api/departments')
+      const res = await fetch(API_ENDPOINTS.DEPARTMENTS)
       const data = await res.json()
       if (data.success) {
         setDepartments(data.departments || [])
@@ -100,7 +101,7 @@ export default function DepartmentListPage({ setActiveRoute }) {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/users')
+      const res = await fetch(API_ENDPOINTS.USERS)
       const data = await res.json()
       if (data.success) {
         setAllUsers(data.users || [])
@@ -119,7 +120,7 @@ export default function DepartmentListPage({ setActiveRoute }) {
   const loadDeptDetails = async (id) => {
     setIsFormLoading(true)
     try {
-      const res = await fetch(`/api/departments/${id}`)
+      const res = await fetch(API_ENDPOINTS.DEPARTMENT_BY_ID(id))
       const data = await res.json()
       if (data.success && data.department) {
         setFormData({
@@ -200,7 +201,7 @@ export default function DepartmentListPage({ setActiveRoute }) {
 
     if (result.isConfirmed) {
       try {
-        const res = await fetch(`/api/departments/${id}`, { method: 'DELETE' })
+        const res = await fetch(API_ENDPOINTS.DEPARTMENT_BY_ID(id), { method: 'DELETE' })
         const data = await res.json()
         if (data.success) {
           setDepartments((prev) => prev.filter((d) => d.id !== id))
@@ -275,7 +276,7 @@ export default function DepartmentListPage({ setActiveRoute }) {
 
     setIsSaving(true)
     try {
-      const url = editingDeptId ? `/api/departments/${editingDeptId}` : '/api/departments'
+      const url = editingDeptId ? API_ENDPOINTS.DEPARTMENT_BY_ID(editingDeptId) : API_ENDPOINTS.DEPARTMENTS
       const method = editingDeptId ? 'PUT' : 'POST'
 
       const res = await fetch(url, {

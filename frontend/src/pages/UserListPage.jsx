@@ -28,6 +28,7 @@ import ListPageHeader from '../components/common/ListPageHeader'
 import ListPagePagination from '../components/common/ListPagePagination'
 import ListKpiCard from '../components/common/ListKpiCard'
 import { getUserPermissions } from '../utils/access'
+import { API_ENDPOINTS } from '../config/api'
 
 function SearchableCombobox({
   value,
@@ -169,7 +170,7 @@ export default function UserListPage({ setActiveRoute }) {
   const fetchUsers = async () => {
     setIsLoading(true)
     try {
-      const res = await fetch('/api/users')
+      const res = await fetch(API_ENDPOINTS.USERS)
       const data = await res.json()
       if (data.success) {
         setUsers(data.users || [])
@@ -196,7 +197,7 @@ export default function UserListPage({ setActiveRoute }) {
 
   const fetchRoles = async () => {
     try {
-      const res = await fetch('/api/roles')
+      const res = await fetch(API_ENDPOINTS.ROLES)
       const data = await res.json()
       if (data.success && data.roles) {
         setAvailableRoles(data.roles.filter(r => r.status === 'Active' || !r.status))
@@ -218,7 +219,7 @@ export default function UserListPage({ setActiveRoute }) {
 
   const fetchDepartments = async () => {
     try {
-      const res = await fetch('/api/departments')
+      const res = await fetch(API_ENDPOINTS.DEPARTMENTS)
       const data = await res.json()
       if (data.success && data.departments) {
         setAvailableDepartments(data.departments.filter(d => d.status === 'Active'))
@@ -238,7 +239,7 @@ export default function UserListPage({ setActiveRoute }) {
   const loadUserDetails = async (id) => {
     setIsFormLoading(true)
     try {
-      const res = await fetch(`/api/users/${id}`)
+      const res = await fetch(API_ENDPOINTS.USER_BY_ID(id))
       const data = await res.json()
       if (data.success && data.user) {
         setFormData({
@@ -334,7 +335,7 @@ export default function UserListPage({ setActiveRoute }) {
 
     if (result.isConfirmed) {
       try {
-        const res = await fetch(`/api/users/${id}`, { method: 'DELETE' })
+        const res = await fetch(API_ENDPOINTS.USER_BY_ID(id), { method: 'DELETE' })
         const data = await res.json()
         if (data.success) {
           setUsers(prev => prev.filter(u => u.id !== id))
@@ -386,7 +387,7 @@ export default function UserListPage({ setActiveRoute }) {
           didOpen: () => Swal.showLoading()
         })
 
-        const res = await fetch(`/api/users/${userId}/resend-invite`, { method: 'POST' })
+        const res = await fetch(API_ENDPOINTS.USER_RESEND_INVITE(userId), { method: 'POST' })
         const data = await res.json()
 
         if (data.success) {
@@ -486,7 +487,7 @@ export default function UserListPage({ setActiveRoute }) {
 
     setIsSaving(true)
     try {
-      const url = editingUserId ? `/api/users/${editingUserId}` : '/api/users'
+      const url = editingUserId ? API_ENDPOINTS.USER_BY_ID(editingUserId) : API_ENDPOINTS.USERS
       const method = editingUserId ? 'PUT' : 'POST'
       
       const res = await fetch(url, {
