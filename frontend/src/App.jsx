@@ -25,6 +25,7 @@ import AddUserPage from './pages/AddUserPage'
 import UserListPage from './pages/UserListPage'
 import DepartmentListPage from './pages/DepartmentListPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+import { ThemeProvider } from './context/ThemeContext'
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -87,7 +88,8 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
       <Routes>
         {/* Public Login Route */}
         <Route
@@ -210,6 +212,7 @@ export default function App() {
         </Route>
       </Routes>
     </BrowserRouter>
+  </ThemeProvider>
   )
 }
 
