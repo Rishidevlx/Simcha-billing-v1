@@ -18,7 +18,8 @@ import {
   AlertCircle,
   CheckSquare,
   Square,
-  Percent
+  Percent,
+  Clock
 } from 'lucide-react'
 import Swal from 'sweetalert2'
 import SearchableSelect from '../components/common/SearchableSelect'
@@ -26,6 +27,16 @@ import ServiceInvoiceTemplate from '../components/invoice/ServiceInvoiceTemplate
 import { Button } from '../components/ui'
 import { API_ENDPOINTS } from '../config/api'
 import { numberToIndianRupees } from '../utils/numberToWords'
+
+export const SERVICE_STATUS_STAGES = [
+  'Received',
+  'Quotation',
+  'Customer Approval',
+  'Payment Received',
+  'Repair In-Progress',
+  'Ready',
+  'Delivered'
+]
 
 const INDIAN_STATES = [
   '01 - Jammu & Kashmir',
@@ -736,6 +747,48 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Service Lifecycle Stages Tracker Bar */}
+        <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-4 shadow-sm transition-colors">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 mb-3 border-b border-gray-100 dark:border-slate-800 text-xs font-bold text-gray-700 dark:text-slate-300">
+            <span className="flex items-center gap-2 text-[#043486] dark:text-blue-400 uppercase tracking-wide text-xs">
+              <Clock size={15} />
+              <span>Service Lifecycle Stages Tracker</span>
+            </span>
+            <span className="text-[11px] font-mono text-gray-500 dark:text-slate-400">
+              Current Stage:{' '}
+              <strong className="text-[#043486] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 border border-blue-200 dark:border-blue-900">
+                {serviceStatus}
+              </strong>
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+            {SERVICE_STATUS_STAGES.map((stage, idx) => {
+              const stageIdx = SERVICE_STATUS_STAGES.indexOf(serviceStatus)
+              const isCurrent = serviceStatus === stage
+              const isPast = idx < stageIdx
+
+              return (
+                <button
+                  key={stage}
+                  type="button"
+                  onClick={() => setServiceStatus(stage)}
+                  className={`p-2.5 text-center text-xs font-semibold rounded-none border transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                    isCurrent
+                      ? 'bg-[#043486] text-white border-[#043486] shadow-xs'
+                      : isPast
+                      ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
+                      : 'bg-gray-50 dark:bg-slate-800/60 text-gray-600 dark:text-slate-400 border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <span className="text-[10px] font-mono opacity-80 font-bold">STAGE {idx + 1}</span>
+                  <span className="leading-tight text-[11px]">{stage}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* ================= LEFT MAIN COLUMN (8 COLS) ================= */}
           <div className="lg:col-span-8 space-y-6">
@@ -1067,6 +1120,57 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
                     </p>
                   </div>
                 )}
+
+                {/* Service Stage, Payment Mode & Diagnosis Notes Inputs */}
+                <div className="pt-3 border-t border-gray-200 dark:border-slate-800 space-y-3 text-xs">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-600 dark:text-slate-300 mb-1">
+                      Service Stage Status
+                    </label>
+                    <select
+                      value={serviceStatus}
+                      onChange={(e) => setServiceStatus(e.target.value)}
+                      className="w-full px-3 py-2 text-xs font-semibold text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 cursor-pointer"
+                    >
+                      {SERVICE_STATUS_STAGES.map((st) => (
+                        <option key={st} value={st}>
+                          {st}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-600 dark:text-slate-300 mb-1">
+                      Payment Mode
+                    </label>
+                    <select
+                      value={paymentMode}
+                      onChange={(e) => setPaymentMode(e.target.value)}
+                      className="w-full px-3 py-2 text-xs font-semibold text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 cursor-pointer"
+                    >
+                      <option value="">Select Payment Mode</option>
+                      <option value="Cash">Cash</option>
+                      <option value="UPI / Online">UPI / Online</option>
+                      <option value="Bank Transfer (NEFT/RTGS)">Bank Transfer (NEFT/RTGS)</option>
+                      <option value="Credit / Debit Card">Credit / Debit Card</option>
+                      <option value="Cheque">Cheque</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-600 dark:text-slate-300 mb-1">
+                      Diagnosis &amp; Technician Notes
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="Enter technician diagnosis / remarks..."
+                      className="w-full px-3 py-2 text-xs text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 placeholder:text-gray-400 dark:placeholder:text-slate-500 resize-none font-medium"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Action Buttons */}

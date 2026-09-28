@@ -42,8 +42,7 @@ import ServiceReceiptTemplate from '../components/receipt/ServiceReceiptTemplate
 import ListPageHeader from '../components/common/ListPageHeader'
 import ListKpiCard from '../components/common/ListKpiCard'
 import ListDateRangeFilter from '../components/common/ListDateRangeFilter'
-import ListPagePagination from '../components/common/ListPagePagination'
-import { Button, ActionButton, SearchInput } from '../components/ui'
+import { Button, ActionButton, SearchInput, DataTable, Pagination } from '../components/ui'
 import { API_ENDPOINTS } from '../config/api'
 import { getUserPermissions } from '../utils/access'
 
@@ -597,6 +596,173 @@ export default function AllServicesPage({ setActiveRoute }) {
     }
   }
 
+  // Define DataTable column configurations for modularity & future extensions
+  const serviceTableColumns = useMemo(
+    () => [
+      {
+        header: 'Service ID',
+        key: 'service_number',
+        className: 'font-semibold text-[#043486] dark:text-blue-400 font-mono whitespace-nowrap'
+      },
+      {
+        header: 'Date',
+        key: 'service_date',
+        className: 'text-slate-600 dark:text-slate-300 whitespace-nowrap',
+        render: (val) =>
+          val
+            ? new Date(val).toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+              })
+            : '-'
+      },
+      {
+        header: 'Customer',
+        key: 'customer_name',
+        className: 'min-w-[140px] font-semibold text-slate-800 dark:text-slate-200'
+      },
+      {
+        header: 'Mobile Number',
+        key: 'customer_phone',
+        className: 'font-mono text-slate-700 dark:text-slate-300 font-medium whitespace-nowrap',
+        render: (val) => val || <span className="text-slate-400">-</span>
+      },
+      {
+        header: 'Product & QTY',
+        key: 'items',
+        className: 'min-w-[160px]',
+        render: (_, row) => {
+          const itemsList = row.items || []
+          return itemsList.length > 0 ? (
+            <div className="space-y-1">
+              {itemsList.map((it, idx) => (
+                <div key={idx} className="text-xs text-slate-800 dark:text-slate-200">
+                  <span className="font-semibold">{it.product_name || it.item_name}</span>
+                  <span className="text-slate-600 dark:text-slate-400 ml-1.5 font-mono">
+                    - {parseFloat(it.quantity) || 1}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <span className="text-slate-400 text-xs">-</span>
+          )
+        }
+      },
+      {
+        header: 'Total',
+        align: 'right',
+        className: 'font-bold text-slate-900 dark:text-slate-100 font-mono whitespace-nowrap',
+        render: (_, row) =>
+          `₹ ${Number(row.grand_total || row.total_amount || 0).toLocaleString('en-IN', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          })}`
+      },
+      {
+        header: 'Status',
+        align: 'center',
+        className: 'whitespace-nowrap',
+        render: (_, row) => (
+          <select
+            value={row.service_status}
+            onChange={(e) => handleStatusChange(row.id, e.target.value)}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-none border focus:outline-none cursor-pointer transition-colors shadow-2xs ${getStatusBadgeClass(
+              row.service_status
+            )}`}
+          >
+            {SERVICE_STATUS_STAGES.map((st) => (
+              <option key={st} value={st}>
+                {st}
+              </option>
+            ))}
+          </select>
+        )
+      },
+      {
+        header: 'Actions',
+        align: 'center',
+        className: 'whitespace-nowrap',
+        render: (_, service) => {
+          const isReceiptActive = [
+            'Payment Received',
+            'Repair In-Progress',
+            'Ready',
+            'Delivered'
+          ].includes(service.service_status)
+          const isEmailSent =
+            service.receipt_email_sent === 1 || service.receipt_email_sent === true
+
+          return (
+            <div className="flex items-center justify-center gap-1.5">
+              {/* 1. View Service Invoice Modal Icon (Purple) */}
+              <ActionButton
+                type="view"
+                onClick={() => handleViewService(service.id)}
+                title="View Service Invoice"
+                className="!text-purple-600 dark:!text-purple-400 hover:!bg-purple-50 dark:hover:!bg-slate-800"
+              />
+
+              {/* 2. Check Serial Numbers Modal Icon (FileDigit icon from Stock) */}
+              <ActionButton
+                icon={FileDigit}
+                onClick={() => handleViewSerials(service)}
+                title="Check Hardware Serial Numbers"
+                className="!text-blue-600 dark:!text-blue-400 hover:!bg-blue-50 dark:hover:!bg-slate-800"
+              />
+
+              {/* 3. Send Receipt Email Icon (Indigo / Red when sent) */}
+              <ActionButton
+                icon={Send}
+                disabled={!isReceiptActive}
+                onClick={() => handleSendReceiptEmail(service)}
+                title={
+                  !isReceiptActive
+                    ? 'Receipt email available from Payment Received stage onwards'
+                    : isEmailSent
+                    ? 'Receipt Email Sent'
+                    : 'Send Receipt PDF via Email'
+                }
+                className={
+                  !isReceiptActive
+                    ? '!text-gray-300 dark:!text-slate-700 opacity-40'
+                    : isEmailSent
+                    ? '!text-red-500 hover:!bg-red-50 dark:hover:!bg-slate-800'
+                    : '!text-indigo-600 dark:!text-indigo-400 hover:!bg-indigo-50 dark:hover:!bg-slate-800'
+                }
+              />
+
+              {/* 4. Edit Service Record (Amber / Orange box matching Stock) */}
+              {canEdit && (
+                <ActionButton
+                  type="edit"
+                  onClick={() => {
+                    if (setActiveRoute) setActiveRoute('new-service')
+                    navigate(`/services/new?editId=${service.id}`)
+                  }}
+                  title="Edit Service Request"
+                  className="!text-amber-600 dark:!text-amber-400 !bg-amber-50 dark:bg-amber-950/50 hover:!bg-amber-500 hover:!text-white dark:hover:!bg-amber-500 dark:hover:!text-white !border !border-amber-200 dark:!border-amber-800 shadow-2xs"
+                />
+              )}
+
+              {/* 5. Delete Service Record (Red) */}
+              {canDelete && (
+                <ActionButton
+                  type="delete"
+                  onClick={() => handleDeleteService(service.id, service.service_number)}
+                  title="Delete Service Record"
+                  className="!text-red-500 hover:!bg-red-50 dark:hover:!bg-red-950/40"
+                />
+              )}
+            </div>
+          )
+        }
+      }
+    ],
+    [canEdit, canDelete]
+  )
+
   return (
     <div className="space-y-6">
       {/* 1. Header Component */}
@@ -753,227 +919,24 @@ export default function AllServicesPage({ setActiveRoute }) {
         />
       </div>
 
-      {/* 4. Service Records Table */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                <th className="p-3 w-10 text-center">
-                  <input
-                    type="checkbox"
-                    checked={isAllCurrentSelected}
-                    onChange={handleSelectAll}
-                    className="cursor-pointer accent-[#043486]"
-                  />
-                </th>
-                <th className="p-3">Service ID</th>
-                <th className="p-3">Date</th>
-                <th className="p-3">Customer</th>
-                <th className="p-3">Mobile Number</th>
-                <th className="p-3">Product &amp; QTY</th>
-                <th className="p-3 text-right">Total</th>
-                <th className="p-3 text-center">Status</th>
-                <th className="p-3 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {isLoading ? (
-                <tr>
-                  <td colSpan="9" className="p-8 text-center text-slate-400">
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="w-4 h-4 border-2 border-[#043486] border-t-transparent rounded-full animate-spin"></div>
-                      <span>Loading service registry records...</span>
-                    </div>
-                  </td>
-                </tr>
-              ) : paginatedServices.length === 0 ? (
-                <tr>
-                  <td colSpan="9" className="p-8 text-center text-slate-400">
-                    No service requests found matching your filters.
-                  </td>
-                </tr>
-              ) : (
-                paginatedServices.map((service) => {
-                  const isSelected = selectedServiceIds.includes(service.id)
-                  const isReceiptActive = [
-                    'Payment Received',
-                    'Repair In-Progress',
-                    'Ready',
-                    'Delivered'
-                  ].includes(service.service_status)
-                  const isEmailSent =
-                    service.receipt_email_sent === 1 || service.receipt_email_sent === true
-                  const itemsList = service.items || []
+      {/* 4. Global Reusable Service Records DataTable & Pagination */}
+      <div className="space-y-0">
+        <DataTable
+          columns={serviceTableColumns}
+          data={paginatedServices}
+          keyField="id"
+          isLoading={isLoading}
+          loadingMessage="Loading service registry records..."
+          emptyMessage="No service requests found matching your filters."
+          emptySubtitle="Try adjusting your search filters, stage, or date range."
+          emptyIcon={Wrench}
+          selectable={true}
+          selectedIds={selectedServiceIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={(id) => handleSelectOne(id)}
+        />
 
-                  return (
-                    <tr
-                      key={service.id}
-                      className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors ${
-                        isSelected ? 'bg-blue-50/40 dark:bg-blue-950/20' : ''
-                      }`}
-                    >
-                      {/* 1. Checkbox */}
-                      <td className="p-3 text-center">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleSelectOne(service.id)}
-                          className="cursor-pointer accent-[#043486]"
-                        />
-                      </td>
-
-                      {/* 2. Service ID (Clean plain text, no spanner icon) */}
-                      <td className="p-3 font-semibold text-[#043486] dark:text-blue-400 font-mono whitespace-nowrap">
-                        {service.service_number}
-                      </td>
-
-                      {/* 3. Date */}
-                      <td className="p-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                        {service.service_date
-                          ? new Date(service.service_date).toLocaleDateString('en-GB', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric'
-                            })
-                          : '-'}
-                      </td>
-
-                      {/* 4. Customer (Just Name only) */}
-                      <td className="p-3 min-w-[140px] font-semibold text-slate-800 dark:text-slate-200">
-                        {service.customer_name}
-                      </td>
-
-                      {/* 5. Mobile Number Column */}
-                      <td className="p-3 font-mono text-slate-700 dark:text-slate-300 font-medium whitespace-nowrap">
-                        {service.customer_phone ? (
-                          <span>{service.customer_phone}</span>
-                        ) : (
-                          <span className="text-slate-400">-</span>
-                        )}
-                      </td>
-
-                      {/* 6. Product & QTY (No outer box, no brand name, just simple clean text) */}
-                      <td className="p-3 min-w-[160px]">
-                        {itemsList.length > 0 ? (
-                          <div className="space-y-1">
-                            {itemsList.map((it, idx) => (
-                              <div key={idx} className="text-xs text-slate-800 dark:text-slate-200">
-                                <span className="font-semibold">{it.product_name || it.item_name}</span>
-                                <span className="text-slate-600 dark:text-slate-400 ml-1.5 font-mono">
-                                  - {parseFloat(it.quantity) || 1}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 text-xs">-</span>
-                        )}
-                      </td>
-
-                      {/* 7. Total */}
-                      <td className="p-3 text-right font-bold text-slate-900 dark:text-slate-100 font-mono whitespace-nowrap">
-                        ₹{' '}
-                        {Number(service.grand_total || service.total_amount || 0).toLocaleString(
-                          'en-IN',
-                          {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          }
-                        )}
-                      </td>
-
-                      {/* 8. Status (7-Stage Lifecycle Dropdown with enhanced padding like Outward) */}
-                      <td className="p-3 text-center whitespace-nowrap">
-                        <select
-                          value={service.service_status}
-                          onChange={(e) => handleStatusChange(service.id, e.target.value)}
-                          className={`px-3 py-1.5 text-xs font-semibold rounded-none border focus:outline-none cursor-pointer transition-colors shadow-2xs ${getStatusBadgeClass(
-                            service.service_status
-                          )}`}
-                        >
-                          {SERVICE_STATUS_STAGES.map((st) => (
-                            <option key={st} value={st}>
-                              {st}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-
-                      {/* 9. Actions (View, Serial Numbers Check, Send, Delete) */}
-                      <td className="p-3 text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1.5">
-                          {/* 1. View Service Invoice Modal Icon (Purple) */}
-                          <ActionButton
-                            type="view"
-                            onClick={() => handleViewService(service.id)}
-                            title="View Service Invoice"
-                            className="!text-purple-600 dark:!text-purple-400 hover:!bg-purple-50 dark:hover:!bg-slate-800"
-                          />
-
-                          {/* 2. Check Serial Numbers Modal Icon (FileDigit icon from Stock) */}
-                          <ActionButton
-                            icon={FileDigit}
-                            onClick={() => handleViewSerials(service)}
-                            title="Check Hardware Serial Numbers"
-                            className="!text-blue-600 dark:!text-blue-400 hover:!bg-blue-50 dark:hover:!bg-slate-800"
-                          />
-
-                          {/* 3. Send Receipt Email Icon (Indigo / Red when sent) */}
-                          <ActionButton
-                            icon={Send}
-                            disabled={!isReceiptActive}
-                            onClick={() => handleSendReceiptEmail(service)}
-                            title={
-                              !isReceiptActive
-                                ? 'Receipt email available from Payment Received stage onwards'
-                                : isEmailSent
-                                ? 'Receipt Email Sent'
-                                : 'Send Receipt PDF via Email'
-                            }
-                            className={
-                              !isReceiptActive
-                                ? '!text-gray-300 dark:!text-slate-700 opacity-40'
-                                : isEmailSent
-                                ? '!text-red-500 hover:!bg-red-50 dark:hover:!bg-slate-800'
-                                : '!text-indigo-600 dark:!text-indigo-400 hover:!bg-indigo-50 dark:hover:!bg-slate-800'
-                            }
-                          />
-
-                          {/* 4. Edit Service Record (Amber / Orange box matching Stock) */}
-                          {canEdit && (
-                            <ActionButton
-                              type="edit"
-                              onClick={() => {
-                                if (setActiveRoute) setActiveRoute('new-service')
-                                navigate(`/services/new?editId=${service.id}`)
-                              }}
-                              title="Edit Service Request"
-                              className="!text-amber-600 dark:!text-amber-400 !bg-amber-50 dark:!bg-amber-950/50 hover:!bg-amber-500 hover:!text-white dark:hover:!bg-amber-500 dark:hover:!text-white !border !border-amber-200 dark:!border-amber-800 shadow-2xs"
-                            />
-                          )}
-
-                          {/* 5. Delete Service Record (Red) */}
-                          {canDelete && (
-                            <ActionButton
-                              type="delete"
-                              onClick={() => handleDeleteService(service.id, service.service_number)}
-                              title="Delete Service Record"
-                              className="!text-red-500 hover:!bg-red-50 dark:hover:!bg-red-950/40"
-                            />
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* 5. Pagination Component */}
-        <ListPagePagination
+        <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
           itemsPerPage={itemsPerPage}
