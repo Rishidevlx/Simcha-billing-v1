@@ -15,6 +15,7 @@ import {
 import Swal from 'sweetalert2'
 import SearchableSelect from '../components/common/SearchableSelect'
 import InwardLineItems from '../components/inward/InwardLineItems'
+import { Button } from '../components/ui'
 import { API_ENDPOINTS } from '../config/api'
 
 const getLocalDateString = (dateVal) => {
@@ -1049,27 +1050,26 @@ export default function InwardBillPage() {
 
               {/* Action Buttons: Just Save & Reset */}
               <div className="pt-4 border-t border-gray-200 dark:border-slate-800 space-y-2">
-                <button
+                <Button
                   type="submit"
+                  variant="primary"
+                  icon={Save}
+                  isLoading={isSaving}
                   disabled={isSaving}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-[#043486] hover:bg-[#0248BC] text-white font-bold text-sm rounded-none shadow-sm hover:shadow transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                  className="w-full py-3 text-sm"
                 >
-                  {isSaving ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Save size={16} />
-                  )}
-                  <span>{isSaving ? (isEditMode ? 'Updating...' : 'Saving...') : (isEditMode ? 'Update Inward' : 'Save')}</span>
-                </button>
+                  {isSaving ? (isEditMode ? 'Updating...' : 'Saving...') : (isEditMode ? 'Update Inward' : 'Save')}
+                </Button>
 
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  icon={RotateCcw}
                   onClick={handleReset}
-                  className="w-full flex items-center justify-center gap-2 py-2 border border-gray-300 dark:border-slate-700 text-gray-600 dark:text-slate-300 font-medium text-xs rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="w-full py-2 text-xs font-medium"
                 >
-                  <RotateCcw size={13} />
-                  <span>Reset Form (Alt+R)</span>
-                </button>
+                  Reset Form (Alt+R)
+                </Button>
               </div>
 
             </div>

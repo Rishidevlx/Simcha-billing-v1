@@ -31,6 +31,7 @@ import ListPageHeader from '../components/common/ListPageHeader'
 import ListKpiCard from '../components/common/ListKpiCard'
 import ListDateRangeFilter from '../components/common/ListDateRangeFilter'
 import ListPagePagination from '../components/common/ListPagePagination'
+import { Button, ActionButton, SearchInput } from '../components/ui'
 import { API_ENDPOINTS } from '../config/api'
 
 // Local Date Helper to eliminate timezone UTC discrepancy (e.g. 2026-09-18T18:30:00Z -> 2026-09-19 in IST)
@@ -385,26 +386,28 @@ export default function InwardReportsPage() {
         actions={
           <>
             {canDownload && (
-              <button
+              <Button
+                variant="secondary"
+                icon={Download}
                 onClick={handleExportExcel}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold text-xs rounded-none shadow-xs transition-all active:scale-[0.99] cursor-pointer"
+                className="!bg-[#0f766e] !hover:bg-[#115e59] !text-white !border-transparent text-xs"
                 title={selectedIds.length > 0 ? `Export ${selectedIds.length} Selected Record(s)` : 'Export All Filtered Records'}
               >
-                <Download size={15} />
-                <span>{selectedIds.length > 0 ? `EXPORT SELECTED (${selectedIds.length})` : 'EXPORT TO EXCEL'}</span>
-              </button>
+                {selectedIds.length > 0 ? `EXPORT SELECTED (${selectedIds.length})` : 'EXPORT TO EXCEL'}
+              </Button>
             )}
             {canAdd && (
-              <button
+              <Button
+                variant="primary"
+                icon={Plus}
                 onClick={() => {
                   if (setActiveRoute) setActiveRoute('inward')
                   navigate('/inward')
                 }}
-                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#043486] hover:bg-[#0248BC] text-white font-bold text-xs rounded-none shadow-xs transition-all active:scale-[0.99] cursor-pointer"
+                className="text-xs"
               >
-                <Plus size={15} />
-                <span>CREATE NEW INWARD</span>
-              </button>
+                CREATE NEW INWARD
+              </Button>
             )}
           </>
         }
@@ -437,17 +440,18 @@ export default function InwardReportsPage() {
         
         {/* Top Search & Action Row */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="relative w-full sm:w-96 max-w-md">
-            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
-            <input
-              type="text"
+          <div className="w-full sm:w-96 max-w-md">
+            <SearchInput
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value)
                 setCurrentPage(1)
               }}
+              onClear={() => {
+                setSearchTerm('')
+                setCurrentPage(1)
+              }}
               placeholder="Search by supplier name, phone, inward ID, GSTIN..."
-              className="w-full pl-9 pr-4 py-2.5 text-xs text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 font-medium placeholder:text-gray-400"
             />
           </div>
 
@@ -636,52 +640,44 @@ export default function InwardReportsPage() {
                         <div className="flex items-center justify-center gap-1.5">
                           {/* Attached Hardcopy Button */}
                           {canDownload && (
-                            <button
-                              type="button"
+                            <ActionButton
+                              icon={ImageDown}
                               onClick={() => handleDownloadHardcopy(inv.hardcopy_url, inv.inward_number)}
-                              className={`p-1.5 rounded-none border transition-all cursor-pointer shadow-2xs ${
+                              className={
                                 inv.hardcopy_url
-                                  ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 dark:hover:text-white border-emerald-200 dark:border-emerald-800'
-                                  : 'text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700'
-                              }`}
+                                  ? '!text-emerald-600 dark:!text-emerald-400 !bg-emerald-50 dark:!bg-emerald-950/50 hover:!bg-emerald-600 hover:!text-white dark:hover:!bg-emerald-600 dark:hover:!text-white !border !border-emerald-200 dark:!border-emerald-800 shadow-2xs'
+                                  : '!text-gray-400 hover:!text-gray-600 dark:hover:!text-slate-300 !bg-gray-50 dark:!bg-slate-800/50 !border !border-gray-200 dark:!border-slate-700'
+                              }
                               title={inv.hardcopy_url ? 'Download Hardcopy / Bill Document' : 'No Hardcopy Document Attached'}
-                            >
-                              <ImageDown size={15} />
-                            </button>
+                            />
                           )}
 
                           {/* Quick Edit Inward Record (Orange / Amber) */}
                           {canEdit && (
-                            <button
-                              type="button"
+                            <ActionButton
+                              type="edit"
                               onClick={() => navigate(`/inward/edit/${inv.id}`)}
-                              className="p-1.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white border border-amber-200 dark:border-amber-800 rounded-none transition-all cursor-pointer shadow-2xs"
+                              className="!text-amber-600 dark:!text-amber-400 !bg-amber-50 dark:!bg-amber-950/50 hover:!bg-amber-500 hover:!text-white dark:hover:!bg-amber-500 dark:hover:!text-white !border !border-amber-200 dark:!border-amber-800 shadow-2xs"
                               title="Edit Inward Record"
-                            >
-                              <Edit2 size={15} />
-                            </button>
+                            />
                           )}
 
                           {/* View Inward Details (Blue) */}
-                          <button
-                            type="button"
+                          <ActionButton
+                            type="view"
                             onClick={() => handleOpenDetails(inv.id)}
-                            className="p-1.5 text-[#043486] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 hover:bg-[#043486] hover:text-white dark:hover:bg-blue-600 dark:hover:text-white border border-blue-200 dark:border-blue-800 rounded-none transition-all cursor-pointer shadow-2xs"
+                            className="!text-[#043486] dark:!text-blue-400 !bg-blue-50 dark:!bg-blue-950/50 hover:!bg-[#043486] hover:!text-white dark:hover:!bg-blue-600 dark:hover:!text-white !border !border-blue-200 dark:!border-blue-800 shadow-2xs"
                             title="View Inward Details"
-                          >
-                            <Eye size={15} />
-                          </button>
+                          />
 
                           {/* Delete Inward Record */}
                           {canDelete && (
-                            <button
-                              type="button"
+                            <ActionButton
+                              type="delete"
                               onClick={() => handleDeleteInward(inv.id, inv.inward_number, inv.supplier_name)}
-                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border border-gray-200 dark:border-slate-700 rounded-none transition-all cursor-pointer shadow-2xs"
+                              className="!text-gray-400 hover:!text-red-600 hover:!bg-red-50 dark:hover:!bg-red-950/40 !border !border-gray-200 dark:!border-slate-700 shadow-2xs"
                               title="Delete Inward Record"
-                            >
-                              <Trash2 size={15} />
-                            </button>
+                            />
                           )}
                         </div>
                       </td>

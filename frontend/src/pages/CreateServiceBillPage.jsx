@@ -23,6 +23,7 @@ import {
 import Swal from 'sweetalert2'
 import SearchableSelect from '../components/common/SearchableSelect'
 import ServiceInvoiceTemplate from '../components/invoice/ServiceInvoiceTemplate'
+import { Button } from '../components/ui'
 import { API_ENDPOINTS } from '../config/api'
 import { numberToIndianRupees } from '../utils/numberToWords'
 
@@ -1070,22 +1071,22 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
 
               {/* Action Buttons */}
               <div className="pt-4 border-t border-gray-200 dark:border-slate-800 space-y-2">
-                <button
+                <Button
                   type="button"
-                  onClick={handleSubmit}
+                  variant="primary"
+                  icon={Save}
+                  isLoading={isSaving}
                   disabled={isSaving}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-[#043486] hover:bg-[#0248BC] text-white font-bold text-sm rounded-none shadow-sm hover:shadow transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                  onClick={handleSubmit}
+                  className="w-full py-3 text-sm"
                 >
-                  {isSaving ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Save size={16} />
-                  )}
-                  <span>{isEditMode ? 'Update Service Request (Ctrl+Enter)' : 'Save Service Request (Ctrl+Enter)'}</span>
-                </button>
+                  {isEditMode ? 'Update Service Request (Ctrl+Enter)' : 'Save Service Request (Ctrl+Enter)'}
+                </Button>
 
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  icon={RotateCcw}
                   onClick={() => {
                     if (isEditMode) {
                       navigate('/services/list')
@@ -1093,11 +1094,10 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
                       handleReset()
                     }
                   }}
-                  className="w-full flex items-center justify-center gap-2 py-2 border border-gray-300 dark:border-slate-700 text-gray-600 dark:text-slate-300 font-medium text-xs rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="w-full py-2 text-xs font-medium"
                 >
-                  <RotateCcw size={13} />
-                  <span>{isEditMode ? 'Cancel Edit / Back to List' : 'Reset Form (Alt+R)'}</span>
-                </button>
+                  {isEditMode ? 'Cancel Edit / Back to List' : 'Reset Form (Alt+R)'}
+                </Button>
               </div>
             </div>
           </div>
@@ -1113,14 +1113,15 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
               </h2>
             </div>
 
-            <button
+            <Button
               type="button"
+              variant="primary"
+              icon={Plus}
               onClick={handleAddItem}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-[#043486] hover:bg-[#0248BC] text-white font-semibold text-xs rounded-none shadow-sm hover:shadow transition-all cursor-pointer"
+              className="text-xs"
             >
-              <Plus size={15} />
-              <span>Add Line Item (Alt+A)</span>
-            </button>
+              Add Line Item (Alt+A)
+            </Button>
           </div>
 
           {/* Clean Aligned Service Table */}

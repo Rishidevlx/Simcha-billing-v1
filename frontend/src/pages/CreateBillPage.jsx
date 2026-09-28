@@ -27,6 +27,7 @@ import {
 import Swal from 'sweetalert2'
 import SearchableSelect from '../components/common/SearchableSelect'
 import InvoiceTemplate from '../components/invoice/InvoiceTemplate'
+import { Button } from '../components/ui'
 import { API_ENDPOINTS } from '../config/api'
 import { numberToIndianRupees } from '../utils/numberToWords'
 
@@ -1572,38 +1573,38 @@ export default function CreateBillPage({ setActiveRoute }) {
 
               {/* Action Buttons */}
               <div className="pt-4 border-t border-gray-200 dark:border-slate-800 space-y-2">
-                <button
+                <Button
                   type="button"
-                  onClick={(e) => handleSubmit(e, false)}
+                  variant="primary"
+                  icon={Save}
+                  isLoading={isSaving}
                   disabled={isSaving}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-[#043486] hover:bg-[#0248BC] text-white font-bold text-sm rounded-none shadow-sm hover:shadow transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                  onClick={(e) => handleSubmit(e, false)}
+                  className="w-full py-3 text-sm"
                 >
-                  {isSaving ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Save size={16} />
-                  )}
-                  <span>{isEditMode ? 'Update Invoice (Ctrl+Enter)' : 'Save Invoice (Ctrl+Enter)'}</span>
-                </button>
+                  {isEditMode ? 'Update Invoice (Ctrl+Enter)' : 'Save Invoice (Ctrl+Enter)'}
+                </Button>
 
                 {isEditMode ? (
-                  <button
+                  <Button
                     type="button"
+                    variant="secondary"
+                    icon={ArrowLeft}
                     onClick={() => navigate('/outward-list')}
-                    className="w-full flex items-center justify-center gap-2 py-2 border border-gray-300 dark:border-slate-700 text-gray-600 dark:text-slate-300 font-medium text-xs rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    className="w-full py-2 text-xs font-medium"
                   >
-                    <ArrowLeft size={13} />
-                    <span>Cancel &amp; Back to List</span>
-                  </button>
+                    Cancel &amp; Back to List
+                  </Button>
                 ) : (
-                  <button
+                  <Button
                     type="button"
+                    variant="secondary"
+                    icon={RotateCcw}
                     onClick={handleReset}
-                    className="w-full flex items-center justify-center gap-2 py-2 border border-gray-300 dark:border-slate-700 text-gray-600 dark:text-slate-300 font-medium text-xs rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    className="w-full py-2 text-xs font-medium"
                   >
-                    <RotateCcw size={13} />
-                    <span>Reset Form (Alt+R)</span>
-                  </button>
+                    Reset Form (Alt+R)
+                  </Button>
                 )}
               </div>
 
@@ -1623,14 +1624,15 @@ export default function CreateBillPage({ setActiveRoute }) {
               </h2>
             </div>
 
-            <button
+            <Button
               type="button"
+              variant="primary"
+              icon={Plus}
               onClick={handleAddItem}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-[#043486] hover:bg-[#0248BC] text-white font-semibold text-xs rounded-none shadow-sm hover:shadow transition-all cursor-pointer"
+              className="text-xs"
             >
-              <Plus size={15} />
-              <span>Add Line Item (Alt+A)</span>
-            </button>
+              Add Line Item (Alt+A)
+            </Button>
           </div>
 
           <div className="space-y-4">

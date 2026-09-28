@@ -43,6 +43,7 @@ import ListPageHeader from '../components/common/ListPageHeader'
 import ListKpiCard from '../components/common/ListKpiCard'
 import ListDateRangeFilter from '../components/common/ListDateRangeFilter'
 import ListPagePagination from '../components/common/ListPagePagination'
+import { Button, ActionButton, SearchInput } from '../components/ui'
 import { API_ENDPOINTS } from '../config/api'
 import { getUserPermissions } from '../utils/access'
 
@@ -605,28 +606,28 @@ export default function AllServicesPage({ setActiveRoute }) {
         actions={
           <>
             {canDownload && (
-<button
-              onClick={handleExportExcel}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold text-xs rounded-none shadow-xs transition-all active:scale-[0.99] cursor-pointer"
-              title={selectedServiceIds.length > 0 ? `Export ${selectedServiceIds.length} Selected Record(s)` : 'Export All Filtered Records'}
-            >
-              <Download size={15} />
-              <span>
+              <Button
+                variant="secondary"
+                icon={Download}
+                onClick={handleExportExcel}
+                className="!bg-[#0f766e] !hover:bg-[#115e59] !text-white !border-transparent text-xs"
+                title={selectedServiceIds.length > 0 ? `Export ${selectedServiceIds.length} Selected Record(s)` : 'Export All Filtered Records'}
+              >
                 {selectedServiceIds.length > 0 ? `EXPORT SELECTED (${selectedServiceIds.length})` : 'EXPORT TO EXCEL'}
-              </span>
-            </button>
+              </Button>
             )}
             {canAdd && (
-              <button
+              <Button
+                variant="primary"
+                icon={Plus}
                 onClick={() => {
                   if (setActiveRoute) setActiveRoute('new-service')
                   navigate('/services/new')
                 }}
-                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#043486] hover:bg-[#0248BC] text-white font-bold text-xs rounded-none shadow-xs transition-all active:scale-[0.99] cursor-pointer"
+                className="text-xs"
               >
-                <Plus size={15} />
-                <span>NEW REQUEST</span>
-              </button>
+                NEW REQUEST
+              </Button>
             )}
           </>
         }
@@ -667,17 +668,18 @@ export default function AllServicesPage({ setActiveRoute }) {
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-4 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
           {/* Search Box */}
-          <div className="md:col-span-5 relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
+          <div className="md:col-span-5">
+            <SearchInput
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value)
                 setCurrentPage(1)
               }}
+              onClear={() => {
+                setSearchTerm('')
+                setCurrentPage(1)
+              }}
               placeholder="Search by Service #, Customer Name, Phone, Item / Issue..."
-              className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#043486] transition-colors"
             />
           </div>
 
@@ -902,28 +904,24 @@ export default function AllServicesPage({ setActiveRoute }) {
                       <td className="p-3 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1.5">
                           {/* 1. View Service Invoice Modal Icon (Purple) */}
-                          <button
-                            type="button"
+                          <ActionButton
+                            type="view"
                             onClick={() => handleViewService(service.id)}
                             title="View Service Invoice"
-                            className="p-1.5 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
+                            className="!text-purple-600 dark:!text-purple-400 hover:!bg-purple-50 dark:hover:!bg-slate-800"
+                          />
 
-                          {/* 3. Check Serial Numbers Modal Icon (FileDigit icon from Stock) */}
-                          <button
-                            type="button"
+                          {/* 2. Check Serial Numbers Modal Icon (FileDigit icon from Stock) */}
+                          <ActionButton
+                            icon={FileDigit}
                             onClick={() => handleViewSerials(service)}
                             title="Check Hardware Serial Numbers"
-                            className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                          >
-                            <FileDigit className="w-4 h-4" />
-                          </button>
+                            className="!text-blue-600 dark:!text-blue-400 hover:!bg-blue-50 dark:hover:!bg-slate-800"
+                          />
 
-                          {/* 4. Send Receipt Email Icon (Indigo / Red when sent) */}
-                          <button
-                            type="button"
+                          {/* 3. Send Receipt Email Icon (Indigo / Red when sent) */}
+                          <ActionButton
+                            icon={Send}
                             disabled={!isReceiptActive}
                             onClick={() => handleSendReceiptEmail(service)}
                             title={
@@ -933,42 +931,36 @@ export default function AllServicesPage({ setActiveRoute }) {
                                 ? 'Receipt Email Sent'
                                 : 'Send Receipt PDF via Email'
                             }
-                            className={`p-1.5 transition-colors cursor-pointer ${
+                            className={
                               !isReceiptActive
-                                ? 'text-gray-300 dark:text-slate-700 cursor-not-allowed opacity-40'
+                                ? '!text-gray-300 dark:!text-slate-700 opacity-40'
                                 : isEmailSent
-                                ? 'text-red-500 hover:bg-red-50 dark:hover:bg-slate-800'
-                                : 'text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-800'
-                            }`}
-                          >
-                            <Send className="w-4 h-4" />
-                          </button>
+                                ? '!text-red-500 hover:!bg-red-50 dark:hover:!bg-slate-800'
+                                : '!text-indigo-600 dark:!text-indigo-400 hover:!bg-indigo-50 dark:hover:!bg-slate-800'
+                            }
+                          />
 
-                          {/* 5. Edit Service Record (Amber / Orange box matching Stock) */}
+                          {/* 4. Edit Service Record (Amber / Orange box matching Stock) */}
                           {canEdit && (
-                            <button
-                              type="button"
+                            <ActionButton
+                              type="edit"
                               onClick={() => {
                                 if (setActiveRoute) setActiveRoute('new-service')
                                 navigate(`/services/new?editId=${service.id}`)
                               }}
                               title="Edit Service Request"
-                              className="p-1.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white border border-amber-200 dark:border-amber-800 rounded-none transition-all cursor-pointer shadow-2xs"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
+                              className="!text-amber-600 dark:!text-amber-400 !bg-amber-50 dark:!bg-amber-950/50 hover:!bg-amber-500 hover:!text-white dark:hover:!bg-amber-500 dark:hover:!text-white !border !border-amber-200 dark:!border-amber-800 shadow-2xs"
+                            />
                           )}
 
-                          {/* 6. Delete Service Record (Red) */}
+                          {/* 5. Delete Service Record (Red) */}
                           {canDelete && (
-                            <button
-                              type="button"
+                            <ActionButton
+                              type="delete"
                               onClick={() => handleDeleteService(service.id, service.service_number)}
                               title="Delete Service Record"
-                              className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                              className="!text-red-500 hover:!bg-red-50 dark:hover:!bg-red-950/40"
+                            />
                           )}
                         </div>
                       </td>

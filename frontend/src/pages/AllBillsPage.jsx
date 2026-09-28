@@ -42,6 +42,7 @@ import ListPageHeader from '../components/common/ListPageHeader'
 import ListKpiCard from '../components/common/ListKpiCard'
 import ListDateRangeFilter from '../components/common/ListDateRangeFilter'
 import ListPagePagination from '../components/common/ListPagePagination'
+import { Button, ActionButton, SearchInput } from '../components/ui'
 import { API_ENDPOINTS } from '../config/api'
 import { getUserPermissions } from '../utils/access'
 
@@ -627,28 +628,28 @@ export default function AllBillsPage({ setActiveRoute }) {
         actions={
           <>
             {canDownload && (
-              <button
+              <Button
+                variant="secondary"
+                icon={Download}
                 onClick={handleExportExcel}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold text-xs rounded-none shadow-xs transition-all active:scale-[0.99] cursor-pointer"
+                className="!bg-[#0f766e] !hover:bg-[#115e59] !text-white !border-transparent text-xs"
                 title={selectedBillIds.length > 0 ? `Export ${selectedBillIds.length} Selected Bill(s)` : 'Export All Filtered Bills'}
               >
-                <Download size={15} />
-                <span>
-                  {selectedBillIds.length > 0 ? `EXPORT SELECTED (${selectedBillIds.length})` : 'EXPORT TO EXCEL'}
-                </span>
-              </button>
+                {selectedBillIds.length > 0 ? `EXPORT SELECTED (${selectedBillIds.length})` : 'EXPORT TO EXCEL'}
+              </Button>
             )}
             {canAdd && (
-              <button
+              <Button
+                variant="primary"
+                icon={Plus}
                 onClick={() => {
                   if (setActiveRoute) setActiveRoute('create-bill')
                   navigate('/outward')
                 }}
-                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#043486] hover:bg-[#0248BC] text-white font-bold text-xs rounded-none shadow-xs transition-all active:scale-[0.99] cursor-pointer"
+                className="text-xs"
               >
-                <Plus size={15} />
-                <span>CREATE NEW BILL</span>
-              </button>
+                CREATE NEW BILL
+              </Button>
             )}
           </>
         }
@@ -689,17 +690,18 @@ export default function AllBillsPage({ setActiveRoute }) {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
           
           {/* Search Input */}
-          <div className="md:col-span-4 relative">
-            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
-            <input
-              type="text"
+          <div className="md:col-span-4">
+            <SearchInput
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value)
                 setCurrentPage(1)
               }}
+              onClear={() => {
+                setSearchTerm('')
+                setCurrentPage(1)
+              }}
               placeholder="Search invoice ID, customer name, phone..."
-              className="w-full pl-9 pr-4 py-2.5 text-xs text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 font-medium placeholder:text-gray-400"
             />
           </div>
 
@@ -935,34 +937,34 @@ export default function AllBillsPage({ setActiveRoute }) {
                       <td className="py-3.5 px-4 text-center">
                         <div className="flex items-center justify-center gap-1">
                           {/* 1. Direct Print Receipt (Active ONLY when Paid) */}
-                          <button
+                          <ActionButton
+                            icon={FileCheck}
                             onClick={() => handlePrintReceipt(bill.id)}
                             disabled={!isPaid}
-                            className={`p-1.5 transition-colors ${
+                            className={
                               isPaid
-                                ? 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-slate-800 cursor-pointer'
-                                : 'text-gray-300 dark:text-slate-700 cursor-not-allowed opacity-40'
-                            }`}
+                                ? '!text-purple-600 dark:!text-purple-400 hover:!bg-purple-50 dark:hover:!bg-slate-800'
+                                : '!text-gray-300 dark:!text-slate-700 opacity-40'
+                            }
                             title={
                               isPaid
                                 ? 'Print / View Payment Receipt'
                                 : 'Receipt available only when status is Paid'
                             }
-                          >
-                            <FileCheck size={15} />
-                          </button>
+                          />
 
-                          {/* 3. Send Receipt Email (Active ONLY when Paid, icon turns red once sent) */}
-                          <button
+                          {/* 2. Send Receipt Email (Active ONLY when Paid, icon turns red once sent) */}
+                          <ActionButton
+                            icon={Send}
                             onClick={() => handleSendReceiptEmail(bill)}
                             disabled={!isPaid}
-                            className={`p-1.5 transition-colors ${
+                            className={
                               isPaid
                                 ? bill.receipt_sent
-                                  ? 'text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-slate-800 cursor-pointer'
-                                  : 'text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-800 cursor-pointer'
-                                : 'text-gray-300 dark:text-slate-700 cursor-not-allowed opacity-40'
-                            }`}
+                                  ? '!text-red-500 dark:!text-red-400 hover:!bg-red-50 dark:hover:!bg-slate-800'
+                                  : '!text-indigo-600 dark:!text-indigo-400 hover:!bg-indigo-50 dark:hover:!bg-slate-800'
+                                : '!text-gray-300 dark:!text-slate-700 opacity-40'
+                            }
                             title={
                               !isPaid
                                 ? 'Send Receipt (Available only when status is Paid)'
@@ -970,20 +972,19 @@ export default function AllBillsPage({ setActiveRoute }) {
                                 ? 'Receipt Already Sent (Click for details)'
                                 : 'Send Receipt Email to Customer'
                             }
-                          >
-                            <Send size={15} />
-                          </button>
+                          />
 
-                          {/* 4. Edit Invoice (Inactive if Paid or Cancelled) */}
+                          {/* 3. Edit Invoice (Inactive if Paid or Cancelled) */}
                           {canEdit && (
-                            <button
+                            <ActionButton
+                              type="edit"
                               onClick={() => !isEditDeleteDisabled && navigate(`/outward?editId=${bill.id}`)}
                               disabled={isEditDeleteDisabled}
-                              className={`p-1.5 rounded-none border transition-all shadow-2xs ${
+                              className={
                                 isEditDeleteDisabled
-                                  ? 'text-gray-300 dark:text-slate-700 bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 cursor-not-allowed opacity-30'
-                                  : 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white border-amber-200 dark:border-amber-800 cursor-pointer'
-                              }`}
+                                  ? '!text-gray-300 dark:!text-slate-700 !bg-gray-50 dark:!bg-slate-800/50 !border-gray-200 dark:!border-slate-700 opacity-30'
+                                  : '!text-amber-600 dark:!text-amber-400 !bg-amber-50 dark:!bg-amber-950/50 hover:!bg-amber-500 hover:!text-white dark:hover:!bg-amber-500 dark:hover:!text-white !border-amber-200 dark:!border-amber-800 shadow-2xs'
+                              }
                               title={
                                 isCancelled
                                   ? 'Cannot edit a cancelled invoice'
@@ -991,30 +992,28 @@ export default function AllBillsPage({ setActiveRoute }) {
                                   ? 'Cannot edit a paid invoice'
                                   : 'Edit Invoice'
                               }
-                            >
-                              <Pencil size={15} />
-                            </button>
+                            />
                           )}
 
-                          {/* 5. View Invoice Modal / PDF */}
-                          <button
+                          {/* 4. View Invoice Modal / PDF */}
+                          <ActionButton
+                            type="view"
                             onClick={() => handleViewBill(bill.id)}
-                            className="p-1.5 text-[#043486] dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                            className="!text-[#043486] dark:!text-blue-400 hover:!bg-blue-50 dark:hover:!bg-slate-800"
                             title="View / Download Invoice PDF"
-                          >
-                            <Eye size={15} />
-                          </button>
+                          />
 
-                          {/* 6. Delete Invoice (Inactive if Paid or Cancelled) */}
+                          {/* 5. Delete Invoice (Inactive if Paid or Cancelled) */}
                           {canDelete && (
-                            <button
+                            <ActionButton
+                              type="delete"
                               onClick={() => !isEditDeleteDisabled && handleDeleteBill(bill.id, bill.invoice_number)}
                               disabled={isEditDeleteDisabled}
-                              className={`p-1.5 transition-colors ${
+                              className={
                                 isEditDeleteDisabled
-                                  ? 'text-gray-300 dark:text-slate-700 cursor-not-allowed opacity-30'
-                                  : 'text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer'
-                              }`}
+                                  ? '!text-gray-300 dark:!text-slate-700 opacity-30'
+                                  : '!text-gray-400 hover:!text-red-600 hover:!bg-red-50 dark:hover:!bg-red-950/40'
+                              }
                               title={
                                 isCancelled
                                   ? 'Cannot delete a cancelled invoice'
@@ -1022,9 +1021,7 @@ export default function AllBillsPage({ setActiveRoute }) {
                                   ? 'Cannot delete a paid invoice'
                                   : 'Delete Invoice'
                               }
-                            >
-                              <Trash2 size={15} />
-                            </button>
+                            />
                           )}
                         </div>
                       </td>
