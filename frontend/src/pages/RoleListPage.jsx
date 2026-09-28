@@ -25,7 +25,7 @@ import ListPagePagination from '../components/common/ListPagePagination'
 import ListKpiCard from '../components/common/ListKpiCard'
 import { getUserPermissions } from '../utils/access'
 import { API_ENDPOINTS } from '../config/api'
-import { Button, ActionButton, StatusToggle, StatusPill, SearchInput, TabNav, TabButton } from '../components/ui'
+import { Button, ActionButton, StatusToggle, StatusPill, SearchInput, TabNav, TabButton, ToggleSwitch } from '../components/ui'
 import maleAvatar from '../assets/avatar/Male avatar.webp'
 import femaleAvatar from '../assets/avatar/Female Avatar.webp'
 import defaultAvatar from '../assets/avatar/Deafult Pfp.webp'
@@ -576,23 +576,13 @@ export default function RoleListPage({ setActiveRoute }) {
                                         return (
                                           <td key={action} className="p-2 text-center">
                                             {isAvailable ? (
-                                              <button
-                                                type="button"
+                                              <ToggleSwitch
+                                                size="sm"
+                                                checked={isChecked}
                                                 disabled={isEditingAdmin}
-                                                onClick={() => handleTogglePerm(subMenu.id, action)}
-                                                className={`relative inline-flex h-4.5 w-8 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                                  isChecked
-                                                    ? 'bg-[#043486] dark:bg-blue-600'
-                                                    : 'bg-[#FFFF61] border border-amber-300'
-                                                } ${isEditingAdmin ? 'opacity-80 cursor-not-allowed' : ''}`}
+                                                onChange={() => handleTogglePerm(subMenu.id, action)}
                                                 title={isEditingAdmin ? 'Locked for Administrator (Full Access)' : `${isChecked ? 'Disable' : 'Enable'} ${action}`}
-                                              >
-                                                <span
-                                                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-2xs transition duration-200 ease-in-out ${
-                                                    isChecked ? 'translate-x-3.5' : 'translate-x-0'
-                                                  }`}
-                                                />
-                                              </button>
+                                              />
                                             ) : (
                                               <div
                                                 className="relative inline-flex h-4.5 w-8 flex-shrink-0 rounded-full bg-gray-200/70 dark:bg-slate-800/80 border border-gray-300/60 dark:border-slate-700/60 opacity-25 cursor-not-allowed select-none"

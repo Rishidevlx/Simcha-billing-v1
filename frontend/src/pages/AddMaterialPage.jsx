@@ -25,7 +25,7 @@ import {
 import Swal from 'sweetalert2'
 import SearchableSelect from '../components/common/SearchableSelect'
 import { API_ENDPOINTS } from '../config/api'
-import { Button, StatusToggle } from '../components/ui'
+import { Button, StatusToggle, ToggleSwitch } from '../components/ui'
 
 export default function AddMaterialPage({ editMaterialId = null, onSaved, setActiveRoute: setActiveRouteProp }) {
   const location = useLocation()
@@ -645,23 +645,10 @@ export default function AddMaterialPage({ editMaterialId = null, onSaved, setAct
                   </div>
 
                   {/* Toggle Switch */}
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={formData.tax_inclusive}
-                    onClick={() => setFormData(p => ({ ...p, tax_inclusive: !p.tax_inclusive }))}
-                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out cursor-pointer focus:outline-none ${
-                      formData.tax_inclusive 
-                        ? 'bg-[#0248BC] dark:bg-blue-600' 
-                        : 'bg-gray-300 dark:bg-slate-700'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform duration-200 ease-in-out ${
-                        formData.tax_inclusive ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
+                  <ToggleSwitch
+                    checked={formData.tax_inclusive}
+                    onChange={(val) => setFormData(p => ({ ...p, tax_inclusive: val }))}
+                  />
                 </div>
               </div>
 
