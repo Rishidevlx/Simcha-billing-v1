@@ -982,8 +982,8 @@ export default function AllBillsPage({ setActiveRoute }) {
                               disabled={isEditDeleteDisabled}
                               className={
                                 isEditDeleteDisabled
-                                  ? '!text-gray-300 dark:!text-slate-700 !bg-gray-50 dark:!bg-slate-800/50 !border-gray-200 dark:!border-slate-700 opacity-30'
-                                  : '!text-amber-600 dark:!text-amber-400 !bg-amber-50 dark:!bg-amber-950/50 hover:!bg-amber-500 hover:!text-white dark:hover:!bg-amber-500 dark:hover:!text-white !border-amber-200 dark:!border-amber-800 shadow-2xs'
+                                  ? '!text-gray-300 dark:!text-slate-700 opacity-30'
+                                  : '!text-amber-600 dark:!text-amber-400 hover:!bg-amber-50 dark:hover:!bg-slate-800'
                               }
                               title={
                                 isCancelled
@@ -1012,7 +1012,7 @@ export default function AllBillsPage({ setActiveRoute }) {
                               className={
                                 isEditDeleteDisabled
                                   ? '!text-gray-300 dark:!text-slate-700 opacity-30'
-                                  : '!text-gray-400 hover:!text-red-600 hover:!bg-red-50 dark:hover:!bg-red-950/40'
+                                  : '!text-gray-400 hover:!text-red-600 hover:!bg-red-50 dark:hover:!bg-slate-800'
                               }
                               title={
                                 isCancelled

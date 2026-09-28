@@ -733,7 +733,7 @@ export default function AllServicesPage({ setActiveRoute }) {
                 }
               />
 
-              {/* 4. Edit Service Record (Amber / Orange box matching Stock) */}
+              {/* 4. Edit Service Record */}
               {canEdit && (
                 <ActionButton
                   type="edit"
@@ -742,17 +742,17 @@ export default function AllServicesPage({ setActiveRoute }) {
                     navigate(`/services/new?editId=${service.id}`)
                   }}
                   title="Edit Service Request"
-                  className="!text-amber-600 dark:!text-amber-400 !bg-amber-50 dark:bg-amber-950/50 hover:!bg-amber-500 hover:!text-white dark:hover:!bg-amber-500 dark:hover:!text-white !border !border-amber-200 dark:!border-amber-800 shadow-2xs"
+                  className="!text-amber-600 dark:!text-amber-400 hover:!bg-amber-50 dark:hover:!bg-slate-800"
                 />
               )}
 
-              {/* 5. Delete Service Record (Red) */}
+              {/* 5. Delete Service Record */}
               {canDelete && (
                 <ActionButton
                   type="delete"
                   onClick={() => handleDeleteService(service.id, service.service_number)}
                   title="Delete Service Record"
-                  className="!text-red-500 hover:!bg-red-50 dark:hover:!bg-red-950/40"
+                  className="!text-gray-400 hover:!text-red-600 hover:!bg-red-50 dark:hover:!bg-slate-800"
                 />
               )}
             </div>

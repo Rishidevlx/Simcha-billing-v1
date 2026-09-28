@@ -645,8 +645,8 @@ export default function InwardReportsPage() {
                               onClick={() => handleDownloadHardcopy(inv.hardcopy_url, inv.inward_number)}
                               className={
                                 inv.hardcopy_url
-                                  ? '!text-emerald-600 dark:!text-emerald-400 !bg-emerald-50 dark:!bg-emerald-950/50 hover:!bg-emerald-600 hover:!text-white dark:hover:!bg-emerald-600 dark:hover:!text-white !border !border-emerald-200 dark:!border-emerald-800 shadow-2xs'
-                                  : '!text-gray-400 hover:!text-gray-600 dark:hover:!text-slate-300 !bg-gray-50 dark:!bg-slate-800/50 !border !border-gray-200 dark:!border-slate-700'
+                                  ? '!text-emerald-600 dark:!text-emerald-400 hover:!bg-emerald-50 dark:hover:!bg-slate-800'
+                                  : '!text-gray-300 dark:!text-slate-700 opacity-40'
                               }
                               title={inv.hardcopy_url ? 'Download Hardcopy / Bill Document' : 'No Hardcopy Document Attached'}
                             />
@@ -657,7 +657,7 @@ export default function InwardReportsPage() {
                             <ActionButton
                               type="edit"
                               onClick={() => navigate(`/inward/edit/${inv.id}`)}
-                              className="!text-amber-600 dark:!text-amber-400 !bg-amber-50 dark:!bg-amber-950/50 hover:!bg-amber-500 hover:!text-white dark:hover:!bg-amber-500 dark:hover:!text-white !border !border-amber-200 dark:!border-amber-800 shadow-2xs"
+                              className="!text-amber-600 dark:!text-amber-400 hover:!bg-amber-50 dark:hover:!bg-slate-800"
                               title="Edit Inward Record"
                             />
                           )}
@@ -666,7 +666,7 @@ export default function InwardReportsPage() {
                           <ActionButton
                             type="view"
                             onClick={() => handleOpenDetails(inv.id)}
-                            className="!text-[#043486] dark:!text-blue-400 !bg-blue-50 dark:!bg-blue-950/50 hover:!bg-[#043486] hover:!text-white dark:hover:!bg-blue-600 dark:hover:!text-white !border !border-blue-200 dark:!border-blue-800 shadow-2xs"
+                            className="!text-[#043486] dark:!text-blue-400 hover:!bg-blue-50 dark:hover:!bg-slate-800"
                             title="View Inward Details"
                           />
 
@@ -675,7 +675,7 @@ export default function InwardReportsPage() {
                             <ActionButton
                               type="delete"
                               onClick={() => handleDeleteInward(inv.id, inv.inward_number, inv.supplier_name)}
-                              className="!text-gray-400 hover:!text-red-600 hover:!bg-red-50 dark:hover:!bg-red-950/40 !border !border-gray-200 dark:!border-slate-700 shadow-2xs"
+                              className="!text-gray-400 hover:!text-red-600 hover:!bg-red-50 dark:hover:!bg-slate-800"
                               title="Delete Inward Record"
                             />
                           )}

@@ -42,6 +42,7 @@ import {
   CartesianGrid
 } from 'recharts'
 import InvoiceModal from '../components/invoice/InvoiceModal'
+import { ActionButton } from '../components/ui'
 import { API_ENDPOINTS } from '../config/api'
 
 const PIE_COLORS = ['#043486', '#0284c7', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899']
@@ -948,14 +949,12 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
                           ₹{parseFloat(inw.total_amount || inw.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                         <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                          <button
-                            type="button"
+                          <ActionButton
+                            type="view"
                             onClick={() => setActiveRoute(`/inward/edit/${inw.id}`)}
-                            className="p-1 text-gray-500 hover:text-[#043486] dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-none transition-colors cursor-pointer"
                             title="View / Edit Inward"
-                          >
-                            <Eye size={14} />
-                          </button>
+                            className="!text-[#043486] dark:!text-blue-400 hover:!bg-blue-50 dark:hover:!bg-slate-800"
+                          />
                         </td>
                       </tr>
                     ))
@@ -1029,14 +1028,12 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
                           ₹{parseFloat(bill.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                         <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                          <button
-                            type="button"
+                          <ActionButton
+                            type="view"
                             onClick={() => handleOpenBillModal(bill)}
-                            className="p-1 text-gray-500 hover:text-[#043486] dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-none transition-colors cursor-pointer"
                             title="View Invoice Preview & Print"
-                          >
-                            <Eye size={14} />
-                          </button>
+                            className="!text-[#043486] dark:!text-blue-400 hover:!bg-blue-50 dark:hover:!bg-slate-800"
+                          />
                         </td>
                       </tr>
                     ))
@@ -1117,14 +1114,12 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
                           ₹{parseFloat(serv.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                         <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                          <button
-                            type="button"
+                          <ActionButton
+                            type="view"
                             onClick={() => setActiveRoute('/services/list')}
-                            className="p-1 text-gray-500 hover:text-[#043486] dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-none transition-colors cursor-pointer"
                             title="View Service Details"
-                          >
-                            <Eye size={14} />
-                          </button>
+                            className="!text-[#043486] dark:!text-blue-400 hover:!bg-blue-50 dark:hover:!bg-slate-800"
+                          />
                         </td>
                       </tr>
                     ))
