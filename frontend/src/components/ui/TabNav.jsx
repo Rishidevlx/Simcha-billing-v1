@@ -14,24 +14,27 @@ export function TabButton({
   active = false,
   onClick,
   icon: Icon,
+  label,
   badge,
   children,
   className = '',
   disabled = false
 }) {
+  const content = children || label
+
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`flex items-center gap-2 px-5 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${
+      className={`flex items-center gap-2 px-5 py-2.5 text-xs sm:text-sm font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${
         active
           ? 'border-[#043486] text-[#043486] dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30'
           : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200'
       } ${className}`}
     >
-      {Icon && <Icon size={15} className="shrink-0" />}
-      <span>{children}</span>
+      {Icon && <Icon size={14} className="shrink-0" />}
+      {content && <span>{content}</span>}
       {badge !== undefined && badge !== null && (
         <span
           className={`px-1.5 py-0.2 text-[10px] font-black rounded-xs ${
