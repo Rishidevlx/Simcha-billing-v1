@@ -2,21 +2,19 @@ import React, { useState, useEffect } from 'react'
 import {
   Palette,
   Image as ImageIcon,
+  Receipt,
   RotateCcw,
   Save,
-  Check,
-  Eye,
-  Layout,
-  Globe,
-  Monitor,
-  CheckCircle2,
-  Trash2,
-  Receipt,
   Edit2,
   X,
-  Sparkles,
-  Layers,
-  Lock
+  CheckCircle2,
+  Trash2,
+  Monitor,
+  Layout,
+  Sliders,
+  Type,
+  Check,
+  ChevronDown
 } from 'lucide-react'
 import Swal from 'sweetalert2'
 import ListPageHeader from '../components/common/ListPageHeader'
@@ -75,15 +73,16 @@ const THEME_PRESETS = [
 ]
 
 export default function ThemeSettingsPage() {
-  const [activeTab, setActiveTab] = useState('colors') // 'colors', 'branding', 'documents', 'preview'
-  const [previewMode, setPreviewMode] = useState('app') // 'app', 'auth', 'invoice'
+  // 3 Tabs only (No "Live Preview" tab)
+  const [activeTab, setActiveTab] = useState('colors') // 'colors', 'branding', 'documents'
+  const [previewMode, setPreviewMode] = useState('app') // 'app', 'auth'
 
-  // Per-tab Edit Mode States
+  // Edit states per tab
   const [isEditingColors, setIsEditingColors] = useState(false)
   const [isEditingBranding, setIsEditingBranding] = useState(false)
   const [isEditingDocs, setIsEditingDocs] = useState(false)
 
-  // Theme Config
+  // App Theme Config (Colors & Sidebar)
   const [themeConfig, setThemeConfig] = useState({
     presetId: 'simcha-classic',
     primaryColor: '#043486',
@@ -92,13 +91,12 @@ export default function ThemeSettingsPage() {
     sidebarTheme: 'dark',
     logoUrl: '',
     faviconUrl: '',
+    // Independent Invoice Settings (Not affected by app color changes)
     invoiceHeaderStyle: 'banner',
     invoiceAccentColor: '#043486'
   })
 
-  // Backup state for canceling edit
   const [backupConfig, setBackupConfig] = useState(null)
-
   const [logoPreview, setLogoPreview] = useState(defaultLogo)
   const [faviconPreview, setFaviconPreview] = useState(defaultFavicon)
 
@@ -112,12 +110,12 @@ export default function ThemeSettingsPage() {
         if (parsed.logoUrl) setLogoPreview(parsed.logoUrl)
         if (parsed.faviconUrl) setFaviconPreview(parsed.faviconUrl)
       } catch (err) {
-        console.error('Error reading theme from storage', err)
+        console.error('Error reading theme storage', err)
       }
     }
   }, [])
 
-  // Start Edit on a tab
+  // Start edit
   const handleStartEdit = (tab) => {
     setBackupConfig({ ...themeConfig })
     if (tab === 'colors') setIsEditingColors(true)
@@ -125,7 +123,7 @@ export default function ThemeSettingsPage() {
     if (tab === 'documents') setIsEditingDocs(true)
   }
 
-  // Cancel Edit on a tab
+  // Cancel edit
   const handleCancelEdit = (tab) => {
     if (backupConfig) {
       setThemeConfig({ ...backupConfig })
@@ -140,7 +138,7 @@ export default function ThemeSettingsPage() {
     if (tab === 'documents') setIsEditingDocs(false)
   }
 
-  // Save changes for a tab
+  // Save changes
   const handleSaveTab = (tab) => {
     try {
       localStorage.setItem('simcha_custom_theme', JSON.stringify(themeConfig))
@@ -165,7 +163,20 @@ export default function ThemeSettingsPage() {
     }
   }
 
-  // Logo file upload
+  // Select Preset (App Colors only, DOES NOT touch invoiceAccentColor)
+  const handleSelectPreset = (preset) => {
+    if (!isEditingColors) return
+    setThemeConfig(prev => ({
+      ...prev,
+      presetId: preset.id,
+      primaryColor: preset.primaryColor,
+      secondaryColor: preset.secondaryColor,
+      accentColor: preset.accentColor
+      // Notice: invoiceAccentColor is preserved independently
+    }))
+  }
+
+  // Logo upload
   const handleLogoUpload = (e) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -183,7 +194,7 @@ export default function ThemeSettingsPage() {
     }
   }
 
-  // Favicon file upload
+  // Favicon upload
   const handleFaviconUpload = (e) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -260,7 +271,7 @@ export default function ThemeSettingsPage() {
         }
       />
 
-      {/* 2. Clean Navigation Tabs */}
+      {/* 2. Top Navigation Tabs (3 Tabs Only: COLORS, LOGO & FAVICON, INVOICE STYLE) */}
       <div className="flex items-center border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 pt-2 shadow-2xs">
         <button
           type="button"
@@ -300,237 +311,301 @@ export default function ThemeSettingsPage() {
           <Receipt size={16} />
           <span>Invoice Style</span>
         </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('preview')}
-          className={`flex items-center gap-2 px-5 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
-            activeTab === 'preview'
-              ? 'border-[#043486] text-[#043486] dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30'
-              : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200'
-          }`}
-        >
-          <Eye size={16} />
-          <span>Live Preview</span>
-        </button>
       </div>
 
-      {/* 3. Studio Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Form Controls */}
-        <div className="lg:col-span-7 space-y-6">
-          {/* TAB 1: COLORS */}
-          {activeTab === 'colors' && (
-            <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-6 shadow-2xs space-y-6">
-              {/* Card Action Header */}
-              <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-slate-800">
-                <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                  <Palette size={16} className="text-[#043486] dark:text-blue-400" />
-                  <span>Theme Colors</span>
-                </span>
+      {/* 3. TAB 1: COLORS (Element UI Inspired Palette Matrix + Inspector Panel) */}
+      {activeTab === 'colors' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left Main Color Palette Studio (8 cols) */}
+          <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-6 shadow-2xs space-y-6">
+            {/* Header with Edit Button */}
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-slate-800">
+              <span className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <Palette size={16} className="text-[#043486] dark:text-blue-400" />
+                <span>Color Palette Studio</span>
+              </span>
 
-                {!isEditingColors ? (
+              {!isEditingColors ? (
+                <button
+                  type="button"
+                  onClick={() => handleStartEdit('colors')}
+                  className="flex items-center gap-1.5 py-1.5 px-3 bg-[#043486] hover:bg-[#0248BC] text-white text-xs font-bold rounded-none shadow-xs transition-all cursor-pointer"
+                >
+                  <Edit2 size={13} />
+                  <span>Edit</span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => handleStartEdit('colors')}
-                    className="flex items-center gap-1.5 py-1.5 px-3 bg-[#043486] hover:bg-[#0248BC] text-white text-xs font-bold rounded-none shadow-xs transition-all cursor-pointer"
+                    onClick={() => handleCancelEdit('colors')}
+                    className="flex items-center gap-1 py-1.5 px-3 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 text-xs font-bold rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer"
                   >
-                    <Edit2 size={13} />
-                    <span>Edit</span>
+                    <X size={13} />
+                    <span>Cancel</span>
                   </button>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleCancelEdit('colors')}
-                      className="flex items-center gap-1 py-1.5 px-3 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 text-xs font-bold rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer"
-                    >
-                      <X size={13} />
-                      <span>Cancel</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSaveTab('colors')}
-                      className="flex items-center gap-1 py-1.5 px-3 bg-[#043486] hover:bg-[#0248BC] text-white text-xs font-bold rounded-none shadow-xs cursor-pointer"
-                    >
-                      <Save size={13} />
-                      <span>Save</span>
-                    </button>
-                  </div>
-                )}
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveTab('colors')}
+                    className="flex items-center gap-1 py-1.5 px-3 bg-[#043486] hover:bg-[#0248BC] text-white text-xs font-bold rounded-none shadow-xs cursor-pointer"
+                  >
+                    <Save size={13} />
+                    <span>Save</span>
+                  </button>
+                </div>
+              )}
+            </div>
 
-              {/* Presets */}
-              <div className="space-y-3">
-                <label className="text-xs font-bold text-gray-700 dark:text-slate-300 block">
-                  Presets
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  {THEME_PRESETS.map((preset) => {
-                    const isSelected = themeConfig.presetId === preset.id
-                    return (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        disabled={!isEditingColors}
-                        onClick={() =>
+            {/* Presets Row */}
+            <div className="space-y-2">
+              <span className="text-xs font-bold text-gray-700 dark:text-slate-300 block">Theme Presets</span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                {THEME_PRESETS.map((preset) => {
+                  const isSelected = themeConfig.presetId === preset.id
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      disabled={!isEditingColors}
+                      onClick={() => handleSelectPreset(preset)}
+                      className={`p-2 border text-left transition-all ${
+                        !isEditingColors ? 'opacity-80 cursor-not-allowed' : 'cursor-pointer'
+                      } ${
+                        isSelected
+                          ? 'border-[#043486] bg-blue-50/50 dark:bg-blue-950/30'
+                          : 'border-gray-200 dark:border-slate-800 hover:border-gray-300'
+                      }`}
+                    >
+                      <span className="text-[10px] font-bold text-gray-900 dark:text-white block truncate mb-1">
+                        {preset.name}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: preset.primaryColor }} />
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: preset.secondaryColor }} />
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Element UI Style Palette Cards */}
+            <div className="space-y-4 pt-2">
+              <span className="text-xs font-bold text-gray-700 dark:text-slate-300 block">System Palette Matrix</span>
+
+              {/* Row 1: Brand & Secondary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Brand Color Card */}
+                <div
+                  className="p-4 rounded-none text-white flex flex-col justify-between min-h-[90px] shadow-2xs relative"
+                  style={{ backgroundColor: themeConfig.primaryColor }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold block uppercase tracking-wider">Brand Color</span>
+                      <span className="text-[11px] font-mono opacity-90">{themeConfig.primaryColor}</span>
+                    </div>
+                    {isEditingColors && (
+                      <input
+                        type="color"
+                        value={themeConfig.primaryColor}
+                        onChange={(e) =>
                           setThemeConfig(prev => ({
                             ...prev,
-                            presetId: preset.id,
-                            primaryColor: preset.primaryColor,
-                            secondaryColor: preset.secondaryColor,
-                            accentColor: preset.accentColor,
-                            invoiceAccentColor: preset.primaryColor
+                            presetId: 'custom',
+                            primaryColor: e.target.value
                           }))
                         }
-                        className={`p-2.5 border text-left transition-all ${
-                          !isEditingColors ? 'opacity-80 cursor-not-allowed' : 'cursor-pointer'
-                        } ${
-                          isSelected
-                            ? 'border-[#043486] bg-blue-50/50 dark:bg-blue-950/30'
-                            : 'border-gray-200 dark:border-slate-800 hover:border-gray-300'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[11px] font-bold text-gray-900 dark:text-white truncate">
-                            {preset.name}
-                          </span>
-                          {isSelected && <CheckCircle2 size={13} className="text-[#043486] dark:text-blue-400 shrink-0" />}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: preset.primaryColor }} />
-                          <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: preset.secondaryColor }} />
-                          <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: preset.accentColor }} />
-                        </div>
-                      </button>
-                    )
-                  })}
+                        className="w-7 h-7 border-0 p-0 cursor-pointer bg-transparent"
+                      />
+                    )}
+                  </div>
+                  {/* Subtle shades footer */}
+                  <div className="flex gap-1 pt-2 opacity-80">
+                    <div className="h-2 flex-1 bg-white/30" />
+                    <div className="h-2 flex-1 bg-white/50" />
+                    <div className="h-2 flex-1 bg-white/70" />
+                  </div>
+                </div>
+
+                {/* Secondary Color Card */}
+                <div
+                  className="p-4 rounded-none text-white flex flex-col justify-between min-h-[90px] shadow-2xs relative"
+                  style={{ backgroundColor: themeConfig.secondaryColor }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold block uppercase tracking-wider">Secondary Color</span>
+                      <span className="text-[11px] font-mono opacity-90">{themeConfig.secondaryColor}</span>
+                    </div>
+                    {isEditingColors && (
+                      <input
+                        type="color"
+                        value={themeConfig.secondaryColor}
+                        onChange={(e) =>
+                          setThemeConfig(prev => ({
+                            ...prev,
+                            presetId: 'custom',
+                            secondaryColor: e.target.value
+                          }))
+                        }
+                        className="w-7 h-7 border-0 p-0 cursor-pointer bg-transparent"
+                      />
+                    )}
+                  </div>
+                  <div className="flex gap-1 pt-2 opacity-80">
+                    <div className="h-2 flex-1 bg-white/30" />
+                    <div className="h-2 flex-1 bg-white/50" />
+                    <div className="h-2 flex-1 bg-white/70" />
+                  </div>
                 </div>
               </div>
 
-              {/* Custom Hex Inputs */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                {/* Primary */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700 dark:text-slate-300">
-                    Primary Color
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      disabled={!isEditingColors}
-                      value={themeConfig.primaryColor}
-                      onChange={(e) =>
-                        setThemeConfig(prev => ({
-                          ...prev,
-                          presetId: 'custom',
-                          primaryColor: e.target.value
-                        }))
-                      }
-                      className={`w-9 h-9 border border-gray-300 dark:border-slate-700 p-0.5 rounded-none ${
-                        !isEditingColors ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
-                      }`}
-                    />
-                    <input
-                      type="text"
-                      disabled={!isEditingColors}
-                      value={themeConfig.primaryColor}
-                      onChange={(e) =>
-                        setThemeConfig(prev => ({
-                          ...prev,
-                          presetId: 'custom',
-                          primaryColor: e.target.value
-                        }))
-                      }
-                      className="flex-1 px-3 py-1.5 text-xs border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white font-mono uppercase focus:outline-none disabled:bg-gray-100 dark:disabled:bg-slate-800/50 disabled:text-gray-500"
-                    />
+              {/* Row 2: Status Colors Matrix (Success, Warning, Danger, Info) */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {/* Success */}
+                <div className="bg-[#10B981] p-3 text-white flex flex-col justify-between min-h-[75px]">
+                  <span className="text-[11px] font-bold uppercase">Success</span>
+                  <span className="text-[10px] font-mono opacity-90">#10B981</span>
+                </div>
+                {/* Warning */}
+                <div className="bg-[#F59E0B] p-3 text-white flex flex-col justify-between min-h-[75px]">
+                  <span className="text-[11px] font-bold uppercase">Warning</span>
+                  <span className="text-[10px] font-mono opacity-90">#F59E0B</span>
+                </div>
+                {/* Danger */}
+                <div className="bg-[#EF4444] p-3 text-white flex flex-col justify-between min-h-[75px]">
+                  <span className="text-[11px] font-bold uppercase">Danger</span>
+                  <span className="text-[10px] font-mono opacity-90">#EF4444</span>
+                </div>
+                {/* Info */}
+                <div className="bg-[#64748B] p-3 text-white flex flex-col justify-between min-h-[75px]">
+                  <span className="text-[11px] font-bold uppercase">Info</span>
+                  <span className="text-[10px] font-mono opacity-90">#64748B</span>
+                </div>
+              </div>
+
+              {/* Row 3: Text & Neutral Shades */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="bg-[#0F172A] p-2.5 text-white">
+                  <span className="text-[10px] font-bold block">Primary Text</span>
+                  <span className="text-[9px] font-mono text-gray-300">#0F172A</span>
+                </div>
+                <div className="bg-[#475569] p-2.5 text-white">
+                  <span className="text-[10px] font-bold block">Regular Text</span>
+                  <span className="text-[9px] font-mono text-gray-300">#475569</span>
+                </div>
+                <div className="bg-[#94A3B8] p-2.5 text-white">
+                  <span className="text-[10px] font-bold block">Secondary Text</span>
+                  <span className="text-[9px] font-mono text-gray-200">#94A3B8</span>
+                </div>
+                <div className="bg-[#CBD5E1] p-2.5 text-gray-800">
+                  <span className="text-[10px] font-bold block">Placeholder</span>
+                  <span className="text-[9px] font-mono text-gray-600">#CBD5E1</span>
+                </div>
+              </div>
+
+              {/* Row 4: Borders & Backgrounds */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="bg-[#E2E8F0] p-2.5 text-gray-800 border border-gray-300">
+                  <span className="text-[10px] font-bold block">Border Base</span>
+                  <span className="text-[9px] font-mono text-gray-600">#E2E8F0</span>
+                </div>
+                <div className="bg-[#F1F5F9] p-2.5 text-gray-800 border border-gray-200">
+                  <span className="text-[10px] font-bold block">Border Light</span>
+                  <span className="text-[9px] font-mono text-gray-600">#F1F5F9</span>
+                </div>
+                <div className="bg-[#0F172A] p-2.5 text-white border border-gray-800">
+                  <span className="text-[10px] font-bold block">Background Dark</span>
+                  <span className="text-[9px] font-mono text-gray-400">#0F172A</span>
+                </div>
+                <div className="bg-[#FFFFFF] p-2.5 text-gray-800 border border-gray-300">
+                  <span className="text-[10px] font-bold block">Background White</span>
+                  <span className="text-[9px] font-mono text-gray-500">#FFFFFF</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Typography Preview Section */}
+            <div className="pt-4 border-t border-gray-100 dark:border-slate-800 space-y-3">
+              <span className="text-xs font-bold text-gray-700 dark:text-slate-300 flex items-center gap-1.5">
+                <Type size={14} />
+                <span>Font &amp; Typography</span>
+              </span>
+              <div className="p-4 bg-gray-50 dark:bg-slate-800/40 border border-gray-200 dark:border-slate-800 space-y-2">
+                <h1 className="text-lg font-bold text-gray-900 dark:text-white">
+                  Heading 1 — Simcha Billing &amp; Inventory Management
+                </h1>
+                <p className="text-xs text-gray-600 dark:text-slate-300 leading-relaxed">
+                  Clean, legible Poppins typography optimized for high-density business invoices, stock tracking, and accounting.
+                </p>
+                <span className="text-[11px] text-gray-400 block">
+                  Small label example text: TAX INVOICE • GST 33AAAAA0000A1Z5
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Inspector & Theme Config Panel (4 cols) */}
+          <div className="lg:col-span-4 space-y-4 sticky top-6">
+            <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-4 shadow-2xs space-y-4">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
+                <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <Sliders size={14} className="text-[#043486] dark:text-blue-400" />
+                  <span>Theme Inspector</span>
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewMode('app')}
+                    className={`px-2 py-0.5 text-[10px] font-bold ${
+                      previewMode === 'app'
+                        ? 'bg-[#043486] text-white'
+                        : 'text-gray-500 hover:text-gray-900 bg-gray-100 dark:bg-slate-800'
+                    }`}
+                  >
+                    App
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewMode('auth')}
+                    className={`px-2 py-0.5 text-[10px] font-bold ${
+                      previewMode === 'auth'
+                        ? 'bg-[#043486] text-white'
+                        : 'text-gray-500 hover:text-gray-900 bg-gray-100 dark:bg-slate-800'
+                    }`}
+                  >
+                    Login
+                  </button>
+                </div>
+              </div>
+
+              {/* Tokens list (Like reference image sidebar) */}
+              <div className="space-y-3 text-xs">
+                <div>
+                  <span className="text-[11px] font-mono text-gray-500 block mb-1">$color-btn-primary</span>
+                  <div className="flex items-center justify-between p-2 border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/40">
+                    <span className="font-mono text-gray-700 dark:text-slate-300 font-bold">$color-brand</span>
+                    <div className="w-4 h-4 rounded-full shadow-2xs" style={{ backgroundColor: themeConfig.primaryColor }} />
                   </div>
                 </div>
 
-                {/* Secondary */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700 dark:text-slate-300">
-                    Secondary / Hover
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      disabled={!isEditingColors}
-                      value={themeConfig.secondaryColor}
-                      onChange={(e) =>
-                        setThemeConfig(prev => ({
-                          ...prev,
-                          presetId: 'custom',
-                          secondaryColor: e.target.value
-                        }))
-                      }
-                      className={`w-9 h-9 border border-gray-300 dark:border-slate-700 p-0.5 rounded-none ${
-                        !isEditingColors ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
-                      }`}
-                    />
-                    <input
-                      type="text"
-                      disabled={!isEditingColors}
-                      value={themeConfig.secondaryColor}
-                      onChange={(e) =>
-                        setThemeConfig(prev => ({
-                          ...prev,
-                          presetId: 'custom',
-                          secondaryColor: e.target.value
-                        }))
-                      }
-                      className="flex-1 px-3 py-1.5 text-xs border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white font-mono uppercase focus:outline-none disabled:bg-gray-100 dark:disabled:bg-slate-800/50 disabled:text-gray-500"
-                    />
+                <div>
+                  <span className="text-[11px] font-mono text-gray-500 block mb-1">$color-btn-secondary</span>
+                  <div className="flex items-center justify-between p-2 border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/40">
+                    <span className="font-mono text-gray-700 dark:text-slate-300 font-bold">$color-secondary</span>
+                    <div className="w-4 h-4 rounded-full shadow-2xs" style={{ backgroundColor: themeConfig.secondaryColor }} />
                   </div>
                 </div>
 
-                {/* Accent */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700 dark:text-slate-300">
-                    Accent Color
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      disabled={!isEditingColors}
-                      value={themeConfig.accentColor}
-                      onChange={(e) =>
-                        setThemeConfig(prev => ({
-                          ...prev,
-                          presetId: 'custom',
-                          accentColor: e.target.value
-                        }))
-                      }
-                      className={`w-9 h-9 border border-gray-300 dark:border-slate-700 p-0.5 rounded-none ${
-                        !isEditingColors ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
-                      }`}
-                    />
-                    <input
-                      type="text"
-                      disabled={!isEditingColors}
-                      value={themeConfig.accentColor}
-                      onChange={(e) =>
-                        setThemeConfig(prev => ({
-                          ...prev,
-                          presetId: 'custom',
-                          accentColor: e.target.value
-                        }))
-                      }
-                      className="flex-1 px-3 py-1.5 text-xs border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white font-mono uppercase focus:outline-none disabled:bg-gray-100 dark:disabled:bg-slate-800/50 disabled:text-gray-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Sidebar Style */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700 dark:text-slate-300">
-                    Sidebar Style
-                  </label>
+                <div>
+                  <span className="text-[11px] font-mono text-gray-500 block mb-1">$sidebar-theme-base</span>
                   <select
                     disabled={!isEditingColors}
                     value={themeConfig.sidebarTheme}
                     onChange={(e) => setThemeConfig(prev => ({ ...prev, sidebarTheme: e.target.value }))}
-                    className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white focus:outline-none disabled:bg-gray-100 dark:disabled:bg-slate-800/50 disabled:text-gray-500"
+                    className="w-full px-2.5 py-1.5 text-xs border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/40 dark:text-white focus:outline-none disabled:opacity-75"
                   >
                     <option value="dark">Dark Slate (#1E293B)</option>
                     <option value="brand">Brand Primary Tint</option>
@@ -538,421 +613,358 @@ export default function ThemeSettingsPage() {
                   </select>
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* TAB 2: BRANDING */}
-          {activeTab === 'branding' && (
-            <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-6 shadow-2xs space-y-6">
-              {/* Card Action Header */}
-              <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-slate-800">
-                <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                  <ImageIcon size={16} className="text-[#043486] dark:text-blue-400" />
-                  <span>Logo &amp; Favicon</span>
+              {/* Real-time Component Preview Mock */}
+              <div className="pt-3 border-t border-gray-100 dark:border-slate-800 space-y-2">
+                <span className="text-[11px] font-bold text-gray-700 dark:text-slate-300 block">
+                  Component Simulation
                 </span>
 
-                {!isEditingBranding ? (
-                  <button
-                    type="button"
-                    onClick={() => handleStartEdit('branding')}
-                    className="flex items-center gap-1.5 py-1.5 px-3 bg-[#043486] hover:bg-[#0248BC] text-white text-xs font-bold rounded-none shadow-xs transition-all cursor-pointer"
-                  >
-                    <Edit2 size={13} />
-                    <span>Edit</span>
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleCancelEdit('branding')}
-                      className="flex items-center gap-1 py-1.5 px-3 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 text-xs font-bold rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer"
-                    >
-                      <X size={13} />
-                      <span>Cancel</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSaveTab('branding')}
-                      className="flex items-center gap-1 py-1.5 px-3 bg-[#043486] hover:bg-[#0248BC] text-white text-xs font-bold rounded-none shadow-xs cursor-pointer"
-                    >
-                      <Save size={13} />
-                      <span>Save</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Logo Section */}
-              <div className="space-y-3">
-                <label className="text-xs font-bold text-gray-700 dark:text-slate-300 block">
-                  Brand Logo
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-                  <div className="sm:col-span-4 p-3 border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/40 flex items-center justify-center min-h-[90px]">
-                    <img src={logoPreview} alt="Logo" className="max-h-12 max-w-full object-contain" />
-                  </div>
-                  <div className="sm:col-span-8 space-y-2">
-                    <input
-                      type="file"
-                      disabled={!isEditingBranding}
-                      accept="image/*"
-                      onChange={handleLogoUpload}
-                      className="block w-full text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:border-0 file:text-xs file:font-bold file:bg-[#043486] file:text-white disabled:opacity-50 cursor-pointer"
-                    />
-                    {isEditingBranding && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setLogoPreview(defaultLogo)
-                          setThemeConfig(prev => ({ ...prev, logoUrl: '' }))
-                        }}
-                        className="text-[11px] text-red-600 hover:text-red-700 font-bold flex items-center gap-1 cursor-pointer"
+                {previewMode === 'app' ? (
+                  <div className="border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950 p-2.5 space-y-2 text-[10px]">
+                    <div className="bg-white dark:bg-slate-900 p-2 border border-gray-200 dark:border-slate-800 flex items-center justify-between">
+                      <img src={logoPreview} alt="Logo" className="h-4 object-contain" />
+                      <div
+                        className="w-4 h-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center"
+                        style={{ backgroundColor: themeConfig.primaryColor }}
                       >
-                        <Trash2 size={12} /> Reset Logo
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Favicon Section */}
-              <div className="space-y-3 pt-4 border-t border-gray-100 dark:border-slate-800">
-                <label className="text-xs font-bold text-gray-700 dark:text-slate-300 block">
-                  Browser Tab Favicon
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-                  <div className="sm:col-span-4 p-3 border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/40 flex items-center justify-center min-h-[90px]">
-                    <div className="bg-gray-200 dark:bg-slate-700 px-3 py-1.5 rounded-t-sm flex items-center gap-2">
-                      <img src={faviconPreview} alt="Favicon" className="w-4 h-4 object-cover" />
-                      <span className="text-[11px] font-medium text-gray-700 dark:text-slate-200">Tab</span>
+                        R
+                      </div>
                     </div>
-                  </div>
-                  <div className="sm:col-span-8 space-y-2">
-                    <input
-                      type="file"
-                      disabled={!isEditingBranding}
-                      accept="image/*"
-                      onChange={handleFaviconUpload}
-                      className="block w-full text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:border-0 file:text-xs file:font-bold file:bg-[#043486] file:text-white disabled:opacity-50 cursor-pointer"
-                    />
-                    {isEditingBranding && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFaviconPreview(defaultFavicon)
-                          setThemeConfig(prev => ({ ...prev, faviconUrl: '' }))
-                        }}
-                        className="text-[11px] text-red-600 hover:text-red-700 font-bold flex items-center gap-1 cursor-pointer"
-                      >
-                        <Trash2 size={12} /> Reset Favicon
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
-          {/* TAB 3: INVOICE STYLING */}
-          {activeTab === 'documents' && (
-            <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-6 shadow-2xs space-y-6">
-              {/* Card Action Header */}
-              <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-slate-800">
-                <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                  <Receipt size={16} className="text-[#043486] dark:text-blue-400" />
-                  <span>Invoice Style</span>
-                </span>
-
-                {!isEditingDocs ? (
-                  <button
-                    type="button"
-                    onClick={() => handleStartEdit('documents')}
-                    className="flex items-center gap-1.5 py-1.5 px-3 bg-[#043486] hover:bg-[#0248BC] text-white text-xs font-bold rounded-none shadow-xs transition-all cursor-pointer"
-                  >
-                    <Edit2 size={13} />
-                    <span>Edit</span>
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleCancelEdit('documents')}
-                      className="flex items-center gap-1 py-1.5 px-3 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 text-xs font-bold rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer"
-                    >
-                      <X size={13} />
-                      <span>Cancel</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSaveTab('documents')}
-                      className="flex items-center gap-1 py-1.5 px-3 bg-[#043486] hover:bg-[#0248BC] text-white text-xs font-bold rounded-none shadow-xs cursor-pointer"
-                    >
-                      <Save size={13} />
-                      <span>Save</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Style Selector */}
-              <div className="space-y-3">
-                <label className="text-xs font-bold text-gray-700 dark:text-slate-300 block">
-                  Header Banner Format
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    disabled={!isEditingDocs}
-                    onClick={() => setThemeConfig(prev => ({ ...prev, invoiceHeaderStyle: 'banner' }))}
-                    className={`p-3 text-left border ${
-                      !isEditingDocs ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
-                    } ${
-                      themeConfig.invoiceHeaderStyle === 'banner'
-                        ? 'border-[#043486] bg-blue-50/50 dark:bg-blue-950/30'
-                        : 'border-gray-200 dark:border-slate-800'
-                    }`}
-                  >
-                    <span className="text-xs font-bold block mb-1">Color Banner</span>
-                    <span className="text-[11px] text-gray-500">Filled header band</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={!isEditingDocs}
-                    onClick={() => setThemeConfig(prev => ({ ...prev, invoiceHeaderStyle: 'minimal' }))}
-                    className={`p-3 text-left border ${
-                      !isEditingDocs ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
-                    } ${
-                      themeConfig.invoiceHeaderStyle === 'minimal'
-                        ? 'border-[#043486] bg-blue-50/50 dark:bg-blue-950/30'
-                        : 'border-gray-200 dark:border-slate-800'
-                    }`}
-                  >
-                    <span className="text-xs font-bold block mb-1">Minimal Line</span>
-                    <span className="text-[11px] text-gray-500">Clean top border line</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Accent Color */}
-              <div className="space-y-1.5 pt-2">
-                <label className="text-xs font-bold text-gray-700 dark:text-slate-300">
-                  Invoice Accent Color
-                </label>
-                <div className="flex items-center gap-2 max-w-xs">
-                  <input
-                    type="color"
-                    disabled={!isEditingDocs}
-                    value={themeConfig.invoiceAccentColor || themeConfig.primaryColor}
-                    onChange={(e) => setThemeConfig(prev => ({ ...prev, invoiceAccentColor: e.target.value }))}
-                    className={`w-9 h-9 border border-gray-300 dark:border-slate-700 p-0.5 rounded-none ${
-                      !isEditingDocs ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
-                    }`}
-                  />
-                  <input
-                    type="text"
-                    disabled={!isEditingDocs}
-                    value={themeConfig.invoiceAccentColor || themeConfig.primaryColor}
-                    onChange={(e) => setThemeConfig(prev => ({ ...prev, invoiceAccentColor: e.target.value }))}
-                    className="flex-1 px-3 py-1.5 text-xs border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white font-mono uppercase focus:outline-none disabled:bg-gray-100 dark:disabled:bg-slate-800/50 disabled:text-gray-500"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: PREVIEW INFO */}
-          {activeTab === 'preview' && (
-            <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-6 shadow-2xs space-y-3">
-              <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider block">
-                Live Preview Mode
-              </span>
-              <p className="text-xs text-gray-600 dark:text-slate-300 leading-relaxed">
-                Use the simulation switchers on the right panel to preview changes across App Shell, Login Screen, and Invoices.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Right Sticky Preview Hub */}
-        <div className="lg:col-span-5 sticky top-6">
-          <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-4 shadow-2xs space-y-4">
-            {/* Mode Switcher */}
-            <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
-              <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                <Monitor size={14} className="text-[#043486] dark:text-blue-400" />
-                <span>Preview</span>
-              </span>
-
-              <div className="flex items-center bg-gray-100 dark:bg-slate-800 p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setPreviewMode('app')}
-                  className={`px-2.5 py-1 text-[11px] font-bold transition-all cursor-pointer ${
-                    previewMode === 'app'
-                      ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-2xs'
-                      : 'text-gray-500 hover:text-gray-900'
-                  }`}
-                >
-                  App
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewMode('auth')}
-                  className={`px-2.5 py-1 text-[11px] font-bold transition-all cursor-pointer ${
-                    previewMode === 'auth'
-                      ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-2xs'
-                      : 'text-gray-500 hover:text-gray-900'
-                  }`}
-                >
-                  Login
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewMode('invoice')}
-                  className={`px-2.5 py-1 text-[11px] font-bold transition-all cursor-pointer ${
-                    previewMode === 'invoice'
-                      ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-2xs'
-                      : 'text-gray-500 hover:text-gray-900'
-                  }`}
-                >
-                  Invoice
-                </button>
-              </div>
-            </div>
-
-            {/* PREVIEW: APP SHELL */}
-            {previewMode === 'app' && (
-              <div className="border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950 p-3 space-y-2">
-                <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 px-3 py-1.5 flex items-center justify-between shadow-2xs">
-                  <img src={logoPreview} alt="Logo" className="h-4 object-contain" />
-                  <div
-                    className="w-5 h-5 rounded-full text-[9px] font-bold text-white flex items-center justify-center"
-                    style={{ backgroundColor: themeConfig.primaryColor }}
-                  >
-                    R
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-12 gap-2">
-                  <div
-                    className="col-span-4 p-2 text-white space-y-1 min-h-[140px] text-[10px]"
-                    style={{
-                      backgroundColor:
-                        themeConfig.sidebarTheme === 'brand'
-                          ? themeConfig.primaryColor
-                          : themeConfig.sidebarTheme === 'dark'
-                          ? '#1E293B'
-                          : '#0F172A'
-                    }}
-                  >
-                    <div
-                      className="p-1 font-bold flex items-center gap-1"
-                      style={{ backgroundColor: themeConfig.secondaryColor }}
-                    >
-                      <Layout size={10} /> Dashboard
-                    </div>
-                    <div className="p-1 opacity-70 flex items-center gap-1">
-                      <Receipt size={10} /> Bills
-                    </div>
-                  </div>
-
-                  <div className="col-span-8 bg-white dark:bg-slate-900 p-2 space-y-2 border border-gray-200 dark:border-slate-800 text-[10px]">
-                    <div className="flex items-center justify-between pb-1 border-b border-gray-100 dark:border-slate-800">
-                      <span className="font-bold text-gray-800 dark:text-white">Invoices</span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <button
                         type="button"
                         style={{ backgroundColor: themeConfig.primaryColor }}
-                        className="text-white px-2 py-0.5 font-bold text-[9px] cursor-pointer"
+                        className="text-white px-2 py-1 font-bold text-[9px]"
                       >
-                        + Create
+                        Primary Button
+                      </button>
+                      <button
+                        type="button"
+                        style={{ backgroundColor: themeConfig.secondaryColor }}
+                        className="text-white px-2 py-1 font-bold text-[9px]"
+                      >
+                        Hover State
                       </button>
                     </div>
 
-                    <div className="space-y-1">
-                      <div className="p-1 bg-gray-50 dark:bg-slate-800/50 flex items-center justify-between text-[9px]">
-                        <span>INV-001</span>
-                        <span
-                          className="font-bold px-1 text-[8px] text-white"
-                          style={{ backgroundColor: themeConfig.primaryColor }}
-                        >
-                          PAID
-                        </span>
-                      </div>
+                    <div className="p-1.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 flex items-center justify-between">
+                      <span>INV-2026-001</span>
+                      <span
+                        className="font-bold px-1 text-[8px] text-white"
+                        style={{ backgroundColor: themeConfig.primaryColor }}
+                      >
+                        PAID
+                      </span>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div
+                    className="border border-gray-200 dark:border-slate-800 p-3 min-h-[140px] flex items-center justify-center"
+                    style={{
+                      background: `linear-gradient(135deg, ${themeConfig.primaryColor}15 0%, ${themeConfig.secondaryColor}30 100%)`
+                    }}
+                  >
+                    <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-2.5 w-full max-w-[180px] text-center space-y-1.5">
+                      <img src={logoPreview} alt="Logo" className="h-4 mx-auto object-contain" />
+                      <button
+                        type="button"
+                        style={{ backgroundColor: themeConfig.primaryColor }}
+                        className="w-full py-1 text-white text-[9px] font-bold"
+                      >
+                        Login
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+          </div>
+        </div>
+      )}
 
-            {/* PREVIEW: AUTH */}
-            {previewMode === 'auth' && (
-              <div
-                className="border border-gray-200 dark:border-slate-800 p-4 min-h-[190px] flex items-center justify-center"
-                style={{
-                  background: `linear-gradient(135deg, ${themeConfig.primaryColor}15 0%, ${themeConfig.secondaryColor}30 100%)`
-                }}
+      {/* 4. TAB 2: LOGO & FAVICON */}
+      {activeTab === 'branding' && (
+        <div className="max-w-4xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-6 shadow-2xs space-y-6">
+          {/* Card Header */}
+          <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-slate-800">
+            <span className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+              <ImageIcon size={16} className="text-[#043486] dark:text-blue-400" />
+              <span>Brand Logo &amp; Favicon</span>
+            </span>
+
+            {!isEditingBranding ? (
+              <button
+                type="button"
+                onClick={() => handleStartEdit('branding')}
+                className="flex items-center gap-1.5 py-1.5 px-3 bg-[#043486] hover:bg-[#0248BC] text-white text-xs font-bold rounded-none shadow-xs transition-all cursor-pointer"
               >
-                <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-3 w-full max-w-[200px] shadow-sm space-y-2 text-center">
-                  <img src={logoPreview} alt="Logo" className="h-5 mx-auto object-contain" />
-                  <div className="w-full h-5 bg-gray-100 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-[8px] flex items-center px-1.5 text-gray-400">
-                    user@simcha.com
-                  </div>
-                  <button
-                    type="button"
-                    style={{ backgroundColor: themeConfig.primaryColor }}
-                    className="w-full py-1 text-white text-[9px] font-bold"
-                  >
-                    Login
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* PREVIEW: INVOICE */}
-            {previewMode === 'invoice' && (
-              <div className="border border-gray-200 dark:border-slate-800 bg-white p-3 space-y-2 text-gray-800">
-                <div
-                  className="p-2 text-white flex items-center justify-between"
-                  style={{
-                    backgroundColor: themeConfig.invoiceAccentColor || themeConfig.primaryColor
-                  }}
+                <Edit2 size={13} />
+                <span>Edit</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleCancelEdit('branding')}
+                  className="flex items-center gap-1 py-1.5 px-3 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 text-xs font-bold rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer"
                 >
-                  <img src={logoPreview} alt="Logo" className="h-4 object-contain bg-white/90 p-0.5" />
-                  <span className="text-[10px] font-black uppercase">TAX INVOICE</span>
-                </div>
-
-                <div className="border border-gray-200 text-[8px]">
-                  <div
-                    className="p-1 text-white font-bold grid grid-cols-12"
-                    style={{
-                      backgroundColor: themeConfig.invoiceAccentColor || themeConfig.primaryColor
-                    }}
-                  >
-                    <span className="col-span-8">Description</span>
-                    <span className="col-span-4 text-right">Amount (₹)</span>
-                  </div>
-                  <div className="p-1 grid grid-cols-12">
-                    <span className="col-span-8">Sample Item</span>
-                    <span className="col-span-4 text-right font-bold">5,900.00</span>
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <div
-                    className="px-2 py-0.5 text-white font-bold text-[9px]"
-                    style={{
-                      backgroundColor: themeConfig.invoiceAccentColor || themeConfig.primaryColor
-                    }}
-                  >
-                    TOTAL: ₹ 5,900.00
-                  </div>
-                </div>
+                  <X size={13} />
+                  <span>Cancel</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSaveTab('branding')}
+                  className="flex items-center gap-1 py-1.5 px-3 bg-[#043486] hover:bg-[#0248BC] text-white text-xs font-bold rounded-none shadow-xs cursor-pointer"
+                >
+                  <Save size={13} />
+                  <span>Save</span>
+                </button>
               </div>
             )}
           </div>
+
+          {/* Logo Section */}
+          <div className="space-y-3">
+            <label className="text-xs font-bold text-gray-700 dark:text-slate-300 block">
+              Software Brand Logo
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+              <div className="sm:col-span-4 p-3 border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/40 flex items-center justify-center min-h-[90px]">
+                <img src={logoPreview} alt="Logo" className="max-h-12 max-w-full object-contain" />
+              </div>
+              <div className="sm:col-span-8 space-y-2">
+                <input
+                  type="file"
+                  disabled={!isEditingBranding}
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  className="block w-full text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:border-0 file:text-xs file:font-bold file:bg-[#043486] file:text-white disabled:opacity-50 cursor-pointer"
+                />
+                {isEditingBranding && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLogoPreview(defaultLogo)
+                      setThemeConfig(prev => ({ ...prev, logoUrl: '' }))
+                    }}
+                    className="text-[11px] text-red-600 hover:text-red-700 font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Trash2 size={12} /> Reset to Default Logo
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Favicon Section */}
+          <div className="space-y-3 pt-4 border-t border-gray-100 dark:border-slate-800">
+            <label className="text-xs font-bold text-gray-700 dark:text-slate-300 block">
+              Browser Tab Favicon
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+              <div className="sm:col-span-4 p-3 border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/40 flex items-center justify-center min-h-[90px]">
+                <div className="bg-gray-200 dark:bg-slate-700 px-3 py-1.5 rounded-t-sm flex items-center gap-2">
+                  <img src={faviconPreview} alt="Favicon" className="w-4 h-4 object-cover" />
+                  <span className="text-[11px] font-medium text-gray-700 dark:text-slate-200">Simcha Tab</span>
+                </div>
+              </div>
+              <div className="sm:col-span-8 space-y-2">
+                <input
+                  type="file"
+                  disabled={!isEditingBranding}
+                  accept="image/*"
+                  onChange={handleFaviconUpload}
+                  className="block w-full text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:border-0 file:text-xs file:font-bold file:bg-[#043486] file:text-white disabled:opacity-50 cursor-pointer"
+                />
+                {isEditingBranding && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFaviconPreview(defaultFavicon)
+                      setThemeConfig(prev => ({ ...prev, faviconUrl: '' }))
+                    }}
+                    className="text-[11px] text-red-600 hover:text-red-700 font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Trash2 size={12} /> Reset to Default Favicon
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* 5. TAB 3: INVOICE STYLE (Completely Independent & Auto Selected for Invoice Simulation) */}
+      {activeTab === 'documents' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left Invoice Configuration (7 cols) */}
+          <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-6 shadow-2xs space-y-6">
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-slate-800">
+              <span className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <Receipt size={16} className="text-[#043486] dark:text-blue-400" />
+                <span>Invoice &amp; Document Style</span>
+              </span>
+
+              {!isEditingDocs ? (
+                <button
+                  type="button"
+                  onClick={() => handleStartEdit('documents')}
+                  className="flex items-center gap-1.5 py-1.5 px-3 bg-[#043486] hover:bg-[#0248BC] text-white text-xs font-bold rounded-none shadow-xs transition-all cursor-pointer"
+                >
+                  <Edit2 size={13} />
+                  <span>Edit</span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleCancelEdit('documents')}
+                    className="flex items-center gap-1 py-1.5 px-3 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 text-xs font-bold rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer"
+                  >
+                    <X size={13} />
+                    <span>Cancel</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveTab('documents')}
+                    className="flex items-center gap-1 py-1.5 px-3 bg-[#043486] hover:bg-[#0248BC] text-white text-xs font-bold rounded-none shadow-xs cursor-pointer"
+                  >
+                    <Save size={13} />
+                    <span>Save</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Header Style */}
+            <div className="space-y-3">
+              <label className="text-xs font-bold text-gray-700 dark:text-slate-300 block">
+                Invoice Header Layout
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  disabled={!isEditingDocs}
+                  onClick={() => setThemeConfig(prev => ({ ...prev, invoiceHeaderStyle: 'banner' }))}
+                  className={`p-3 text-left border ${
+                    !isEditingDocs ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
+                  } ${
+                    themeConfig.invoiceHeaderStyle === 'banner'
+                      ? 'border-[#043486] bg-blue-50/50 dark:bg-blue-950/30'
+                      : 'border-gray-200 dark:border-slate-800'
+                  }`}
+                >
+                  <span className="text-xs font-bold block mb-1">Color Banner</span>
+                  <span className="text-[11px] text-gray-500">Filled header band with white title</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!isEditingDocs}
+                  onClick={() => setThemeConfig(prev => ({ ...prev, invoiceHeaderStyle: 'minimal' }))}
+                  className={`p-3 text-left border ${
+                    !isEditingDocs ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
+                  } ${
+                    themeConfig.invoiceHeaderStyle === 'minimal'
+                      ? 'border-[#043486] bg-blue-50/50 dark:bg-blue-950/30'
+                      : 'border-gray-200 dark:border-slate-800'
+                  }`}
+                >
+                  <span className="text-xs font-bold block mb-1">Minimal Border</span>
+                  <span className="text-[11px] text-gray-500">Clean white with colored accent line</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Independent Invoice Color (Separate from app theme) */}
+            <div className="space-y-2 pt-2">
+              <label className="text-xs font-bold text-gray-700 dark:text-slate-300 block">
+                Invoice Accent Color (Independent of App Theme)
+              </label>
+              <div className="flex items-center gap-2 max-w-sm">
+                <input
+                  type="color"
+                  disabled={!isEditingDocs}
+                  value={themeConfig.invoiceAccentColor || '#043486'}
+                  onChange={(e) => setThemeConfig(prev => ({ ...prev, invoiceAccentColor: e.target.value }))}
+                  className={`w-9 h-9 border border-gray-300 dark:border-slate-700 p-0.5 rounded-none ${
+                    !isEditingDocs ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
+                  }`}
+                />
+                <input
+                  type="text"
+                  disabled={!isEditingDocs}
+                  value={themeConfig.invoiceAccentColor || '#043486'}
+                  onChange={(e) => setThemeConfig(prev => ({ ...prev, invoiceAccentColor: e.target.value }))}
+                  className="flex-1 px-3 py-1.5 text-xs border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white font-mono uppercase focus:outline-none disabled:bg-gray-100 dark:disabled:bg-slate-800/50 disabled:text-gray-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Right Live Invoice Simulation (5 cols) */}
+          <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-4 shadow-2xs space-y-3 sticky top-6">
+            <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5 pb-2 border-b border-gray-100 dark:border-slate-800">
+              <Receipt size={14} className="text-[#043486] dark:text-blue-400" />
+              <span>Invoice Live Preview</span>
+            </span>
+
+            {/* Invoice A4 Sheet Mockup */}
+            <div className="border border-gray-300 bg-white p-3 space-y-2 text-gray-800 shadow-xs">
+              {/* Header Banner */}
+              {themeConfig.invoiceHeaderStyle === 'banner' ? (
+                <div
+                  className="p-2.5 text-white flex items-center justify-between"
+                  style={{ backgroundColor: themeConfig.invoiceAccentColor || '#043486' }}
+                >
+                  <img src={logoPreview} alt="Logo" className="h-4 object-contain bg-white/90 p-0.5" />
+                  <span className="text-[10px] font-black uppercase tracking-wider">TAX INVOICE</span>
+                </div>
+              ) : (
+                <div
+                  className="p-2 flex items-center justify-between border-t-2"
+                  style={{ borderColor: themeConfig.invoiceAccentColor || '#043486' }}
+                >
+                  <img src={logoPreview} alt="Logo" className="h-4 object-contain" />
+                  <span
+                    className="text-[10px] font-black uppercase"
+                    style={{ color: themeConfig.invoiceAccentColor || '#043486' }}
+                  >
+                    TAX INVOICE
+                  </span>
+                </div>
+              )}
+
+              {/* Table */}
+              <div className="border border-gray-200 text-[8px]">
+                <div
+                  className="p-1 text-white font-bold grid grid-cols-12"
+                  style={{ backgroundColor: themeConfig.invoiceAccentColor || '#043486' }}
+                >
+                  <span className="col-span-8">Description</span>
+                  <span className="col-span-4 text-right">Amount (₹)</span>
+                </div>
+                <div className="p-1 border-b border-gray-100 grid grid-cols-12">
+                  <span className="col-span-8">Dell Latitude 5420 i7</span>
+                  <span className="col-span-4 text-right font-bold">45,000.00</span>
+                </div>
+              </div>
+
+              {/* Total Box */}
+              <div className="flex justify-end">
+                <div
+                  className="px-2.5 py-1 text-white font-bold text-[9px]"
+                  style={{ backgroundColor: themeConfig.invoiceAccentColor || '#043486' }}
+                >
+                  TOTAL: ₹ 45,000.00
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
