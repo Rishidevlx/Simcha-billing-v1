@@ -41,9 +41,9 @@ import { API_ENDPOINTS } from '../config/api'
 import { getUserPermissions } from '../utils/access'
 import ListPageHeader from '../components/common/ListPageHeader'
 import ListKpiCard from '../components/common/ListKpiCard'
-import ListPagePagination from '../components/common/ListPagePagination'
 import ReturnVoucherTemplate from '../components/invoice/ReturnVoucherTemplate'
 import InvoiceModal from '../components/invoice/InvoiceModal'
+import { Button, ActionButton, StatusPill, SearchInput, TabNav, TabButton } from '../components/ui'
 
 // Initial default empty data for Returns & Adjustments
 const DEFAULT_RETURNS = []
@@ -984,31 +984,29 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
           <div className="flex items-center gap-2.5 flex-wrap">
             {/* Green Export Excel Button */}
             {canDownload && (
-<button
-              onClick={handleExportExcel}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold text-xs rounded-none shadow-xs transition-all active:scale-[0.99] cursor-pointer"
-              title={selectedIds.length > 0 ? `Export ${selectedIds.length} Selected Record(s)` : 'Export All Filtered Records'}
-            >
-              <Download size={15} />
-              <span>
+              <Button
+                variant="secondary"
+                icon={Download}
+                onClick={handleExportExcel}
+                title={selectedIds.length > 0 ? `Export ${selectedIds.length} Selected Record(s)` : 'Export All Filtered Records'}
+              >
                 {selectedIds.length > 0 ? `EXPORT SELECTED (${selectedIds.length})` : 'EXPORT TO EXCEL'}
-              </span>
-            </button>
-)}
+              </Button>
+            )}
 
             {/* Blue New Return Request Button */}
             {canAdd && (
-              <button
+              <Button
+                variant="primary"
+                icon={Plus}
                 onClick={() => {
                   setActiveTab('entry')
                   handleClearSelectedBill()
                   window.scrollTo({ top: 0, behavior: 'smooth' })
                 }}
-                className="px-4 py-2.5 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] dark:bg-blue-600 dark:hover:bg-blue-500 border border-[#043486] dark:border-blue-600 rounded-none shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
               >
-                <Plus size={15} />
-                <span>NEW RETURN REQUEST</span>
-              </button>
+                NEW RETURN REQUEST
+              </Button>
             )}
           </div>
         }
@@ -1042,100 +1040,70 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
         />
       </div>
 
-      {/* 3. Tab Navigation Bar (4 Clean Modular Tabs: Entry, Pending QC, Completed, Defective) */}
-      <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-none shadow-xs flex items-center justify-between px-2 pt-2 transition-colors">
-        <div className="flex items-center gap-1 flex-wrap">
-          {/* 1. Return Entry Tab (Primary Intake) */}
-          {canAdd && (
-            <button
-              onClick={() => {
-                setActiveTab('entry')
-                setCurrentPage(1)
-                setSelectedIds([])
-              }}
-              className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-                activeTab === 'entry'
-                  ? 'border-[#043486] text-[#043486] dark:border-blue-400 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30'
-                  : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              <PackagePlus size={14} />
-              <span>Return Entry</span>
-              <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/60 text-[#043486] dark:text-blue-300 text-[10px] font-extrabold">
-                NEW
-              </span>
-            </button>
-          )}
-
-          {/* 2. Pending QC Inspection */}
-          <button
+      {/* 3. Tab Navigation Bar (Modular Tabs: Entry, Pending QC, Completed, Defective, Credit Notes) */}
+      <TabNav>
+        {/* 1. Return Entry Tab */}
+        {canAdd && (
+          <TabButton
+            active={activeTab === 'entry'}
+            icon={PackagePlus}
+            label="Return Entry"
             onClick={() => {
-              setActiveTab('pending')
+              setActiveTab('entry')
               setCurrentPage(1)
               setSelectedIds([])
             }}
-            className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'pending'
-                ? 'border-amber-500 text-amber-600 dark:border-amber-400 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30'
-                : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
-            }`}
-          >
-            <Clock size={14} />
-            <span>Pending QC ({summaryMetrics.pending})</span>
-          </button>
+          />
+        )}
 
-          {/* 3. Completed & Resolved Returns */}
-          <button
-            onClick={() => {
-              setActiveTab('completed')
-              setCurrentPage(1)
-              setSelectedIds([])
-            }}
-            className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'completed'
-                ? 'border-emerald-600 text-emerald-700 dark:border-emerald-400 dark:text-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/30'
-                : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
-            }`}
-          >
-            <CheckCircle2 size={14} />
-            <span>Completed &amp; Resolved ({summaryMetrics.completed})</span>
-          </button>
+        {/* 2. Pending QC Inspection */}
+        <TabButton
+          active={activeTab === 'pending'}
+          icon={Clock}
+          label={`Pending QC (${summaryMetrics.pending})`}
+          onClick={() => {
+            setActiveTab('pending')
+            setCurrentPage(1)
+            setSelectedIds([])
+          }}
+        />
 
-          {/* 4. Defective & QC Failed Products */}
-          <button
-            onClick={() => {
-              setActiveTab('defective')
-              setCurrentPage(1)
-              setSelectedIds([])
-            }}
-            className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'defective'
-                ? 'border-rose-600 text-rose-700 dark:border-rose-400 dark:text-rose-300 bg-rose-50/50 dark:bg-rose-950/30'
-                : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
-            }`}
-          >
-            <AlertTriangle size={14} className="text-rose-600 dark:text-rose-400" />
-            <span>Defective &amp; QC Failed ({summaryMetrics.defective})</span>
-          </button>
+        {/* 3. Completed & Resolved Returns */}
+        <TabButton
+          active={activeTab === 'completed'}
+          icon={CheckCircle2}
+          label={`Completed & Resolved (${summaryMetrics.completed})`}
+          onClick={() => {
+            setActiveTab('completed')
+            setCurrentPage(1)
+            setSelectedIds([])
+          }}
+        />
 
-          {/* 5. Credit Notes Tab (Moved to Last) */}
-          <button
-            onClick={() => {
-              setActiveTab('credit_notes')
-              setCurrentPage(1)
-              setSelectedIds([])
-            }}
-            className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'credit_notes'
-                ? 'border-purple-600 text-purple-700 dark:border-purple-400 dark:text-purple-300 bg-purple-50/50 dark:bg-purple-950/30'
-                : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
-            }`}
-          >
-            <CreditCard size={14} className="text-purple-600 dark:text-purple-400" />
-            <span>Credit Notes ({summaryMetrics.creditNotes})</span>
-          </button>
-        </div>
-      </div>
+        {/* 4. Defective & QC Failed Products */}
+        <TabButton
+          active={activeTab === 'defective'}
+          icon={AlertTriangle}
+          label={`Defective & QC Failed (${summaryMetrics.defective})`}
+          onClick={() => {
+            setActiveTab('defective')
+            setCurrentPage(1)
+            setSelectedIds([])
+          }}
+        />
+
+        {/* 5. Credit Notes Tab */}
+        <TabButton
+          active={activeTab === 'credit_notes'}
+          icon={CreditCard}
+          label={`Credit Notes (${summaryMetrics.creditNotes})`}
+          onClick={() => {
+            setActiveTab('credit_notes')
+            setCurrentPage(1)
+            setSelectedIds([])
+          }}
+        />
+      </TabNav>
 
       {/* 4. MAIN CONTENT AREA: Return Entry Workspace vs Returns Registry Table */}
       {activeTab === 'entry' ? (
@@ -1581,10 +1549,8 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
         <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-none shadow-xs transition-colors">
           <div className="p-4 border-b border-gray-200 dark:border-slate-800 bg-[#fbfcfd] dark:bg-slate-950/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
             {/* Search Box */}
-            <div className="relative w-full md:w-80">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={15} />
-              <input
-                type="text"
+            <div className="w-full md:w-80">
+              <SearchInput
                 placeholder={
                   activeTab === 'defective'
                     ? 'Search Defective #, Serial, Customer, Issue...'
@@ -1597,16 +1563,11 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                   setSearchQuery(e.target.value)
                   setCurrentPage(1)
                 }}
-                className="w-full pl-9 pr-4 py-2 text-xs text-gray-900 dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 transition-colors"
+                onClear={() => {
+                  setSearchQuery('')
+                  setCurrentPage(1)
+                }}
               />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200"
-                >
-                  <X size={14} />
-                </button>
-              )}
             </div>
 
             {/* Dropdown Filters */}
