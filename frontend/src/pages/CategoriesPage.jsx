@@ -11,6 +11,7 @@ import {
 import Swal from 'sweetalert2'
 import { API_ENDPOINTS } from '../config/api'
 import { getUserPermissions } from '../utils/access'
+import { Button, ActionButton, StatusToggle, StatusPill, SearchInput } from '../components/ui'
 
 export default function CategoriesPage() {
   const { can, hasAny } = getUserPermissions()
@@ -260,79 +261,32 @@ export default function CategoriesPage() {
               <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
                 Status <span className="text-red-500">*</span>
               </label>
-              <div className="grid grid-cols-2 gap-3">
-                <label
-                  className={`flex items-center justify-center gap-2 p-2.5 border rounded-sm text-xs font-semibold cursor-pointer transition-colors ${
-                    status === 'Active'
-                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold'
-                      : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="category_status"
-                    value="Active"
-                    checked={status === 'Active'}
-                    onChange={() => setStatus('Active')}
-                    className="sr-only"
-                  />
-                  <span className={`w-2.5 h-2.5 rounded-full ${status === 'Active' ? 'bg-emerald-500 ring-2 ring-emerald-200 dark:ring-emerald-900' : 'bg-gray-300 dark:bg-slate-600'}`} />
-                  Active
-                </label>
-
-                <label
-                  className={`flex items-center justify-center gap-2 p-2.5 border rounded-sm text-xs font-semibold cursor-pointer transition-colors ${
-                    status === 'Inactive'
-                      ? 'border-gray-500 dark:border-slate-500 bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-slate-200 font-bold'
-                      : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="category_status"
-                    value="Inactive"
-                    checked={status === 'Inactive'}
-                    onChange={() => setStatus('Inactive')}
-                    className="sr-only"
-                  />
-                  <span className={`w-2.5 h-2.5 rounded-full ${status === 'Inactive' ? 'bg-gray-600 dark:bg-slate-400 ring-2 ring-gray-300 dark:ring-slate-700' : 'bg-gray-300 dark:bg-slate-600'}`} />
-                  Inactive
-                </label>
-              </div>
+              <StatusToggle
+                value={status}
+                onChange={setStatus}
+                name="category_status"
+              />
             </div>
 
             {/* Action Buttons */}
             <div className="pt-3 border-t border-gray-100 dark:border-slate-800 flex items-center justify-end gap-2.5">
-              <button
+              <Button
                 type="button"
+                variant="secondary"
                 onClick={handleClear}
-                className="px-4 py-2.5 text-xs font-semibold text-gray-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-sm hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-800 dark:hover:text-white transition-colors cursor-pointer"
               >
                 Clear
-              </button>
+              </Button>
 
-              <button
+              <Button
                 type="submit"
-                disabled={isSubmitting || (!editingId && !canAdd) || (editingId && !canEdit)}
-                className="px-5 py-2.5 text-xs font-semibold text-white bg-[#043486] hover:bg-[#0248BC] dark:bg-blue-600 dark:hover:bg-blue-500 border border-[#043486] dark:border-blue-600 rounded-sm shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+                variant="primary"
+                isLoading={isSubmitting}
+                disabled={(!editingId && !canAdd) || (editingId && !canEdit)}
+                icon={editingId ? CheckCircle2 : PlusCircle}
               >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 size={14} className="animate-spin" />
-                    <span>Saving...</span>
-                  </>
-                ) : editingId ? (
-                  <>
-                    <CheckCircle2 size={14} />
-                    <span>Update</span>
-                  </>
-                ) : (
-                  <>
-                    <PlusCircle size={14} />
-                    <span>Create</span>
-                  </>
-                )}
-              </button>
+                {editingId ? 'Update' : 'Create'}
+              </Button>
             </div>
 
           </form>
@@ -352,15 +306,13 @@ export default function CategoriesPage() {
               </span>
             </div>
 
-            {/* Increased Size & Padded Search Input */}
-            <div className="relative max-w-xs sm:max-w-sm w-full">
-              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
-              <input
-                type="text"
+            {/* Search Input */}
+            <div className="max-w-xs sm:max-w-sm w-full">
+              <SearchInput
                 placeholder="Search category name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 text-xs sm:text-sm text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-sm focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 focus:ring-1 focus:ring-[#043486] dark:focus:ring-blue-500 transition-all placeholder:text-gray-400 dark:placeholder:text-slate-500"
+                onClear={() => setSearchTerm('')}
               />
             </div>
           </div>
@@ -424,37 +376,25 @@ export default function CategoriesPage() {
                       </td>
 
                       <td className="py-3.5 px-4 text-center">
-                        <span
-                          className={`inline-block px-3 py-1 rounded-sm text-[10px] font-bold uppercase tracking-wider ${
-                            cat.status === 'Active'
-                              ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60'
-                              : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-700'
-                          }`}
-                        >
-                          {cat.status}
-                        </span>
+                        <StatusPill status={cat.status} />
                       </td>
 
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           {canEdit && (
-                            <button
+                            <ActionButton
+                              type="edit"
                               onClick={() => handleEdit(cat)}
                               title="Edit Category"
-                              className="p-1.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white border border-amber-200 dark:border-amber-800 rounded-none transition-all cursor-pointer shadow-2xs"
-                            >
-                              <Edit2 size={13} />
-                            </button>
+                            />
                           )}
 
                           {canDelete && (
-                            <button
+                            <ActionButton
+                              type="delete"
                               onClick={() => handleDelete(cat.id, cat.name)}
                               title="Delete Category"
-                              className="p-1.5 rounded-sm text-red-600 dark:text-red-400 hover:text-white hover:bg-red-600 border border-red-200 dark:border-red-800/60 transition-colors cursor-pointer"
-                            >
-                              <Trash2 size={13} />
-                            </button>
+                            />
                           )}
                         </div>
                       </td>

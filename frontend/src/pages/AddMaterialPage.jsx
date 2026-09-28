@@ -25,6 +25,7 @@ import {
 import Swal from 'sweetalert2'
 import SearchableSelect from '../components/common/SearchableSelect'
 import { API_ENDPOINTS } from '../config/api'
+import { Button, StatusToggle } from '../components/ui'
 
 export default function AddMaterialPage({ editMaterialId = null, onSaved, setActiveRoute: setActiveRouteProp }) {
   const location = useLocation()
@@ -334,13 +335,13 @@ export default function AddMaterialPage({ editMaterialId = null, onSaved, setAct
           </div>
 
           {setActiveRoute && (
-            <button
+            <Button
+              variant="secondary"
+              icon={ListFilter}
               onClick={() => setActiveRoute('all-materials')}
-              className="px-3.5 py-1.5 text-xs font-semibold text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-sm hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
-              <ListFilter size={14} />
-              <span>All Materials</span>
-            </button>
+              All Materials
+            </Button>
           )}
         </div>
       </div>
@@ -385,45 +386,11 @@ export default function AddMaterialPage({ editMaterialId = null, onSaved, setAct
                 <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
                   Status <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <label
-                    className={`flex items-center justify-center gap-1.5 py-2 px-2.5 border rounded-sm text-xs font-semibold cursor-pointer transition-colors ${
-                      formData.status === 'Active'
-                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold'
-                        : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="status"
-                      value="Active"
-                      checked={formData.status === 'Active'}
-                      onChange={() => setFormData(p => ({ ...p, status: 'Active' }))}
-                      className="sr-only"
-                    />
-                    <span className={`w-2 h-2 rounded-full ${formData.status === 'Active' ? 'bg-emerald-500 ring-2 ring-emerald-200 dark:ring-emerald-900' : 'bg-gray-300 dark:bg-slate-600'}`} />
-                    Active
-                  </label>
-
-                  <label
-                    className={`flex items-center justify-center gap-1.5 py-2 px-2.5 border rounded-sm text-xs font-semibold cursor-pointer transition-colors ${
-                      formData.status === 'Inactive'
-                        ? 'border-gray-500 dark:border-slate-500 bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-slate-200 font-bold'
-                        : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="status"
-                      value="Inactive"
-                      checked={formData.status === 'Inactive'}
-                      onChange={() => setFormData(p => ({ ...p, status: 'Inactive' }))}
-                      className="sr-only"
-                    />
-                    <span className={`w-2 h-2 rounded-full ${formData.status === 'Inactive' ? 'bg-gray-600 dark:bg-slate-400 ring-2 ring-gray-300 dark:ring-slate-700' : 'bg-gray-300 dark:bg-slate-600'}`} />
-                    Inactive
-                  </label>
-                </div>
+                <StatusToggle
+                  value={formData.status}
+                  onChange={(val) => setFormData(p => ({ ...p, status: val }))}
+                  name="material_status"
+                />
               </div>
 
               {/* Category* (Direct Typeahead Dropdown) */}
@@ -703,38 +670,25 @@ export default function AddMaterialPage({ editMaterialId = null, onSaved, setAct
 
           {/* Form Action Footer */}
           <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-sm p-4 shadow-xs flex items-center justify-between">
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              icon={RotateCcw}
               onClick={handleClear}
-              className="px-4 py-2.5 text-xs font-semibold text-gray-700 dark:text-slate-300 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-sm hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5 cursor-pointer"
             >
-              <RotateCcw size={14} />
-              <span>Reset Form</span>
-            </button>
+              Reset Form
+            </Button>
 
             <div className="flex items-center gap-3">
-              <button
+              <Button
                 type="submit"
-                disabled={isSubmitting}
-                className="px-6 py-2.5 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] dark:bg-blue-600 dark:hover:bg-blue-500 border border-[#043486] dark:border-blue-600 rounded-sm shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-60"
+                variant="primary"
+                isLoading={isSubmitting}
+                icon={editMaterialId ? CheckCircle2 : PlusCircle}
+                className="px-6"
               >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 size={15} className="animate-spin" />
-                    <span>Saving to TiDB...</span>
-                  </>
-                ) : editMaterialId ? (
-                  <>
-                    <CheckCircle2 size={15} />
-                    <span>Update Material</span>
-                  </>
-                ) : (
-                  <>
-                    <PlusCircle size={15} />
-                    <span>Save Material</span>
-                  </>
-                )}
-              </button>
+                {editMaterialId ? 'Update Material' : 'Save Material'}
+              </Button>
             </div>
           </div>
 

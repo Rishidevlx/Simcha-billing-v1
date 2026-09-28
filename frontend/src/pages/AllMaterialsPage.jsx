@@ -26,6 +26,7 @@ import Swal from 'sweetalert2'
 import { API_ENDPOINTS } from '../config/api'
 import { getUserPermissions } from '../utils/access'
 import ListKpiCard from '../components/common/ListKpiCard'
+import { Button, ActionButton, StatusPill, SearchInput } from '../components/ui'
 
 export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, onEditMaterial }) {
   const { can, hasAny } = getUserPermissions()
@@ -321,13 +322,13 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
 
         <div className="flex items-center gap-3">
           {canAdd && (
-            <button
+            <Button
+              variant="primary"
+              icon={Plus}
               onClick={handleAddMaterial}
-              className="px-4 py-2 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] dark:bg-blue-600 dark:hover:bg-blue-500 border border-[#043486] dark:border-blue-600 rounded-sm shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              <Plus size={15} />
-              <span>Add New Material</span>
-            </button>
+              Add New Material
+            </Button>
           )}
         </div>
       </div>
@@ -368,22 +369,22 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
           </div>
 
           <div className="flex items-center gap-2">
-            <button
+            <Button
+              variant="secondary"
+              icon={XCircle}
               onClick={() => setSelectedIds([])}
-              className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-700 rounded-sm transition-colors flex items-center gap-1.5 cursor-pointer"
             >
-              <XCircle size={14} />
-              <span>Cancel</span>
-            </button>
+              Cancel
+            </Button>
 
-            <button
+            <Button
+              variant="danger"
+              icon={Trash2}
+              isLoading={isBulkDeleting}
               onClick={handleBulkDelete}
-              disabled={isBulkDeleting}
-              className="px-3.5 py-1.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 border border-red-500 rounded-sm shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
             >
-              <Trash2 size={14} />
-              <span>{isBulkDeleting ? 'Deleting...' : `Delete Selected (${selectedIds.length})`}</span>
-            </button>
+              {isBulkDeleting ? 'Deleting...' : `Delete Selected (${selectedIds.length})`}
+            </Button>
           </div>
         </div>
       )}
@@ -395,14 +396,12 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
         <div className="p-4 border-b border-gray-200 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/60 flex flex-col md:flex-row md:items-center justify-between gap-3">
           
           {/* Search Bar */}
-          <div className="relative flex-1 max-w-md">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
-            <input
-              type="text"
+          <div className="flex-1 max-w-md">
+            <SearchInput
               placeholder="Search by material name, code, brand, barcode..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 text-xs sm:text-sm text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-sm focus:outline-none focus:border-[#0248BC] dark:focus:border-blue-500 placeholder:text-gray-400 dark:placeholder:text-slate-500"
+              onClear={() => setSearchTerm('')}
             />
           </div>
 
@@ -632,38 +631,26 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
 
                       {/* Status */}
                       <td className="py-3.5 px-3.5 text-center">
-                        <span
-                          className={`inline-block px-2.5 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider ${
-                            mat.status === 'Active'
-                              ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60'
-                              : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-700'
-                          }`}
-                        >
-                          {mat.status}
-                        </span>
+                        <StatusPill status={mat.status} />
                       </td>
 
                       {/* Actions */}
                       <td className="py-3.5 px-3.5 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           {canEdit && (
-                            <button
+                            <ActionButton
+                              type="edit"
                               onClick={() => handleEdit(mat.id)}
                               title="Edit Material"
-                              className="p-1.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white border border-amber-200 dark:border-amber-800 rounded-none transition-all cursor-pointer shadow-2xs"
-                            >
-                              <Edit2 size={13} />
-                            </button>
+                            />
                           )}
 
                           {canDelete && (
-                            <button
+                            <ActionButton
+                              type="delete"
                               onClick={() => handleDelete(mat.id, mat.name)}
                               title="Delete Material"
-                              className="p-1.5 text-red-600 dark:text-red-400 hover:text-white hover:bg-red-600 border border-red-200 dark:border-red-800/60 rounded-none transition-colors cursor-pointer"
-                            >
-                              <Trash2 size={13} />
-                            </button>
+                            />
                           )}
 
                           {!canEdit && !canDelete && (
