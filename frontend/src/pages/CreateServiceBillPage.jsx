@@ -398,40 +398,53 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
   // Remove Item
   const handleRemoveItem = (index) => {
     if (items.length === 1) {
-      setItems([
-        {
-          product_name: '',
-          brand_model: '',
-          issue_description: '',
-          quantity: 1,
-          unit: 'NOS',
-          rate: 0,
-          hsn_code: '9987',
-          tax_rate: serviceType === 'GST' ? activeTaxRate : 0,
-          tax_amount: 0,
-          amount: 0,
-          has_serial: false,
-          serial_numbers: ['']
-        }
-      ])
+      Swal.fire({
+        icon: 'warning',
+        title: 'At least one item required',
+        text: 'Service request must have at least one product item.',
+        confirmButtonColor: '#043486'
+      })
       return
     }
+    const itemToRemove = items[index]
+    const itemName = itemToRemove.product_name ? `"${itemToRemove.product_name}"` : `Item #${index + 1}`
     setItems((prev) => prev.filter((_, i) => i !== index))
+    Swal.mixin({
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 2000,
+      timerProgressBar: true
+    }).fire({
+      icon: 'info',
+      title: `${itemName} deleted`
+    })
   }
 
   // Duplicate Item
   const handleDuplicateItem = (index) => {
     const target = items[index]
+    const qtyCount = Math.max(1, Math.floor(target.quantity || 1))
     setItems((prev) => [
       ...prev.slice(0, index + 1),
       {
         ...target,
         serial_numbers: target.has_serial
-          ? Array.from({ length: target.quantity || 1 }, () => '')
-          : []
+          ? Array.from({ length: qtyCount }, () => '')
+          : ['']
       },
       ...prev.slice(index + 1)
     ])
+    Swal.mixin({
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 2000,
+      timerProgressBar: true
+    }).fire({
+      icon: 'success',
+      title: 'Service line item duplicated'
+    })
   }
 
   // Summary Computations
