@@ -973,26 +973,19 @@ export default function InventoryPage({ setActiveRoute }) {
           {/* Filter Bar */}
           <div className="p-4 border-b border-gray-200 dark:border-slate-800 bg-[#fbfcfd] dark:bg-slate-950/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
             {/* Search Bar */}
-            <div className="relative w-full md:w-80">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={15} />
-              <input
-                type="text"
+            <div className="w-full md:w-80">
+              <SearchInput
                 placeholder="Search Defective Serial, Material, Return ID, Reason..."
                 value={scrapSearch}
                 onChange={(e) => {
                   setScrapSearch(e.target.value)
                   setCurrentPage(1)
                 }}
-                className="w-full pl-9 pr-4 py-2 text-xs text-gray-900 dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 transition-colors"
+                onClear={() => {
+                  setScrapSearch('')
+                  setCurrentPage(1)
+                }}
               />
-              {scrapSearch && (
-                <button
-                  onClick={() => setScrapSearch('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200"
-                >
-                  <X size={14} />
-                </button>
-              )}
             </div>
 
             {/* Category Filter & Reload */}
