@@ -25,6 +25,7 @@ import ListPagePagination from '../components/common/ListPagePagination'
 import ListKpiCard from '../components/common/ListKpiCard'
 import { getUserPermissions } from '../utils/access'
 import { API_ENDPOINTS } from '../config/api'
+import { Button, ActionButton, StatusToggle, StatusPill, SearchInput, TabNav, TabButton } from '../components/ui'
 import maleAvatar from '../assets/avatar/Male avatar.webp'
 import femaleAvatar from '../assets/avatar/Female Avatar.webp'
 import defaultAvatar from '../assets/avatar/Deafult Pfp.webp'
@@ -464,77 +465,53 @@ export default function RoleListPage({ setActiveRoute }) {
         actions={
           <div className="flex items-center gap-2">
             {canDownload && activeTab === 'list' && (
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                icon={Download}
                 onClick={handleExportExcel}
-                className="flex items-center gap-1.5 py-2 px-3 sm:px-4 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 text-xs sm:text-sm font-bold rounded-none shadow-2xs transition-colors cursor-pointer"
               >
-                <Download size={14} />
-                <span>Export Excel</span>
-              </button>
+                Export Excel
+              </Button>
             )}
 
             {(canAdd || (editingRoleId && activeTab === 'add')) && (
-              <button
-                type="button"
+              <Button
+                variant="primary"
+                icon={activeTab === 'add' ? List : Plus}
                 onClick={() => {
                   if (activeTab === 'add' && editingRoleId) {
                     handleClearForm()
                   }
                   setActiveTab(activeTab === 'add' ? 'list' : 'add')
                 }}
-                className="flex items-center gap-1.5 py-2 px-3 sm:px-4 bg-[#043486] hover:bg-[#0248BC] text-white text-xs sm:text-sm font-bold rounded-none shadow-xs transition-colors cursor-pointer"
               >
-                {activeTab === 'add' ? (
-                  <>
-                    <List size={14} />
-                    <span>View Role List</span>
-                  </>
-                ) : (
-                  <>
-                    <Plus size={14} />
-                    <span>Add Role</span>
-                  </>
-                )}
-              </button>
+                {activeTab === 'add' ? 'View Role List' : 'Add Role'}
+              </Button>
             )}
           </div>
         }
       />
 
       {/* Navigation Tabs */}
-      <div className="flex border-b border-gray-200 dark:border-slate-800">
+      <TabNav>
         {(canAdd || editingRoleId) && (
-          <button
-            type="button"
+          <TabButton
+            active={activeTab === 'add'}
+            icon={Plus}
+            label={editingRoleId ? 'Edit Role' : 'Add Role'}
             onClick={() => {
               if (editingRoleId) handleClearForm()
               setActiveTab('add')
             }}
-            className={`flex items-center gap-2 px-5 py-2.5 text-xs sm:text-sm font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
-              activeTab === 'add'
-                ? 'border-[#043486] text-[#043486] dark:text-blue-400 bg-blue-50/40 dark:bg-slate-800/60'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-slate-200'
-            }`}
-          >
-            <Plus size={14} />
-            <span>{editingRoleId ? 'Edit Role' : 'Add Role'}</span>
-          </button>
+          />
         )}
-
-        <button
-          type="button"
+        <TabButton
+          active={activeTab === 'list'}
+          icon={ShieldCheck}
+          label={`Role List (${roles.length})`}
           onClick={() => setActiveTab('list')}
-          className={`flex items-center gap-2 px-5 py-2.5 text-xs sm:text-sm font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
-            activeTab === 'list'
-              ? 'border-[#043486] text-[#043486] dark:text-blue-400 bg-blue-50/40 dark:bg-slate-800/60'
-              : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-slate-200'
-          }`}
-        >
-          <ShieldCheck size={14} />
-          <span>Role List ({roles.length})</span>
-        </button>
-      </div>
+        />
+      </TabNav>
 
       {/* TAB 1: ADD / EDIT ROLE */}
       {activeTab === 'add' && (
@@ -687,71 +664,36 @@ export default function RoleListPage({ setActiveRoute }) {
                     <label className="block text-xs sm:text-[13px] font-bold text-[#292424] dark:text-slate-200 mb-1.5 uppercase tracking-wide">
                       Role Status <span className="text-red-500">*</span>
                     </label>
-                    <div className="grid grid-cols-2 gap-2.5">
-                      <label
-                        className={`flex items-center justify-center gap-2 p-2.5 border rounded-none text-xs sm:text-[13px] font-semibold cursor-pointer transition-colors ${
-                          roleStatus === 'Active'
-                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold'
-                            : 'border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-600 dark:text-slate-300 hover:bg-gray-50'
-                        } ${isEditingAdmin ? 'opacity-90' : ''}`}
-                      >
-                        <input
-                          type="radio"
-                          name="role_status_radio"
-                          value="Active"
-                          disabled={isEditingAdmin}
-                          checked={roleStatus === 'Active'}
-                          onChange={() => setRoleStatus('Active')}
-                          className="sr-only"
-                        />
-                        <span className={`w-2.5 h-2.5 rounded-full ${roleStatus === 'Active' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
-                        Active
-                      </label>
-
-                      <label
-                        className={`flex items-center justify-center gap-2 p-2.5 border rounded-none text-xs sm:text-[13px] font-semibold cursor-pointer transition-colors ${
-                          roleStatus === 'Inactive'
-                            ? 'border-red-500 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 font-bold'
-                            : 'border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-600 dark:text-slate-300 hover:bg-gray-50'
-                        } ${isEditingAdmin ? 'opacity-40 cursor-not-allowed' : ''}`}
-                      >
-                        <input
-                          type="radio"
-                          name="role_status_radio"
-                          value="Inactive"
-                          disabled={isEditingAdmin}
-                          checked={roleStatus === 'Inactive'}
-                          onChange={() => setRoleStatus('Inactive')}
-                          className="sr-only"
-                        />
-                        <span className={`w-2.5 h-2.5 rounded-full ${roleStatus === 'Inactive' ? 'bg-red-500' : 'bg-gray-300'}`} />
-                        Inactive
-                      </label>
-                    </div>
+                    <StatusToggle
+                      value={roleStatus}
+                      onChange={setRoleStatus}
+                      disabled={isEditingAdmin}
+                    />
                   </div>
 
                   {/* Form Action Buttons */}
                   <div className="pt-4 border-t border-gray-200 dark:border-slate-800 flex items-center gap-3">
-                    <button
+                    <Button
                       type="submit"
-                      disabled={isSaving}
-                      className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 bg-[#043486] hover:bg-[#0248BC] text-white font-bold text-xs sm:text-sm rounded-none shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                      variant="primary"
+                      isLoading={isSaving}
+                      icon={Save}
+                      className="flex-1"
                     >
-                      {isSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-                      <span>{editingRoleId ? 'UPDATE ROLE' : 'SAVE ROLE'}</span>
-                    </button>
+                      {editingRoleId ? 'UPDATE ROLE' : 'SAVE ROLE'}
+                    </Button>
 
-                    <button
+                    <Button
                       type="button"
+                      variant="secondary"
+                      icon={RotateCcw}
                       onClick={() => {
                         handleClearForm()
                         setActiveTab('list')
                       }}
-                      className="flex items-center justify-center gap-1.5 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 font-bold text-xs sm:text-sm rounded-none border border-gray-300 dark:border-slate-700 transition-colors cursor-pointer"
                     >
-                      <RotateCcw size={14} />
-                      <span>Cancel</span>
-                    </button>
+                      Cancel
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -789,14 +731,12 @@ export default function RoleListPage({ setActiveRoute }) {
           <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-none shadow-xs transition-colors">
             {/* Search Toolbar */}
             <div className="p-4 border-b border-gray-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="relative w-full sm:w-[350px]">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={17} />
-                <input
-                  type="text"
+              <div className="w-full sm:w-[350px]">
+                <SearchInput
                   placeholder="Search roles by name or status..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] transition-colors placeholder:text-gray-400"
+                  onClear={() => setSearchTerm('')}
                 />
               </div>
             </div>
@@ -917,24 +857,18 @@ export default function RoleListPage({ setActiveRoute }) {
                             <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-center gap-2">
                                 {canEdit && !isSystemAdmin && (
-                                  <button
-                                    type="button"
+                                  <ActionButton
+                                    type="edit"
                                     onClick={() => loadRoleDetails(role.id)}
-                                    className="p-1.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white border border-amber-200 dark:border-amber-800 rounded-none transition-all cursor-pointer shadow-2xs"
                                     title="Edit Role & Permissions"
-                                  >
-                                    <Edit2 size={13} />
-                                  </button>
+                                  />
                                 )}
                                 {canDelete && !isSystemAdmin && (
-                                  <button
-                                    type="button"
+                                  <ActionButton
+                                    type="delete"
                                     onClick={() => handleDelete(role.id, role.name)}
-                                    className="p-1.5 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 hover:text-white hover:bg-red-600 border border-red-200 dark:border-red-800/60 rounded-none transition-all cursor-pointer shadow-2xs"
                                     title="Delete Role"
-                                  >
-                                    <Trash2 size={13} />
-                                  </button>
+                                  />
                                 )}
                                 <button
                                   type="button"

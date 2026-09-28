@@ -29,6 +29,7 @@ import ListPagePagination from '../components/common/ListPagePagination'
 import ListKpiCard from '../components/common/ListKpiCard'
 import { getUserPermissions } from '../utils/access'
 import { API_ENDPOINTS } from '../config/api'
+import { Button, ActionButton, StatusToggle, StatusPill, SearchInput, TabNav, TabButton } from '../components/ui'
 import maleAvatar from '../assets/avatar/Male avatar.webp'
 import femaleAvatar from '../assets/avatar/Female Avatar.webp'
 import defaultAvatar from '../assets/avatar/Deafult Pfp.webp'
@@ -334,77 +335,66 @@ export default function DepartmentListPage({ setActiveRoute }) {
           activeTab === 'list' ? (
             <div className="flex items-center gap-2 flex-wrap">
               {canDownload && (
-                <button
-                  onClick={handleExportExcel}
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold text-xs rounded-none shadow-xs transition-all cursor-pointer"
-                >
-                  <Download size={15} />
-                  <span>EXPORT EXCEL</span>
-                </button>
+                <Button variant="secondary" icon={Download} onClick={handleExportExcel}>
+                  EXPORT EXCEL
+                </Button>
               )}
               {canAdd && (
-                <button
+                <Button
+                  variant="primary"
+                  icon={Plus}
                   onClick={() => {
                     handleClearForm()
                     setActiveTab('add')
                   }}
-                  className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#043486] hover:bg-[#0248BC] text-white font-bold text-xs rounded-none shadow-xs transition-all cursor-pointer"
                 >
-                  <Plus size={15} />
-                  <span>CREATE NEW DEPARTMENT</span>
-                </button>
+                  CREATE NEW DEPARTMENT
+                </Button>
               )}
             </div>
           ) : (
-            <button
+            <Button
+              variant="primary"
+              icon={List}
               onClick={() => {
                 setActiveTab('list')
               }}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#043486] hover:bg-[#0248BC] text-white font-bold text-xs rounded-none shadow-xs transition-all cursor-pointer"
             >
-              <List size={15} />
-              <span>VIEW DEPARTMENTS LIST</span>
-            </button>
+              VIEW DEPARTMENTS LIST
+            </Button>
           )
         }
       />
 
-      {/* 2. Top Navigation Tabs: Tab 1 = Add Department, Tab 2 = Department List */}
-      <div className="flex items-center border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 pt-2 shadow-2xs">
+      {/* 2. Top Navigation Tabs */}
+      <TabNav>
         {(canAdd || editingDeptId) && (
-          <button
+          <TabButton
+            active={activeTab === 'add'}
+            icon={editingDeptId ? Edit2 : Plus}
             onClick={() => {
               if (activeTab !== 'add') {
                 handleClearForm()
               }
               setActiveTab('add')
             }}
-            className={`flex items-center gap-2 px-5 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
-              activeTab === 'add'
-                ? 'border-[#043486] dark:border-blue-500 text-[#043486] dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30'
-                : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200'
-            }`}
           >
-            {editingDeptId ? <Edit2 size={16} /> : <Plus size={16} />}
-            <span>{editingDeptId ? 'Edit Department' : 'Add Department'}</span>
-          </button>
+            {editingDeptId ? 'Edit Department' : 'Add Department'}
+          </TabButton>
         )}
 
-        <button
+        <TabButton
+          active={activeTab === 'list'}
+          icon={Building2}
+          badge={departments.length}
           onClick={() => {
             setActiveTab('list')
             setEditingDeptId(null)
           }}
-          className={`flex items-center gap-2 px-5 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
-            activeTab === 'list'
-              ? 'border-[#043486] dark:border-blue-500 text-[#043486] dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30'
-              : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200'
-          }`}
         >
-          <Building2 size={16} />
-          <span>Department List ({departments.length})</span>
-        </button>
-      </div>
+          Department List
+        </TabButton>
+      </TabNav>
 
       {/* TAB 1: ADD / EDIT DEPARTMENT FORM */}
       {activeTab === 'add' && (
@@ -460,87 +450,35 @@ export default function DepartmentListPage({ setActiveRoute }) {
                   />
                 </div>
 
-                {/* Status - Category Theme Style */}
+                {/* Status Toggle */}
                 <div>
                   <label className="block text-xs sm:text-[13px] font-bold text-[#292424] dark:text-slate-200 mb-1.5 uppercase tracking-wide">
                     Status <span className="text-red-500">*</span>
                   </label>
-                  <div className="grid grid-cols-2 gap-3 max-w-sm">
-                    <label
-                      className={`flex items-center justify-center gap-2 p-2.5 border rounded-none text-xs sm:text-[13px] font-semibold cursor-pointer transition-colors ${
-                        formData.status === 'Active'
-                          ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold'
-                          : 'border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="department_status"
-                        value="Active"
-                        checked={formData.status === 'Active'}
-                        onChange={() => setFormData((prev) => ({ ...prev, status: 'Active' }))}
-                        className="sr-only"
-                      />
-                      <span
-                        className={`w-2.5 h-2.5 rounded-full ${
-                          formData.status === 'Active'
-                            ? 'bg-emerald-500 ring-2 ring-emerald-200 dark:ring-emerald-900'
-                            : 'bg-gray-300 dark:bg-slate-600'
-                        }`}
-                      />
-                      Active
-                    </label>
-
-                    <label
-                      className={`flex items-center justify-center gap-2 p-2.5 border rounded-none text-xs sm:text-[13px] font-semibold cursor-pointer transition-colors ${
-                        formData.status === 'Inactive'
-                          ? 'border-gray-500 dark:border-slate-500 bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-slate-200 font-bold'
-                          : 'border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="department_status"
-                        value="Inactive"
-                        checked={formData.status === 'Inactive'}
-                        onChange={() => setFormData((prev) => ({ ...prev, status: 'Inactive' }))}
-                        className="sr-only"
-                      />
-                      <span
-                        className={`w-2.5 h-2.5 rounded-full ${
-                          formData.status === 'Inactive'
-                            ? 'bg-gray-600 dark:bg-slate-400 ring-2 ring-gray-300 dark:ring-slate-700'
-                            : 'bg-gray-300 dark:bg-slate-600'
-                        }`}
-                      />
-                      Inactive
-                    </label>
-                  </div>
+                  <StatusToggle
+                    value={formData.status}
+                    onChange={(val) => setFormData((prev) => ({ ...prev, status: val }))}
+                  />
                 </div>
               </div>
 
               {/* Action Buttons */}
               <div className="pt-4 border-t border-gray-100 dark:border-slate-800 flex items-center gap-3">
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="flex items-center justify-center gap-2 py-2.5 px-6 bg-[#043486] hover:bg-[#0248BC] text-white font-bold text-xs sm:text-sm rounded-none shadow-xs transition-all cursor-pointer disabled:opacity-50"
-                >
-                  {isSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-                  <span>{editingDeptId ? 'UPDATE DEPARTMENT' : 'SAVE DEPARTMENT'}</span>
-                </button>
+                <Button type="submit" variant="primary" isLoading={isSaving} icon={Save}>
+                  {editingDeptId ? 'UPDATE DEPARTMENT' : 'SAVE DEPARTMENT'}
+                </Button>
 
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  icon={RotateCcw}
                   onClick={() => {
                     handleClearForm()
                     setActiveTab('list')
                   }}
-                  className="flex items-center justify-center gap-1.5 py-2.5 px-5 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 font-bold text-xs sm:text-sm rounded-none border border-gray-300 dark:border-slate-700 transition-colors cursor-pointer"
                 >
-                  <RotateCcw size={14} />
-                  <span>Cancel</span>
-                </button>
+                  Cancel
+                </Button>
               </div>
             </form>
           )}
@@ -576,16 +514,13 @@ export default function DepartmentListPage({ setActiveRoute }) {
           <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-none shadow-xs transition-colors">
             {/* Search Toolbar */}
             <div className="p-4 border-b border-gray-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="relative w-full sm:w-[350px]">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={17} />
-                <input
-                  type="text"
-                  placeholder="Search departments..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] transition-colors placeholder:text-gray-400"
-                />
-              </div>
+              <SearchInput
+                placeholder="Search departments..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onClear={() => setSearchTerm('')}
+                className="w-full sm:w-[350px]"
+              />
             </div>
 
             {/* Table */}
@@ -663,43 +598,26 @@ export default function DepartmentListPage({ setActiveRoute }) {
                               </span>
                             </td>
                             <td className="p-3.5 text-center">
-                              <span
-                                className={`inline-flex items-center px-3 py-1 text-xs font-bold rounded-none ${
-                                  dept.status === 'Active'
-                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800'
-                                    : 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/60 dark:text-red-400 dark:border-red-800'
-                                }`}
-                              >
-                                {dept.status || 'Active'}
-                              </span>
+                              <StatusPill status={dept.status || 'Active'} />
                             </td>
                             <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
-                              <div className="flex items-center justify-center gap-2">
-                                {/* Category Style Edit Button */}
+                              <div className="flex items-center justify-center gap-1.5">
                                 {canEdit && (
-                                  <button
-                                    type="button"
+                                  <ActionButton
+                                    type="edit"
                                     onClick={() => loadDeptDetails(dept.id)}
-                                    className="p-1.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white border border-amber-200 dark:border-amber-800 rounded-none transition-all cursor-pointer shadow-2xs"
                                     title="Edit Department"
-                                  >
-                                    <Edit2 size={13} />
-                                  </button>
+                                  />
                                 )}
 
-                                {/* Category Style Delete Button */}
                                 {canDelete && (
-                                  <button
-                                    type="button"
+                                  <ActionButton
+                                    type="delete"
                                     onClick={() => handleDelete(dept.id, dept.name)}
-                                    className="p-1.5 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 hover:text-white hover:bg-red-600 border border-red-200 dark:border-red-800/60 rounded-none transition-all cursor-pointer shadow-2xs"
                                     title="Delete Department"
-                                  >
-                                    <Trash2 size={13} />
-                                  </button>
+                                  />
                                 )}
 
-                                {/* Arrow Button at the LAST without box/button style */}
                                 <button
                                   type="button"
                                   onClick={() => setExpandedDeptId(isExpanded ? null : dept.id)}
