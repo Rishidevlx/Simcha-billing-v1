@@ -15,6 +15,7 @@ import {
 import Swal from 'sweetalert2'
 import SearchableSelect from '../components/common/SearchableSelect'
 import InwardLineItems from '../components/inward/InwardLineItems'
+import { BillSummaryCard } from '../components/billing'
 import { Button } from '../components/ui'
 import { API_ENDPOINTS } from '../config/api'
 
@@ -966,113 +967,28 @@ export default function InwardBillPage() {
           <div className="lg:col-span-4 lg:sticky lg:top-20 space-y-5">
             
             {/* 1. Inward Summary Card */}
-            <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-6 shadow-sm space-y-4 transition-colors">
-              <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
-                <h2 className="text-sm font-bold text-[#043486] dark:text-blue-400 tracking-wide uppercase flex items-center gap-2">
-                  <IndianRupee size={16} />
-                  <span>Inward Summary</span>
-                </h2>
-                <span className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/60 text-[#043486] dark:text-blue-300 border border-blue-200 dark:border-blue-900 text-xs font-mono font-bold">
-                  {inwardNumber}
-                </span>
-              </div>
-
-              {/* Items Breakdown List (Item Name, Rate, Total Amount) */}
-              <div className="space-y-3 text-xs text-gray-600 dark:text-slate-400">
-                <div className="p-3 bg-gray-50 dark:bg-slate-950 rounded-none border border-gray-200 dark:border-slate-800 space-y-2.5">
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider pb-1 border-b border-gray-200 dark:border-slate-800">
-                    <span>Item &amp; Rate</span>
-                    <span>Total Amount</span>
-                  </div>
-
-                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                    {items.map((it, idx) => {
-                      const hasName = it.item_name && it.item_name.trim() !== ''
-                      return (
-                        <div key={idx} className="flex items-center justify-between text-xs py-1 border-b border-gray-100 dark:border-slate-900 last:border-0">
-                          <div className="truncate pr-2">
-                            <span className="font-semibold text-gray-800 dark:text-slate-200">
-                              {hasName ? it.item_name : `Item #${idx + 1}`}
-                            </span>
-                            <span className="text-[11px] text-gray-500 dark:text-slate-400 ml-1">
-                              ({it.quantity} {it.unit || 'NOS'} @ ₹{Number(it.rate || 0).toFixed(2)})
-                            </span>
-                          </div>
-                          <span className="font-mono font-bold text-gray-900 dark:text-white shrink-0">
-                            ₹ {Number(it.amount || 0).toFixed(2)}
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  <div className="pt-2 border-t border-gray-200 dark:border-slate-800 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600 dark:text-slate-400">Total Items:</span>
-                      <span className="font-mono font-bold text-gray-800 dark:text-slate-200">{items.length} ({totalQuantity} Units)</span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600 dark:text-slate-400">Taxable Amount:</span>
-                      <span className="font-mono font-bold text-gray-800 dark:text-slate-200">
-                        ₹ {totalTaxableAmount.toFixed(2)}
-                      </span>
-                    </div>
-
-                    {/* GST Section (Neutral normal text color per user request) */}
-                    {isIntraState ? (
-                      <>
-                        <div className="flex items-center justify-between text-gray-600 dark:text-slate-400">
-                          <span>CGST ({defaultCgst}%):</span>
-                          <span className="font-mono font-semibold text-gray-800 dark:text-slate-200">₹ {cgstAmount.toFixed(2)}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-gray-600 dark:text-slate-400">
-                          <span>SGST ({defaultSgst}%):</span>
-                          <span className="font-mono font-semibold text-gray-800 dark:text-slate-200">₹ {sgstAmount.toFixed(2)}</span>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex items-center justify-between text-gray-600 dark:text-slate-400">
-                        <span>IGST ({defaultIgst}%):</span>
-                        <span className="font-mono font-semibold text-gray-800 dark:text-slate-200">₹ {igstAmount.toFixed(2)}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-gray-200 dark:border-slate-800 flex items-center justify-between">
-                  <span className="text-sm font-bold text-[#292424] dark:text-white">Grand Total</span>
-                  <span className="text-2xl font-black text-[#043486] dark:text-blue-400 font-mono">
-                    ₹ {grandTotalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-              </div>
-
-              {/* Action Buttons: Just Save & Reset */}
-              <div className="pt-4 border-t border-gray-200 dark:border-slate-800 space-y-2">
-                <Button
-                  type="submit"
-                  variant="primary"
-                  icon={Save}
-                  isLoading={isSaving}
-                  disabled={isSaving}
-                  className="w-full py-3 text-sm"
-                >
-                  {isSaving ? (isEditMode ? 'Updating...' : 'Saving...') : (isEditMode ? 'Update Inward' : 'Save')}
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="secondary"
-                  icon={RotateCcw}
-                  onClick={handleReset}
-                  className="w-full py-2 text-xs font-medium"
-                >
-                  Reset Form (Alt+R)
-                </Button>
-              </div>
-
-            </div>
+            <BillSummaryCard
+              title="Inward Summary"
+              billNumber={inwardNumber}
+              itemsBreakdown={items}
+              totalItemsCount={items.length}
+              totalQuantity={totalQuantity}
+              taxableAmount={totalTaxableAmount}
+              isIntraState={isIntraState}
+              cgstRate={defaultCgst}
+              cgstAmount={cgstAmount}
+              sgstRate={defaultSgst}
+              sgstAmount={sgstAmount}
+              igstRate={defaultIgst}
+              igstAmount={igstAmount}
+              totalTax={totalTaxAmount}
+              grandTotal={grandTotalAmount}
+              isSaving={isSaving}
+              isEditMode={isEditMode}
+              saveButtonText={isSaving ? (isEditMode ? 'Updating...' : 'Saving...') : (isEditMode ? 'Update Inward' : 'Save')}
+              onSave={handleSubmit}
+              onReset={handleReset}
+            />
 
             {/* 2. Upload Hardcopy / Purchase Bill (Compact Sleek Dropzone) */}
             <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-4 shadow-sm space-y-2.5 transition-colors">
