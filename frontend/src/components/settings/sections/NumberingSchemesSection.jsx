@@ -1,9 +1,14 @@
 import React from 'react'
-import { Hash } from 'lucide-react'
+import { Hash, Edit2, Save, X } from '../../common/icons'
 import { SettingSectionCard } from '../../ui'
 
 export default function NumberingSchemesSection({
+  canEdit,
   isEditing,
+  onToggleEdit,
+  onSave,
+  onCancel,
+  isSaving,
   invoicePrefix,
   setInvoicePrefix,
   invoiceFinancialYear,
@@ -57,6 +62,40 @@ export default function NumberingSchemesSection({
       icon={Hash}
       title="Bill, Receipt & Service Numbering Settings"
       subtitle="Customize prefixes, financial year formats, auto-increment sequences, and delimiter styles."
+      actions={
+        canEdit && (
+          !isEditing ? (
+            <button
+              type="button"
+              onClick={() => onToggleEdit(true)}
+              className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] rounded-none transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <Edit2 size={13} />
+              <span>Edit Numbering</span>
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={isSaving}
+                className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-none cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={onSave}
+                disabled={isSaving}
+                className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] disabled:opacity-50 rounded-none transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Save size={13} />
+                <span>{isSaving ? 'Saving...' : 'Save Numbering'}</span>
+              </button>
+            </div>
+          )
+        )
+      }
     >
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
@@ -79,7 +118,7 @@ export default function NumberingSchemesSection({
                 value={invoicePrefix}
                 maxLength={10}
                 onChange={(e) => setInvoicePrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 10))}
-                placeholder="SIS"
+                placeholder="Prefix"
                 className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none uppercase transition-all ${
                   isEditing
                     ? 'bg-white dark:bg-slate-900 text-gray-800 dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'
@@ -98,7 +137,7 @@ export default function NumberingSchemesSection({
                 value={invoiceFinancialYear}
                 maxLength={7}
                 onChange={(e) => setInvoiceFinancialYear(e.target.value.replace(/[^0-9-]/g, '').slice(0, 7))}
-                placeholder="2026-27"
+                placeholder="FY (YYYY-YY)"
                 className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none transition-all ${
                   isEditing
                     ? 'bg-white dark:bg-slate-900 text-[#292424] dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'
@@ -118,7 +157,7 @@ export default function NumberingSchemesSection({
                 disabled={!isEditing}
                 value={invoiceStartingNumber}
                 onChange={(e) => setInvoiceStartingNumber(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="1"
+                placeholder="Start no"
                 className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none transition-all ${
                   isEditing
                     ? 'bg-white dark:bg-slate-900 text-[#292424] dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'
@@ -159,7 +198,7 @@ export default function NumberingSchemesSection({
                   disabled={!isEditing}
                   value={dueDateDays}
                   onChange={(e) => setDueDateDays(e.target.value.replace(/\D/g, '').slice(0, 3))}
-                  placeholder="15"
+                  placeholder="Due days"
                   className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none transition-all ${
                     isEditing
                       ? 'bg-white dark:bg-slate-900 text-[#292424] dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'
@@ -179,7 +218,7 @@ export default function NumberingSchemesSection({
             </span>
             <div className="space-y-1 font-mono text-[11px] font-bold text-gray-800 dark:text-slate-200">
               <div className="p-1.5 bg-gray-50 dark:bg-slate-800 border-l-2 border-gray-400 dark:border-slate-600 flex items-center justify-between">
-                <span className="truncate">{invoicePrefix || 'SIS'}{invoiceSeparator}{invoiceFinancialYear || '2026-27'}{invoiceSeparator}{String(parseInt(invoiceStartingNumber, 10) || 1).padStart(parseInt(invoicePaddingDigits, 10) || 4, '0')}</span>
+                <span className="truncate">{invoicePrefix ? `${invoicePrefix}${invoiceSeparator || '/'}${invoiceFinancialYear || ''}${invoiceSeparator || '/'}${String(parseInt(invoiceStartingNumber, 10) || 1).padStart(parseInt(invoicePaddingDigits, 10) || 4, '0')}` : '—'}</span>
                 <span className="text-[9px] text-gray-400 font-sans font-normal ml-1 shrink-0">(1st Bill)</span>
               </div>
             </div>
@@ -205,7 +244,7 @@ export default function NumberingSchemesSection({
                 value={receiptPrefix}
                 maxLength={10}
                 onChange={(e) => setReceiptPrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 10))}
-                placeholder="SIS-REC"
+                placeholder="Prefix"
                 className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none uppercase transition-all ${
                   isEditing
                     ? 'bg-white dark:bg-slate-900 text-gray-800 dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'
@@ -224,7 +263,7 @@ export default function NumberingSchemesSection({
                 value={receiptFinancialYear}
                 maxLength={7}
                 onChange={(e) => setReceiptFinancialYear(e.target.value.replace(/[^0-9-]/g, '').slice(0, 7))}
-                placeholder="2026-27"
+                placeholder="FY (YYYY-YY)"
                 className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none transition-all ${
                   isEditing
                     ? 'bg-white dark:bg-slate-900 text-[#292424] dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'
@@ -244,7 +283,7 @@ export default function NumberingSchemesSection({
                 disabled={!isEditing}
                 value={receiptStartingNumber}
                 onChange={(e) => setReceiptStartingNumber(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="1"
+                placeholder="Start no"
                 className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none transition-all ${
                   isEditing
                     ? 'bg-white dark:bg-slate-900 text-[#292424] dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'
@@ -280,7 +319,7 @@ export default function NumberingSchemesSection({
             </span>
             <div className="space-y-1 font-mono text-[11px] font-bold text-gray-800 dark:text-slate-200">
               <div className="p-1.5 bg-gray-50 dark:bg-slate-800 border-l-2 border-gray-400 dark:border-slate-600 flex items-center justify-between">
-                <span className="truncate">{receiptPrefix || 'SIS-REC'}{receiptSeparator}{receiptFinancialYear || '2026-27'}{receiptSeparator}{String(parseInt(receiptStartingNumber, 10) || 1).padStart(parseInt(receiptPaddingDigits, 10) || 4, '0')}</span>
+                <span className="truncate">{receiptPrefix ? `${receiptPrefix}${receiptSeparator || '/'}${receiptFinancialYear || ''}${receiptSeparator || '/'}${String(parseInt(receiptStartingNumber, 10) || 1).padStart(parseInt(receiptPaddingDigits, 10) || 4, '0')}` : '—'}</span>
                 <span className="text-[9px] text-gray-400 font-sans font-normal ml-1 shrink-0">(1st Rec)</span>
               </div>
             </div>
@@ -306,7 +345,7 @@ export default function NumberingSchemesSection({
                 value={servicePrefix}
                 maxLength={10}
                 onChange={(e) => setServicePrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 10))}
-                placeholder="SIS-SR"
+                placeholder="Prefix"
                 className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none uppercase transition-all ${
                   isEditing
                     ? 'bg-white dark:bg-slate-900 text-gray-800 dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'
@@ -325,7 +364,7 @@ export default function NumberingSchemesSection({
                 value={serviceFinancialYear}
                 maxLength={7}
                 onChange={(e) => setServiceFinancialYear(e.target.value.replace(/[^0-9-]/g, '').slice(0, 7))}
-                placeholder="2026-27"
+                placeholder="FY (YYYY-YY)"
                 className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none transition-all ${
                   isEditing
                     ? 'bg-white dark:bg-slate-900 text-[#292424] dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'
@@ -345,7 +384,7 @@ export default function NumberingSchemesSection({
                 disabled={!isEditing}
                 value={serviceStartingNumber}
                 onChange={(e) => setServiceStartingNumber(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="1"
+                placeholder="Start no"
                 className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none transition-all ${
                   isEditing
                     ? 'bg-white dark:bg-slate-900 text-[#292424] dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'
@@ -374,13 +413,25 @@ export default function NumberingSchemesSection({
               </select>
             </div>
           </div>
+
+          <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-3 space-y-2">
+            <span className="text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+              Service Ticket Preview:
+            </span>
+            <div className="space-y-1 font-mono text-[11px] font-bold text-gray-800 dark:text-slate-200">
+              <div className="p-1.5 bg-gray-50 dark:bg-slate-800 border-l-2 border-indigo-500 flex items-center justify-between">
+                <span className="truncate">{servicePrefix ? `${servicePrefix}${serviceSeparator || '/'}${serviceFinancialYear || ''}${serviceSeparator || '/'}${String(parseInt(serviceStartingNumber, 10) || 1).padStart(parseInt(servicePaddingDigits, 10) || 4, '0')}` : '—'}</span>
+                <span className="text-[9px] text-gray-400 font-sans font-normal ml-1 shrink-0">(1st Ticket)</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* --- CARD 4: PRODUCT RETURN / CREDIT NOTE CONFIGURATION --- */}
+        {/* --- CARD 4: PRODUCT RETURN NUMBERING CONFIGURATION --- */}
         <div className="bg-gray-50/50 dark:bg-slate-950/50 border border-gray-200 dark:border-slate-800 p-5 rounded-none space-y-4">
           <div className="pb-2 border-b border-gray-200 dark:border-slate-800">
             <h3 className="text-sm font-bold text-gray-800 dark:text-slate-200">
-              Product Return &amp; Credit Note Settings
+              Product Return Settings
             </h3>
           </div>
 
@@ -395,7 +446,7 @@ export default function NumberingSchemesSection({
                 value={returnPrefix}
                 maxLength={10}
                 onChange={(e) => setReturnPrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 10))}
-                placeholder="SIS-RET"
+                placeholder="Prefix"
                 className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none uppercase transition-all ${
                   isEditing
                     ? 'bg-white dark:bg-slate-900 text-gray-800 dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'
@@ -406,6 +457,88 @@ export default function NumberingSchemesSection({
 
             <div>
               <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                Financial Year *
+              </label>
+              <input
+                type="text"
+                disabled={!isEditing}
+                value={returnFinancialYear}
+                maxLength={7}
+                onChange={(e) => setReturnFinancialYear(e.target.value.replace(/[^0-9-]/g, '').slice(0, 7))}
+                placeholder="FY (YYYY-YY)"
+                className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none transition-all ${
+                  isEditing
+                    ? 'bg-white dark:bg-slate-900 text-[#292424] dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'
+                    : 'bg-gray-100 dark:bg-slate-900 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-800 cursor-not-allowed'
+                }`}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                Starting Number *
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="999999"
+                disabled={!isEditing}
+                value={returnStartingNumber}
+                onChange={(e) => setReturnStartingNumber(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="Start no"
+                className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none transition-all ${
+                  isEditing
+                    ? 'bg-white dark:bg-slate-900 text-[#292424] dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'
+                    : 'bg-gray-100 dark:bg-slate-900 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-800 cursor-not-allowed'
+                }`}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                Separator / Delimiter
+              </label>
+              <select
+                disabled={!isEditing}
+                value={returnSeparator}
+                onChange={(e) => setReturnSeparator(e.target.value)}
+                className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none transition-all ${
+                  isEditing
+                    ? 'bg-white dark:bg-slate-900 text-[#292424] dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486] cursor-pointer'
+                    : 'bg-gray-100 dark:bg-slate-900 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-800 cursor-not-allowed'
+                }`}
+              >
+                <option value="/">Slash ( / )</option>
+                <option value="-">Hyphen ( - )</option>
+                <option value=".">Dot ( . )</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-3 space-y-2">
+            <span className="text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+              Return Voucher Preview:
+            </span>
+            <div className="space-y-1 font-mono text-[11px] font-bold text-gray-800 dark:text-slate-200">
+              <div className="p-1.5 bg-gray-50 dark:bg-slate-800 border-l-2 border-amber-500 flex items-center justify-between">
+                <span className="truncate">{returnPrefix ? `${returnPrefix}${returnSeparator || '/'}${returnFinancialYear || ''}${returnSeparator || '/'}${String(parseInt(returnStartingNumber, 10) || 1).padStart(parseInt(returnPaddingDigits, 10) || 4, '0')}` : '—'}</span>
+                <span className="text-[9px] text-gray-400 font-sans font-normal ml-1 shrink-0">(1st Return)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* --- CARD 5: CREDIT NOTE NUMBERING CONFIGURATION --- */}
+        <div className="bg-gray-50/50 dark:bg-slate-950/50 border border-gray-200 dark:border-slate-800 p-5 rounded-none space-y-4">
+          <div className="pb-2 border-b border-gray-200 dark:border-slate-800">
+            <h3 className="text-sm font-bold text-gray-800 dark:text-slate-200">
+              Credit Note Settings
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
                 Credit Note Prefix *
               </label>
               <input
@@ -414,13 +547,84 @@ export default function NumberingSchemesSection({
                 value={creditNotePrefix}
                 maxLength={10}
                 onChange={(e) => setCreditNotePrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 10))}
-                placeholder="SIS-CN"
+                placeholder="Prefix"
                 className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none uppercase transition-all ${
                   isEditing
                     ? 'bg-white dark:bg-slate-900 text-gray-800 dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'
                     : 'bg-gray-100 dark:bg-slate-900 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-800 cursor-not-allowed'
                 }`}
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                Financial Year *
+              </label>
+              <input
+                type="text"
+                disabled={!isEditing}
+                value={creditNoteFinancialYear}
+                maxLength={7}
+                onChange={(e) => setCreditNoteFinancialYear(e.target.value.replace(/[^0-9-]/g, '').slice(0, 7))}
+                placeholder="FY (YYYY-YY)"
+                className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none transition-all ${
+                  isEditing
+                    ? 'bg-white dark:bg-slate-900 text-[#292424] dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'
+                    : 'bg-gray-100 dark:bg-slate-900 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-800 cursor-not-allowed'
+                }`}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                Starting Number *
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="999999"
+                disabled={!isEditing}
+                value={creditNoteStartingNumber}
+                onChange={(e) => setCreditNoteStartingNumber(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="Start no"
+                className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none transition-all ${
+                  isEditing
+                    ? 'bg-white dark:bg-slate-900 text-[#292424] dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'
+                    : 'bg-gray-100 dark:bg-slate-900 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-800 cursor-not-allowed'
+                }`}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                Separator / Delimiter
+              </label>
+              <select
+                disabled={!isEditing}
+                value={creditNoteSeparator}
+                onChange={(e) => setCreditNoteSeparator(e.target.value)}
+                className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-none transition-all ${
+                  isEditing
+                    ? 'bg-white dark:bg-slate-900 text-[#292424] dark:text-white border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486] cursor-pointer'
+                    : 'bg-gray-100 dark:bg-slate-900 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-800 cursor-not-allowed'
+                }`}
+              >
+                <option value="/">Slash ( / )</option>
+                <option value="-">Hyphen ( - )</option>
+                <option value=".">Dot ( . )</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-3 space-y-2">
+            <span className="text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+              Credit Note Preview:
+            </span>
+            <div className="space-y-1 font-mono text-[11px] font-bold text-gray-800 dark:text-slate-200">
+              <div className="p-1.5 bg-gray-50 dark:bg-slate-800 border-l-2 border-emerald-500 flex items-center justify-between">
+                <span className="truncate">{creditNotePrefix ? `${creditNotePrefix}${creditNoteSeparator || '/'}${creditNoteFinancialYear || ''}${creditNoteSeparator || '/'}${String(parseInt(creditNoteStartingNumber, 10) || 1).padStart(parseInt(creditNotePaddingDigits, 10) || 4, '0')}` : '—'}</span>
+                <span className="text-[9px] text-gray-400 font-sans font-normal ml-1 shrink-0">(1st CN)</span>
+              </div>
             </div>
           </div>
         </div>

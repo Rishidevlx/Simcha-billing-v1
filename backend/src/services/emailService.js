@@ -884,10 +884,14 @@ export async function sendInvoiceEmail(billId, customRecipient = null) {
     const formattedDate = new Date(bill.invoice_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
     const formattedTotal = `₹ ${parseFloat(bill.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
 
+    const companyDisplayName = settings.company_name || config.sender_name || 'Billing System'
+    const companyDisplayAddress = settings.address || ''
+    const companyDisplayPhone = settings.phone || ''
+
     const getHtmlBody = (greetingName) => `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 620px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden;">
         <div style="background-color: #043486; padding: 22px 28px; text-align: left;">
-          <h2 style="color: #ffffff; margin: 0; font-size: 20px; letter-spacing: 0.5px;">SIMCHA INFO SOLUTIONS</h2>
+          <h2 style="color: #ffffff; margin: 0; font-size: 20px; letter-spacing: 0.5px;">${companyDisplayName}</h2>
           <p style="color: #93c5fd; margin: 4px 0 0 0; font-size: 12px;">Tax Invoice Notification &amp; Receipt</p>
         </div>
 
@@ -922,13 +926,15 @@ export async function sendInvoiceEmail(billId, customRecipient = null) {
             </table>
           </div>
 
+          ${companyDisplayPhone ? `
           <p style="font-size: 12.5px; color: #64748b; line-height: 1.5;">
-            If you have any queries regarding this invoice, please reach out to us at <strong>${settings.phone || '8122022060'}</strong> or reply to this email.
-          </p>
+            If you have any queries regarding this invoice, please reach out to us at <strong>${companyDisplayPhone}</strong> or reply to this email.
+          </p>` : ''}
 
+          ${companyDisplayAddress ? `
           <div style="margin-top: 28px; padding-top: 16px; border-top: 1px solid #f1f5f9; font-size: 12px; color: #94a3b8;">
-            Simcha Info Solutions • 7A3, Thulasi Ammal Layout, Peelamedu, Coimbatore - 641004.
-          </div>
+            ${companyDisplayName} • ${companyDisplayAddress}
+          </div>` : ''}
         </div>
       </div>
     `
@@ -944,7 +950,7 @@ export async function sendInvoiceEmail(billId, customRecipient = null) {
         .replace('{customer_name}', bill.customer_name)
 
       await transporter.sendMail({
-        from: `"${config.sender_name || 'Simcha Info Solutions'}" <${config.smtp_user}>`,
+        from: `"${config.sender_name || companyDisplayName}" <${config.smtp_user}>`,
         to: customRecipient.trim(),
         subject: subject,
         html: getHtmlBody(isCustomer ? bill.customer_name : 'Admin'),
@@ -1827,10 +1833,14 @@ export async function sendReceiptEmail(billId, customRecipient = null) {
     const receiptNo = bill.receipt_number || bill.invoice_number
     const subject = `Payment Receipt - ${receiptNo}`
 
+    const companyDisplayName = settings.company_name || config.sender_name || 'Billing System'
+    const companyDisplayAddress = settings.address || ''
+    const companyDisplayPhone = settings.phone || ''
+
     const htmlBody = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 620px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden;">
         <div style="background-color: #043486; padding: 22px 28px; text-align: left;">
-          <h2 style="color: #ffffff; margin: 0; font-size: 20px; letter-spacing: 0.5px;">SIMCHA INFO SOLUTIONS</h2>
+          <h2 style="color: #ffffff; margin: 0; font-size: 20px; letter-spacing: 0.5px;">${companyDisplayName}</h2>
           <p style="color: #93c5fd; margin: 4px 0 0 0; font-size: 12px;">Payment Receipt Confirmation</p>
         </div>
 
@@ -1873,19 +1883,21 @@ export async function sendReceiptEmail(billId, customRecipient = null) {
             </table>
           </div>
 
+          ${companyDisplayPhone ? `
           <p style="font-size: 12.5px; color: #64748b; line-height: 1.5;">
-            For any queries or assistance, please reach us at <strong>${settings.phone || '8122022060'}</strong> or reply to this email.
-          </p>
+            For any queries or assistance, please reach us at <strong>${companyDisplayPhone}</strong> or reply to this email.
+          </p>` : ''}
 
+          ${companyDisplayAddress ? `
           <div style="margin-top: 28px; padding-top: 16px; border-top: 1px solid #f1f5f9; font-size: 12px; color: #94a3b8;">
-            Simcha Info Solutions • 7A3, Thulasi Ammal Layout, Peelamedu, Coimbatore - 641004.
-          </div>
+            ${companyDisplayName} • ${companyDisplayAddress}
+          </div>` : ''}
         </div>
       </div>
     `
 
     await transporter.sendMail({
-      from: `"${config.sender_name || 'Simcha Info Solutions'}" <${config.smtp_user}>`,
+      from: `"${config.sender_name || companyDisplayName}" <${config.smtp_user}>`,
       to: targetRecipient,
       subject: subject,
       html: htmlBody,

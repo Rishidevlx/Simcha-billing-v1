@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Layers,
   Edit2,
@@ -6,14 +7,16 @@ import {
   CheckCircle2,
   Search,
   PlusCircle,
+  Plus,
   Loader2
-} from 'lucide-react'
+} from '../components/common/icons'
 import Swal from 'sweetalert2'
 import { API_ENDPOINTS } from '../config/api'
 import { getUserPermissions } from '../utils/access'
 import { Button, ActionButton, StatusToggle, StatusPill, SearchInput } from '../components/ui'
 
-export default function CategoriesPage() {
+export default function CategoriesPage({ setActiveRoute }) {
+  const navigate = useNavigate()
   const { can, hasAny } = getUserPermissions()
   const canAdd = can('categories_create', 'Add') || can('categories', 'Add') || can('categories', 'Add')
   const canEdit = hasAny('categories', ['Edit']) || hasAny('categories_create', ['Edit']) || hasAny('categories', ['Edit'])
@@ -206,17 +209,30 @@ export default function CategoriesPage() {
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
       
-      {/* Header & Breadcrumb */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-200/80 dark:border-slate-800 pb-3">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-200/80 dark:border-slate-800 pb-3">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-[#292424] dark:text-white uppercase">
-            CATEGORIES
+          <h1 className="text-xl font-bold tracking-tight text-[#292424] dark:text-white uppercase flex items-center gap-2.5">
+            <Layers className="text-[#043486] dark:text-blue-400" size={22} />
+            <span>CATEGORIES</span>
           </h1>
+          <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+            Organize inventory items into structured product categories and groups.
+          </p>
         </div>
-        <div className="flex items-center text-xs text-gray-500 dark:text-slate-400 gap-1.5 font-medium">
-          <span className="hover:text-gray-700 dark:hover:text-slate-200">Home</span>
-          <span>›</span>
-          <span className="text-[#043486] dark:text-blue-400 font-semibold">Categories</span>
+
+        <div className="flex items-center gap-2.5">
+          <Button
+            variant="primary"
+            icon={Plus}
+            onClick={() => {
+              if (setActiveRoute) setActiveRoute('add-material')
+              navigate('/materials/add')
+            }}
+            className="text-xs font-semibold"
+          >
+            ADD MATERIAL
+          </Button>
         </div>
       </div>
 

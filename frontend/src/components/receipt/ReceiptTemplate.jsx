@@ -1,7 +1,12 @@
 import React from 'react'
-import logoImg from '../../assets/Logo/Logo-bg-remove.webp'
-import faviconWatermark from '../../assets/Logo/Favicon.jpeg'
-import { Phone, Mail, MapPin } from 'lucide-react'
+import { useTheme } from '../../context/ThemeContext'
+import {
+  TemplatePageShell,
+  TemplateHeader,
+  TemplateMetaBar,
+  TemplatePartyBox,
+  TemplateFooterRibbon
+} from '../invoice/shared'
 
 // Helper function to paginate receipt items into strictly 5 items per A4 page
 function paginateReceiptItems(items) {
@@ -41,12 +46,14 @@ function paginateReceiptItems(items) {
 export default function ReceiptTemplate({ bill, settings }) {
   if (!bill) return null
 
-  // Resolve dynamic settings with fallbacks
-  const companyName = settings?.company_name || 'SIMCHA INFO SOLUTIONS'
-  const companyGstin = settings?.gstin || '33GEZPM1178G1ZY'
-  const companyPhone = settings?.phone || '8122022060'
-  const companyEmail = settings?.email || 'simchainfosolutions@gmail.com'
-  const companyAddress = settings?.address || '7A3, Thulasi Ammal Layout 2nd Street, Lakshmipuram, Peelamedu Post, Coimbatore - 641 004.'
+  const { companyName: themeCompanyName, companyDetails } = useTheme()
+
+  // Resolve dynamic settings with fallbacks from Theme/System Settings
+  const companyName = settings?.company_name || themeCompanyName || companyDetails?.name || ''
+  const companyGstin = settings?.gstin || companyDetails?.gstin || ''
+  const companyPhone = settings?.phone || companyDetails?.phone || ''
+  const companyEmail = settings?.email || companyDetails?.email || ''
+  const companyAddress = settings?.address || companyDetails?.address || ''
 
   const defaultTermsList = Array.isArray(settings?.terms_conditions) && settings.terms_conditions.length > 0
     ? settings.terms_conditions
@@ -94,258 +101,131 @@ export default function ReceiptTemplate({ bill, settings }) {
   return (
     <div id="receipt-printable-area" className="w-full">
       {paginatedPages.map((page) => (
-        <div
+        <TemplatePageShell
           key={page.pageIndex}
-          className="receipt-page relative bg-white text-[#292424] font-['Poppins',sans-serif] w-full max-w-[210mm] min-h-[297mm] max-h-[297mm] h-[297mm] mx-auto p-0 flex flex-col justify-between shadow-lg print:shadow-none print:w-full print:max-w-none print:h-[297mm] print:min-h-[297mm] print:max-h-[297mm] text-[11.5px] leading-relaxed overflow-hidden box-border mb-8 print:mb-0"
-          style={{
-            pageBreakAfter: page.pageIndex < page.totalPages ? 'always' : 'avoid',
-            breakAfter: page.pageIndex < page.totalPages ? 'page' : 'avoid',
-            boxSizing: 'border-box'
-          }}
+          pageIndex={page.pageIndex}
+          totalPages={page.totalPages}
         >
-          {/* Subtle Watermark in Background */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 opacity-[0.06]">
-            <img
-              src={faviconWatermark}
-              alt="Simcha Watermark"
-              className="w-80 max-w-full grayscale object-contain"
-            />
-          </div>
-
-          {/* Page Main Content */}
+          {/* Main Content Area */}
           <div className="relative z-10 px-8 pt-7 flex-1 flex flex-col justify-start space-y-2">
-            
-            {/* --- PAGE 1: Full Official Letterhead Header --- */}
-            {page.isFirstPage ? (
-              <div className="space-y-1.5">
-                <div className="flex items-start justify-between gap-4">
-                  {/* Top Left: Logo & Company Address */}
-                  <div className="flex items-start gap-4">
-                    <img
-                      src={logoImg}
-                      alt="Simcha Logo"
-                      className="h-20 w-auto object-contain shrink-0 -mt-1"
-                    />
-                    <div className="space-y-0.5">
-                      <h1 className="text-xl font-black text-[#043486] tracking-tight leading-none">
-                        {companyName}
-                      </h1>
-                      <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider pt-0.5">
-                        IT CONSULTING | HARDWARE &amp; SOFTWARE SOLUTIONS | SALES &amp; SERVICE
-                      </p>
-                      <p className="text-[10px] text-gray-600 leading-normal truncate max-w-lg">
-                        {companyAddress}
-                      </p>
-                      <p className="text-[10px] text-gray-700 font-medium">
-                        <strong>Mobile:</strong> {companyPhone} &nbsp;|&nbsp; <strong>Email:</strong> {companyEmail}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Top Right: GSTIN Header */}
-                  <div className="text-right shrink-0 pt-0.5">
-                    <div className="text-xs font-bold text-[#292424] font-mono tracking-wide">
-                      <span className="text-gray-500 font-bold font-sans text-[11px]">GSTIN: </span>
-                      {companyGstin}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Thin Divider Rule */}
-                <div className="w-full h-[2px] bg-[#043486] mt-1.5" />
-              </div>
-            ) : (
-              /* --- PAGE 2+: Compact Header --- */
-              <div className="border-b-2 border-[#043486] pb-2 mb-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <img src={logoImg} alt="Simcha Logo" className="h-9 w-auto object-contain" />
-                    <div>
-                      <h2 className="text-sm font-black text-[#043486] tracking-tight leading-none">{companyName}</h2>
-                      <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">
-                        PAYMENT RECEIPT
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right text-[10.5px] font-semibold text-gray-700">
-                    <div><span className="text-gray-500 font-normal">Date: </span>{formatDate(new Date())}</div>
-                    <div className="font-mono text-[9.5px] text-gray-500">GSTIN: {companyGstin}</div>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Header */}
+            <TemplateHeader
+              companyName={companyName}
+              companyGstin={companyGstin}
+              companyPhone={companyPhone}
+              companyEmail={companyEmail}
+              companyAddress={companyAddress}
+            />
 
             {/* Receipt Meta Bar */}
-            <div className="bg-[#f3f4f6] border border-gray-300 px-3.5 py-1.5 flex items-center justify-between text-xs font-bold text-[#292424]">
-              <div className="flex items-center gap-1.5">
-                <span className="text-gray-600 uppercase font-semibold text-[10.5px]">RECEIPT NUMBER:</span>
-                <span className="text-[#292424] font-mono text-sm font-black">{bill.receipt_number || bill.invoice_number}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-gray-600 uppercase font-semibold text-[10.5px]">RECEIPT DATE:</span>
-                <span className="text-[#292424] font-semibold text-[11.5px]">{formatDate(new Date())}</span>
-              </div>
-            </div>
+            <TemplateMetaBar
+              docNumberLabel="RECEIPT NUMBER:"
+              docNumber={bill.receipt_number || bill.invoice_number}
+              dateLabel="RECEIPT DATE:"
+              dateValue={formatDate(bill.invoice_date || new Date())}
+            />
 
             {/* Customer Details Box: Two Columns (RECEIVED FROM & DELIVERY ADDRESS) */}
-            <div className="border border-gray-300 p-2.5 bg-white/80 text-[#292424]">
-              <div className="grid grid-cols-2 gap-4">
-                
-                {/* Left Column: RECEIVED FROM (BUYER) */}
-                <div className="space-y-0.5 border-r border-gray-200 pr-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className="text-[9.5px] font-black text-[#043486] uppercase tracking-wider block mb-0.5">
-                        RECEIVED FROM (BILL TO)
-                      </span>
-                      <h3 className="text-[12.5px] font-bold text-[#292424]">
-                        {bill.customer_name}
-                      </h3>
-                    </div>
-                    {/* Copy Type Tag */}
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-[#292424] bg-gray-100 border border-gray-300 px-2 py-0.5 inline-block shrink-0">
-                      {bill.copy_type === 'DUPLICATE' ? 'DUPLICATE' : (bill.copy_type === 'TRIPLICATE' ? 'TRIPLICATE' : 'ORIGINAL')}
-                    </span>
-                  </div>
-
-                  {bill.customer_address && (
-                    <p className="text-[10px] text-gray-700 leading-snug whitespace-pre-line mt-0.5">
-                      {bill.customer_address}
-                    </p>
-                  )}
-                  <div className="space-y-0.5 pt-1 text-[10px] font-medium text-gray-700">
-                    {bill.customer_phone && (
-                      <div><strong>Mobile:</strong> <span className="font-mono text-[#292424]">{bill.customer_phone}</span></div>
-                    )}
-                    {bill.customer_email && (
-                      <div><strong>Email:</strong> <span className="text-[#292424]">{bill.customer_email}</span></div>
-                    )}
-                    <div><strong>Place of Supply:</strong> <span className="text-[#292424]">{bill.place_of_supply || '33-Tamil Nadu'}</span></div>
-                    {bill.customer_gstin && (
-                      <div><strong>GSTIN:</strong> <span className="font-mono font-bold uppercase text-[#292424]">{bill.customer_gstin}</span></div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Right Column: SHIP TO / DELIVERY ADDRESS */}
-                <div className="space-y-0.5 pl-1">
-                  <span className="text-[9.5px] font-black text-[#043486] uppercase tracking-wider block mb-0.5">
-                    DELIVERY / SHIPPING ADDRESS
-                  </span>
-                  <h3 className="text-[12.5px] font-bold text-[#292424]">
-                    {bill.customer_name}
-                  </h3>
-                  <p className="text-[10px] text-gray-700 leading-snug whitespace-pre-line mt-0.5">
-                    {bill.delivery_address && bill.delivery_address.trim() ? bill.delivery_address : (bill.customer_address || 'Same as billing address')}
-                  </p>
-                  <div className="space-y-0.5 pt-1 text-[10px] font-medium text-gray-700">
-                    {bill.customer_phone && (
-                      <div><strong>Contact:</strong> <span className="font-mono text-[#292424]">{bill.customer_phone}</span></div>
-                    )}
-                    <div><strong>Destination:</strong> <span className="text-[#292424]">{bill.place_of_supply || '33-Tamil Nadu'}</span></div>
-                    <div className="text-[9px] text-gray-500 italic pt-0.5">
-                      {(!bill.delivery_address || bill.same_as_billing || bill.delivery_address === bill.customer_address) ? '✓ Same as billing address' : '✓ Separate Delivery Destination'}
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
+            <TemplatePartyBox
+              mode="two-column"
+              billTitle="RECEIVED FROM (BILL TO)"
+              customerName={bill.customer_name}
+              customerAddress={bill.customer_address}
+              customerPhone={bill.customer_phone}
+              customerEmail={bill.customer_email}
+              placeOfSupply={bill.place_of_supply}
+              customerGstin={bill.customer_gstin}
+              copyType={bill.copy_type}
+              shipTitle="DELIVERY / SHIPPING ADDRESS"
+              deliveryAddress={bill.delivery_address}
+              sameAsBilling={bill.same_as_billing}
+            />
 
             {/* --- LINE ITEMS TABLE --- */}
             <div className="border border-gray-300 overflow-hidden text-[#292424]">
               <table className="w-full text-left border-collapse text-[10.5px]">
                 <thead>
                   <tr className="bg-[#f3f4f6] border-b border-gray-300 text-[9.5px] font-black uppercase text-[#292424]">
-                    <th className="py-1.5 px-2 border-r border-gray-300 text-center w-[5%]">S.NO</th>
-                    <th className="py-1.5 px-2.5 border-r border-gray-300 w-[33%]">ITEMS</th>
-                    <th className="py-1.5 px-2 border-r border-gray-300 text-center w-[11%]">HSN/SAC</th>
-                    <th className="py-1.5 px-2 border-r border-gray-300 text-center w-[9%]">QTY</th>
-                    <th className="py-1.5 px-2 border-r border-gray-300 text-center w-[8%]">DISC (%)</th>
-                    <th className="py-1.5 px-2 border-r border-gray-300 text-right w-[12%]">RATE (₹)</th>
-                    <th className="py-1.5 px-2 border-r border-gray-300 text-right w-[10%]">TAX</th>
+                    <th className="py-1.5 px-2 border-r border-gray-300 text-center w-[5%]">#</th>
+                    <th className="py-1.5 px-2.5 border-r border-gray-300 w-[35%]">ITEM DESCRIPTION</th>
+                    <th className="py-1.5 px-2 border-r border-gray-300 text-center w-[10%]">HSN</th>
+                    <th className="py-1.5 px-2 border-r border-gray-300 text-center w-[8%]">QTY</th>
+                    <th className="py-1.5 px-2 border-r border-gray-300 text-center w-[8%]">DISC</th>
+                    <th className="py-1.5 px-2 border-r border-gray-300 text-right w-[11%]">RATE (₹)</th>
+                    <th className="py-1.5 px-2 border-r border-gray-300 text-right w-[11%]">TAX</th>
                     <th className="py-1.5 px-2.5 text-right w-[12%]">AMOUNT (₹)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 text-[#292424]">
                   {page.items.map((item, idx) => (
                     <tr key={idx} className="hover:bg-gray-50/50">
-                      <td className="py-2 px-2 border-r border-gray-300 text-center font-bold align-top text-[#292424]">
+                      <td className="py-1.5 px-2 border-r border-gray-300 text-center font-bold align-top text-[#292424]">
                         {(page.startIndex || 0) + idx + 1}
                       </td>
-                      <td className="py-2 px-2.5 border-r border-gray-300 align-top">
+                      <td className="py-1.5 px-2.5 border-r border-gray-300 align-top">
                         <div className="font-bold text-[#292424]">
                           {item.item_name || item.name}
                           {item.unit && (
-                            <span className="text-[10.5px] font-semibold text-gray-600 ml-1">
+                            <span className="text-[10px] font-semibold text-gray-600 ml-1">
                               ({item.unit})
                             </span>
                           )}
                         </div>
                         {item.category_name && (
-                          <div className="text-[9.5px] text-gray-500 font-medium leading-tight">
+                          <div className="text-[9px] text-gray-500 font-medium">
                             [{item.category_name}]
                           </div>
                         )}
                         {item.serial_number && (
-                          <div className="text-[9.5px] font-mono font-semibold text-gray-800 leading-tight mt-0.5">
-                            Serial No.: {item.serial_number}
+                          <div className="text-[9px] font-mono font-semibold text-gray-700 mt-0.5">
+                            S/N: {item.serial_number}
                           </div>
                         )}
                       </td>
-                      <td className="py-2 px-2 border-r border-gray-300 text-center font-mono align-top text-gray-700">
+                      <td className="py-1.5 px-2 border-r border-gray-300 text-center font-mono align-top text-gray-600">
                         {item.hsn_code || '-'}
                       </td>
-                      <td className="py-2 px-2 border-r border-gray-300 text-center font-semibold align-top text-[#292424]">
-                        {formatQty(item.quantity)} Unit
+                      <td className="py-1.5 px-2 border-r border-gray-300 text-center font-semibold align-top text-[#292424]">
+                        {formatQty(item.quantity)}
                       </td>
-                      <td className="py-2 px-2 border-r border-gray-300 text-center font-mono align-top">
-                        {(item.has_discount || parseFloat(item.discount_percent || 0) > 0) ? (
-                          <span className="font-bold text-emerald-700">
-                            {parseFloat(item.discount_percent || 0)}%
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">—</span>
-                        )}
+                      <td className="py-1.5 px-2 border-r border-gray-300 text-center font-mono align-top text-emerald-700 font-bold">
+                        {(item.has_discount || parseFloat(item.discount_percent || 0) > 0) ? `${parseFloat(item.discount_percent || 0)}%` : '—'}
                       </td>
-                      <td className="py-2 px-2 border-r border-gray-300 text-right font-mono align-top text-[#292424]">
+                      <td className="py-1.5 px-2 border-r border-gray-300 text-right font-mono align-top text-[#292424]">
                         <div>₹ {parseFloat(item.rate || item.original_rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                        {(item.has_discount || parseFloat(item.discount_percent || 0) > 0) && (
-                          <div className="text-[8.5px] text-gray-400 line-through">
-                            ₹ {parseFloat(item.original_rate || item.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </div>
-                        )}
                       </td>
-                      <td className="py-2 px-2 border-r border-gray-300 text-right font-mono align-top text-gray-700 text-[9.5px]">
+                      <td className="py-1.5 px-2 border-r border-gray-300 text-right font-mono align-top text-gray-600 text-[9px]">
                         {isGstInvoice && parseFloat(item.tax_amount || 0) > 0 ? (
                           <>
-                            ₹ {parseFloat(item.tax_amount || 0).toFixed(2)}
+                            ₹{parseFloat(item.tax_amount || 0).toFixed(2)}
                             {item.tax_rate ? ` (${item.tax_rate}%)` : ''}
                           </>
                         ) : (
                           '₹ 0.00'
                         )}
                       </td>
-                      <td className="py-2 px-2.5 text-right font-mono font-bold align-top text-[#292424]">
+                      <td className="py-1.5 px-2.5 text-right font-mono font-bold align-top text-[#292424]">
                         ₹ {parseFloat(item.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                     </tr>
                   ))}
                 </tbody>
 
-                {/* Table Subtotal Bar on Last Page */}
-                {page.showSummary && (
+                {page.isLastPage && (
                   <tfoot>
-                    <tr className="bg-[#f3f4f6] border-t border-gray-300 font-bold text-[10.5px] text-[#292424]">
-                      <td colSpan={2} className="py-1.5 px-2.5 border-r border-gray-300 uppercase text-[#292424]">SUB TOTAL</td>
+                    <tr className="bg-[#f3f4f6] font-bold border-t border-gray-300 text-[10px] text-[#292424]">
+                      <td colSpan={3} className="py-1 px-2 border-r border-gray-300 text-right uppercase">
+                        Total Items: {items.length}
+                      </td>
+                      <td className="py-1 px-2 border-r border-gray-300 text-center font-bold font-mono">
+                        {formatQty(totalQty)}
+                      </td>
                       <td className="border-r border-gray-300" />
-                      <td className="py-1.5 px-2 border-r border-gray-300 text-center font-mono text-[#292424]">{formatQty(totalQty)} Unit</td>
                       <td className="border-r border-gray-300" />
-                      <td className="border-r border-gray-300" />
-                      <td className="py-1.5 px-2 border-r border-gray-300 text-right font-mono text-gray-800">
+                      <td className="py-1 px-2 border-r border-gray-300 text-right font-mono">
                         ₹ {totalTaxAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
-                      <td className="py-1.5 px-2.5 text-right font-mono text-[#292424] font-black">
+                      <td className="py-1 px-2.5 text-right font-mono font-black text-[#292424]">
                         ₹ {totalGrossAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                     </tr>
@@ -354,11 +234,10 @@ export default function ReceiptTemplate({ bill, settings }) {
               </table>
             </div>
 
-            {/* --- SUMMARY SECTION (NO BANK DETAILS, NO QR CODE) --- */}
+            {/* --- SUMMARY SECTION --- */}
             {page.showSummary && (
               <div className="grid grid-cols-12 gap-6 pt-2 text-[#292424]">
-
-                {/* Left Column (6/12): Terms & Conditions Only */}
+                {/* Left Column: Terms & Conditions & Payment Mode */}
                 <div className="col-span-6 space-y-2">
                   <div className="space-y-0.5 text-[9.5px]">
                     <span className="font-black text-[#292424] uppercase tracking-wider block text-[10px] mb-0.5">
@@ -377,9 +256,8 @@ export default function ReceiptTemplate({ bill, settings }) {
                   </div>
                 </div>
 
-                {/* Right Column (6/12): Tax Breakdown, Totals & Signatory */}
+                {/* Right Column: Tax Breakdown, Totals & Signatory */}
                 <div className="col-span-6 flex flex-col justify-between text-[#292424] pl-2">
-                  {/* Tax Computation Table */}
                   <div className="space-y-0.5 text-[10.5px]">
                     {totalDiscountSavings > 0 && (
                       <>
@@ -450,18 +328,20 @@ export default function ReceiptTemplate({ bill, settings }) {
                       </span>
                     </div>
 
-                    {/* Amount in words */}
                     {bill.amount_in_words && (
-                      <div className="text-[9.5px] text-gray-600 leading-tight pt-0.5 capitalize">
-                        <strong>Received (in words):</strong> {bill.amount_in_words}
+                      <div className="pt-0.5 text-[9px] text-gray-600 leading-tight">
+                        <strong className="text-gray-800">In Words: </strong>
+                        <span className="italic text-[#292424] font-medium capitalize">
+                          {bill.amount_in_words}
+                        </span>
                       </div>
                     )}
                   </div>
 
                   {/* Authorized Signatory */}
-                  <div className="mt-4 text-center pt-2">
+                  <div className="pt-4 text-right pr-2">
                     {(settings?.signature_url || bill.signature_url) && (
-                      <div className="flex justify-center items-center h-10 mb-1">
+                      <div className="flex justify-end items-center h-10 mb-1">
                         <img
                           src={settings?.signature_url || bill.signature_url}
                           alt="Authorized Signature"
@@ -469,56 +349,25 @@ export default function ReceiptTemplate({ bill, settings }) {
                         />
                       </div>
                     )}
-                    <div className="inline-block border-t border-gray-400 pt-1 px-8 min-w-[190px]">
-                      <p className="text-[9.5px] text-gray-600">Authorized signatory for</p>
-                      <p className="text-[10.5px] font-black text-[#292424] uppercase tracking-wide">
+                    <div className="inline-block border-t border-gray-400 pt-1 text-center min-w-[180px]">
+                      <p className="text-[9.5px] text-gray-600 font-medium">Authorized Signatory</p>
+                      <p className="text-[10px] font-black text-[#043486] uppercase tracking-wide">
                         {companyName}
                       </p>
                     </div>
                   </div>
-
                 </div>
-
               </div>
             )}
-
           </div>
 
-          {/* --- 100% FULL-WIDTH FOOTER RIBBON (EXACT SIMCHA LETTERHEAD DESIGN) --- */}
-          <div className="w-full bg-[#043486] text-white px-8 py-2.5 flex items-center justify-between text-[9.5px] font-medium tracking-wide z-10 shrink-0">
-            {/* Left Contact Pills */}
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full bg-white text-[#043486] flex items-center justify-center shrink-0 shadow-xs">
-                  <Phone size={10} className="stroke-[2.5]" />
-                </div>
-                <span className="font-semibold tracking-wider font-mono">+91 {companyPhone}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full bg-white text-[#043486] flex items-center justify-center shrink-0 shadow-xs">
-                  <Mail size={10} className="stroke-[2.5]" />
-                </div>
-                <span className="tracking-wide">{companyEmail}</span>
-              </div>
-            </div>
-
-            {/* Slanted Divider */}
-            <div className="h-5 w-[1px] bg-blue-300/40 transform rotate-12 mx-2" />
-
-            {/* Right Location Address */}
-            <div className="flex items-center gap-4 max-w-md text-right">
-              <div className="flex items-center gap-2 text-left">
-                <div className="w-5 h-5 rounded-full bg-white text-[#043486] flex items-center justify-center shrink-0 shadow-xs">
-                  <MapPin size={10} className="stroke-[2.5]" />
-                </div>
-                <span className="text-[9px] leading-tight text-blue-100 truncate max-w-xs">
-                  {companyAddress}
-                </span>
-              </div>
-            </div>
-          </div>
-
-        </div>
+          {/* Footer Ribbon */}
+          <TemplateFooterRibbon
+            companyPhone={companyPhone}
+            companyEmail={companyEmail}
+            companyAddress={companyAddress}
+          />
+        </TemplatePageShell>
       ))}
     </div>
   )

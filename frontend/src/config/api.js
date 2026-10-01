@@ -13,6 +13,7 @@ export const API_ENDPOINTS = {
   MATERIAL_BY_ID: (id) => `${API_BASE_URL}/api/materials/${id}`,
   MATERIAL_BULK_DELETE: `${API_BASE_URL}/api/materials/bulk-delete`,
   SETTINGS: `${API_BASE_URL}/api/settings`,
+  THEME_SETTINGS: `${API_BASE_URL}/api/settings/theme`,
   EMAIL_CONFIG: `${API_BASE_URL}/api/email-config`,
   EMAIL_TEST: `${API_BASE_URL}/api/email-config/test`,
   EMAIL_SEND_BILL: (billId) => `${API_BASE_URL}/api/email-config/send-bill/${billId}`,

@@ -17,7 +17,7 @@ import {
   Shield,
   ChevronDown,
   Phone
-} from 'lucide-react'
+} from '../components/common/icons'
 import Swal from 'sweetalert2'
 import * as XLSX from 'xlsx'
 import ListPageHeader from '../components/common/ListPageHeader'
@@ -454,19 +454,16 @@ export default function RoleListPage({ setActiveRoute }) {
 
   return (
     <div className="space-y-6 font-['Poppins',sans-serif]">
-      {/* Top Header / Breadcrumb */}
+      {/* Top Header */}
       <ListPageHeader
-        title="Roles &amp; Permissions"
-        description="Manage organizational roles, access levels, and module permissions."
-        breadcrumbs={[
-          { label: 'Roles & Access' },
-          { label: 'Roles' }
-        ]}
+        icon={ShieldCheck}
+        title="ROLES & PERMISSIONS"
+        subtitle="Manage organizational roles, access levels, and module permissions."
         actions={
           <div className="flex items-center gap-2">
             {canDownload && activeTab === 'list' && (
               <Button
-                variant="secondary"
+                variant="export"
                 icon={Download}
                 onClick={handleExportExcel}
               >
@@ -476,7 +473,7 @@ export default function RoleListPage({ setActiveRoute }) {
 
             {(canAdd || (editingRoleId && activeTab === 'add')) && (
               <Button
-                variant="primary"
+                variant={activeTab === 'add' ? 'list' : 'primary'}
                 icon={activeTab === 'add' ? List : Plus}
                 onClick={() => {
                   if (activeTab === 'add' && editingRoleId) {
@@ -734,9 +731,27 @@ export default function RoleListPage({ setActiveRoute }) {
             {/* Table */}
             <div className="overflow-x-auto min-h-[300px]">
               {isLoading ? (
-                <div className="flex flex-col items-center justify-center p-16 text-gray-400 dark:text-slate-500">
-                  <Loader2 className="animate-spin mb-3 text-[#043486] dark:text-blue-500" size={32} />
-                  <p className="text-xs sm:text-sm font-medium">Loading roles...</p>
+                <div className="p-4 space-y-3">
+                  <div className="h-9 bg-slate-100 dark:bg-slate-800 flex items-center px-4 gap-4 animate-pulse">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={i} className="h-3 bg-slate-200 dark:bg-slate-700 rounded-xs flex-1" />
+                    ))}
+                  </div>
+                  {Array.from({ length: 5 }).map((_, rIdx) => (
+                    <div
+                      key={rIdx}
+                      className="h-11 border-b border-gray-100 dark:border-slate-800/70 flex items-center px-4 gap-4 animate-pulse"
+                    >
+                      {Array.from({ length: 6 }).map((_, cIdx) => (
+                        <div
+                          key={cIdx}
+                          className={`h-3 bg-slate-200/80 dark:bg-slate-800 rounded-xs ${
+                            cIdx === 0 ? 'w-10' : 'flex-1'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  ))}
                 </div>
               ) : filteredRoles.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-16 text-gray-400 dark:text-slate-500 text-center">
@@ -816,31 +831,15 @@ export default function RoleListPage({ setActiveRoute }) {
                             </td>
                             <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
                               {isSystemAdmin ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-none bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800">
-                                  <ShieldCheck size={12} /> Active
-                                </span>
+                                <StatusPill status="Active" size="sm" />
                               ) : (
                                 <button
                                   type="button"
                                   onClick={() => handleToggleStatus(role)}
-                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-none border transition-all cursor-pointer shadow-2xs hover:scale-105 ${
-                                    isActive
-                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800'
-                                      : 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 dark:bg-red-950/60 dark:text-red-400 dark:border-red-800'
-                                  }`}
+                                  className="transition-transform hover:scale-105 cursor-pointer"
                                   title={`Click to ${isActive ? 'Deactivate' : 'Activate'} role`}
                                 >
-                                  {isActive ? (
-                                    <>
-                                      <CheckCircle2 size={12} className="text-emerald-600" />
-                                      <span>Active</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <XCircle size={12} className="text-red-600" />
-                                      <span>Inactive</span>
-                                    </>
-                                  )}
+                                  <StatusPill status={isActive ? 'Active' : 'Inactive'} size="sm" />
                                 </button>
                               )}
                             </td>

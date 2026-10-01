@@ -18,8 +18,9 @@ import {
   AlertCircle,
   CheckSquare,
   Square,
-  Percent
-} from 'lucide-react'
+  Percent,
+  List
+} from '../components/common/icons'
 import Swal from 'sweetalert2'
 import SearchableSelect from '../components/common/SearchableSelect'
 import ServiceInvoiceTemplate from '../components/invoice/ServiceInvoiceTemplate'
@@ -710,8 +711,8 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200 pb-12 font-['Poppins',sans-serif]">
-      {/* Page Header */}
+    <div className="space-y-6 animate-in fade-in duration-200 pb-16 font-['Poppins',sans-serif]">
+      {/* 1. Page Header (Transparent Top Bar with Service List Button) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-200/80 dark:border-slate-800 pb-3">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-[#292424] dark:text-white uppercase flex items-center gap-2.5">
@@ -725,27 +726,19 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center text-xs text-gray-500 dark:text-slate-400 gap-1.5 font-medium">
-            <span>Home</span>
-            <span>›</span>
-            <span>Services</span>
-            <span>›</span>
-            <span className="text-[#043486] dark:text-blue-400 font-semibold">
-              {isEditMode ? 'Edit Request' : 'New Request'}
-            </span>
-          </div>
-
-          <button
-            type="button"
+        {/* Right Side: SERVICE LIST Action Button */}
+        <div className="flex items-center gap-2.5">
+          <Button
+            variant="list"
+            icon={List}
             onClick={() => {
               if (setActiveRoute) setActiveRoute('all-services')
               navigate('/services/list')
             }}
-            className="px-3.5 py-1.5 text-xs font-semibold text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+            className="text-xs font-semibold"
           >
-            <span>Service List</span>
-          </button>
+            SERVICE LIST
+          </Button>
         </div>
       </div>
 
@@ -794,7 +787,7 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
                 {/* Service Date */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
-                    Service Date <span className="text-blue-500">*</span>
+                    Service Date <span className="text-red-500 font-bold">*</span>
                   </label>
                   <input
                     type="date"
@@ -808,7 +801,7 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
                 {/* Place of Supply */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
-                    Place of Supply <span className="text-blue-500">*</span>
+                    Place of Supply <span className="text-red-500 font-bold">*</span>
                   </label>
                   <SearchableSelect
                     options={INDIAN_STATES.map((s) => ({ value: s, label: s }))}
@@ -821,7 +814,7 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
                 {/* Customer Type */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
-                    Customer Type <span className="text-blue-500">*</span>
+                    Customer Type <span className="text-red-500 font-bold">*</span>
                   </label>
                   <select
                     value={customerType}
@@ -876,8 +869,11 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
-                      {customerType === 'Company' ? 'Company / Client Name' : 'Customer / Client Name'}{' '}
-                      <span className="text-blue-500">*</span>
+                      {customerType === 'Company' ? (
+                        <>Company / Client Name <span className="text-red-500 font-bold">*</span></>
+                      ) : (
+                        <>Customer / Client Name <span className="text-red-500 font-bold">*</span></>
+                      )}
                     </label>
                     <input
                       type="text"

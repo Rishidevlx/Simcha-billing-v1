@@ -23,11 +23,13 @@ import {
   Image as ImageIcon,
   Eye,
   ZoomIn
-} from 'lucide-react'
+} from '../components/common/icons'
 import Swal from 'sweetalert2'
 import { API_ENDPOINTS } from '../config/api'
 import { getUserPermissions } from '../utils/access'
 import { Button } from '../components/ui'
+import SkeletonLoader from '../components/common/SkeletonLoader'
+import ArrowNavTabs from '../components/common/ArrowNavTabs'
 import {
   CompanyProfileSection,
   NumberingSchemesSection,
@@ -44,67 +46,68 @@ export default function SystemSettingsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
 
-  // Edit mode per tab
+  // Edit mode per tab/section
   const [editStates, setEditStates] = useState({
     company: false,
+    numbering: false,
     taxes: false,
     bank: false,
     terms: false
   })
 
   // Company Details
-  const [companyName, setCompanyName] = useState('SIMCHA INFO SOLUTIONS')
-  const [address, setAddress] = useState('7A3, Thulasi Ammal Layout 2nd Street, Lakshmipuram, Peelamedu Post, Coimbatore - 641 004.')
-  const [phone, setPhone] = useState('8122022060')
-  const [email, setEmail] = useState('simchainfosolutions@gmail.com')
-  const [gstin, setGstin] = useState('33GEZPM1178G1ZY')
+  const [companyName, setCompanyName] = useState('')
+  const [address, setAddress] = useState('')
+  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
+  const [gstin, setGstin] = useState('')
   
   // Dynamic Invoice Numbering Settings
-  const [invoicePrefix, setInvoicePrefix] = useState('SIS')
-  const [invoiceFinancialYear, setInvoiceFinancialYear] = useState('2026-27')
-  const [invoiceStartingNumber, setInvoiceStartingNumber] = useState('0001')
-  const [invoicePaddingDigits, setInvoicePaddingDigits] = useState('4')
-  const [invoiceSeparator, setInvoiceSeparator] = useState('/')
+  const [invoicePrefix, setInvoicePrefix] = useState('')
+  const [invoiceFinancialYear, setInvoiceFinancialYear] = useState('')
+  const [invoiceStartingNumber, setInvoiceStartingNumber] = useState('')
+  const [invoicePaddingDigits, setInvoicePaddingDigits] = useState('')
+  const [invoiceSeparator, setInvoiceSeparator] = useState('')
 
   // Dynamic Receipt Numbering Settings
-  const [receiptPrefix, setReceiptPrefix] = useState('SIS-REC')
-  const [receiptFinancialYear, setReceiptFinancialYear] = useState('2026-27')
-  const [receiptStartingNumber, setReceiptStartingNumber] = useState('0001')
-  const [receiptPaddingDigits, setReceiptPaddingDigits] = useState('4')
-  const [receiptSeparator, setReceiptSeparator] = useState('/')
+  const [receiptPrefix, setReceiptPrefix] = useState('')
+  const [receiptFinancialYear, setReceiptFinancialYear] = useState('')
+  const [receiptStartingNumber, setReceiptStartingNumber] = useState('')
+  const [receiptPaddingDigits, setReceiptPaddingDigits] = useState('')
+  const [receiptSeparator, setReceiptSeparator] = useState('')
 
   // Dynamic Service Numbering Settings
-  const [servicePrefix, setServicePrefix] = useState('SIS-SR')
-  const [serviceFinancialYear, setServiceFinancialYear] = useState('2026-27')
-  const [serviceStartingNumber, setServiceStartingNumber] = useState('0001')
-  const [servicePaddingDigits, setServicePaddingDigits] = useState('4')
-  const [serviceSeparator, setServiceSeparator] = useState('/')
+  const [servicePrefix, setServicePrefix] = useState('')
+  const [serviceFinancialYear, setServiceFinancialYear] = useState('')
+  const [serviceStartingNumber, setServiceStartingNumber] = useState('')
+  const [servicePaddingDigits, setServicePaddingDigits] = useState('')
+  const [serviceSeparator, setServiceSeparator] = useState('')
 
   // Dynamic Return Numbering Settings
-  const [returnPrefix, setReturnPrefix] = useState('SIS-RET')
-  const [returnFinancialYear, setReturnFinancialYear] = useState('2026-27')
-  const [returnStartingNumber, setReturnStartingNumber] = useState('0001')
-  const [returnPaddingDigits, setReturnPaddingDigits] = useState('4')
-  const [returnSeparator, setReturnSeparator] = useState('/')
+  const [returnPrefix, setReturnPrefix] = useState('')
+  const [returnFinancialYear, setReturnFinancialYear] = useState('')
+  const [returnStartingNumber, setReturnStartingNumber] = useState('')
+  const [returnPaddingDigits, setReturnPaddingDigits] = useState('')
+  const [returnSeparator, setReturnSeparator] = useState('')
 
   // Dynamic Credit Note Numbering Settings
-  const [creditNotePrefix, setCreditNotePrefix] = useState('SIS-CN')
-  const [creditNoteFinancialYear, setCreditNoteFinancialYear] = useState('2026-27')
-  const [creditNoteStartingNumber, setCreditNoteStartingNumber] = useState('0001')
-  const [creditNotePaddingDigits, setCreditNotePaddingDigits] = useState('4')
-  const [creditNoteSeparator, setCreditNoteSeparator] = useState('/')
+  const [creditNotePrefix, setCreditNotePrefix] = useState('')
+  const [creditNoteFinancialYear, setCreditNoteFinancialYear] = useState('')
+  const [creditNoteStartingNumber, setCreditNoteStartingNumber] = useState('')
+  const [creditNotePaddingDigits, setCreditNotePaddingDigits] = useState('')
+  const [creditNoteSeparator, setCreditNoteSeparator] = useState('')
 
   // Tax Rates
-  const [cgstRate, setCgstRate] = useState('9.00')
-  const [sgstRate, setSgstRate] = useState('9.00')
-  const [igstRate, setIgstRate] = useState('18.00')
+  const [cgstRate, setCgstRate] = useState('')
+  const [sgstRate, setSgstRate] = useState('')
+  const [igstRate, setIgstRate] = useState('')
 
   // Bank Details
-  const [bankName, setBankName] = useState('Canara Bank')
-  const [accountName, setAccountName] = useState('Simcha Info Solutions')
-  const [accountNo, setAccountNo] = useState('120041754011')
-  const [ifscCode, setIfscCode] = useState('CNRB0002732')
-  const [branch, setBranch] = useState('Peelamedu')
+  const [bankName, setBankName] = useState('')
+  const [accountName, setAccountName] = useState('')
+  const [accountNo, setAccountNo] = useState('')
+  const [ifscCode, setIfscCode] = useState('')
+  const [branch, setBranch] = useState('')
   const [bankImageUrl, setBankImageUrl] = useState('')
   const [isUploadingBankImg, setIsUploadingBankImg] = useState(false)
   const [signatureUrl, setSignatureUrl] = useState('')
@@ -112,15 +115,10 @@ export default function SystemSettingsPage() {
   const [previewZoomImg, setPreviewZoomImg] = useState(null)
 
   // Terms & Conditions
-  const [terms, setTerms] = useState([
-    'Warranty as per manufacturer’s norms & should be claimed directly.',
-    'Warranty claim takes 1 to 8 weeks.',
-    'Please carry invoice copy for warranty.',
-    'Goods Once Sold will not be taken back or exchanged.'
-  ])
-  const [returnDays, setReturnDays] = useState('7')
+  const [terms, setTerms] = useState([])
+  const [returnDays, setReturnDays] = useState('')
   const [returnClause, setReturnClause] = useState('')
-  const [dueDateDays, setDueDateDays] = useState('15')
+  const [dueDateDays, setDueDateDays] = useState('')
   const [newTermInput, setNewTermInput] = useState('')
 
   // Original snapshot for reset
@@ -145,7 +143,7 @@ export default function SystemSettingsPage() {
 
   const populateFields = (s) => {
     if (!s) return
-    setCompanyName(s.company_name || 'SIMCHA INFO SOLUTIONS')
+    setCompanyName(s.company_name || '')
     setAddress(s.address || '')
     setPhone(s.phone || '')
     setEmail(s.email || '')
@@ -153,56 +151,58 @@ export default function SystemSettingsPage() {
     setSignatureUrl(s.signature_url || '')
     
     // Invoice numbering
-    setInvoicePrefix(s.invoice_prefix !== undefined ? s.invoice_prefix : 'SIS')
-    setInvoiceFinancialYear(s.invoice_financial_year || '2026-27')
-    setInvoiceStartingNumber(s.invoice_starting_number !== undefined ? String(s.invoice_starting_number).padStart(parseInt(s.invoice_padding_digits || 4, 10), '0') : '0001')
-    setInvoicePaddingDigits(s.invoice_padding_digits !== undefined ? String(s.invoice_padding_digits) : '4')
-    setInvoiceSeparator(s.invoice_separator || '/')
+    setInvoicePrefix(s.invoice_prefix || '')
+    setInvoiceFinancialYear(s.invoice_financial_year || '')
+    setInvoiceStartingNumber(s.invoice_starting_number !== undefined && s.invoice_starting_number !== null ? String(s.invoice_starting_number) : '')
+    setInvoicePaddingDigits(s.invoice_padding_digits !== undefined && s.invoice_padding_digits !== null ? String(s.invoice_padding_digits) : '')
+    setInvoiceSeparator(s.invoice_separator || '')
 
     // Receipt numbering
-    setReceiptPrefix(s.receipt_prefix !== undefined ? s.receipt_prefix : 'SIS-REC')
-    setReceiptFinancialYear(s.receipt_financial_year || '2026-27')
-    setReceiptStartingNumber(s.receipt_starting_number !== undefined ? String(s.receipt_starting_number).padStart(parseInt(s.receipt_padding_digits || 4, 10), '0') : '0001')
-    setReceiptPaddingDigits(s.receipt_padding_digits !== undefined ? String(s.receipt_padding_digits) : '4')
-    setReceiptSeparator(s.receipt_separator || '/')
+    setReceiptPrefix(s.receipt_prefix || '')
+    setReceiptFinancialYear(s.receipt_financial_year || '')
+    setReceiptStartingNumber(s.receipt_starting_number !== undefined && s.receipt_starting_number !== null ? String(s.receipt_starting_number) : '')
+    setReceiptPaddingDigits(s.receipt_padding_digits !== undefined && s.receipt_padding_digits !== null ? String(s.receipt_padding_digits) : '')
+    setReceiptSeparator(s.receipt_separator || '')
 
     // Service numbering
-    setServicePrefix(s.service_prefix !== undefined ? s.service_prefix : 'SIS-SR')
-    setServiceFinancialYear(s.service_financial_year || '2026-27')
-    setServiceStartingNumber(s.service_starting_number !== undefined ? String(s.service_starting_number).padStart(parseInt(s.service_padding_digits || 4, 10), '0') : '0001')
-    setServicePaddingDigits(s.service_padding_digits !== undefined ? String(s.service_padding_digits) : '4')
-    setServiceSeparator(s.service_separator || '/')
+    setServicePrefix(s.service_prefix || '')
+    setServiceFinancialYear(s.service_financial_year || '')
+    setServiceStartingNumber(s.service_starting_number !== undefined && s.service_starting_number !== null ? String(s.service_starting_number) : '')
+    setServicePaddingDigits(s.service_padding_digits !== undefined && s.service_padding_digits !== null ? String(s.service_padding_digits) : '')
+    setServiceSeparator(s.service_separator || '')
 
     // Return numbering
-    setReturnPrefix(s.return_prefix !== undefined ? s.return_prefix : 'SIS-RET')
-    setReturnFinancialYear(s.return_financial_year || '2026-27')
-    setReturnStartingNumber(s.return_starting_number !== undefined ? String(s.return_starting_number).padStart(parseInt(s.return_padding_digits || 4, 10), '0') : '0001')
-    setReturnPaddingDigits(s.return_padding_digits !== undefined ? String(s.return_padding_digits) : '4')
-    setReturnSeparator(s.return_separator || '/')
+    setReturnPrefix(s.return_prefix || '')
+    setReturnFinancialYear(s.return_financial_year || '')
+    setReturnStartingNumber(s.return_starting_number !== undefined && s.return_starting_number !== null ? String(s.return_starting_number) : '')
+    setReturnPaddingDigits(s.return_padding_digits !== undefined && s.return_padding_digits !== null ? String(s.return_padding_digits) : '')
+    setReturnSeparator(s.return_separator || '')
 
     // Credit Note numbering
-    setCreditNotePrefix(s.credit_note_prefix !== undefined ? s.credit_note_prefix : 'SIS-CN')
-    setCreditNoteFinancialYear(s.credit_note_financial_year || '2026-27')
-    setCreditNoteStartingNumber(s.credit_note_starting_number !== undefined ? String(s.credit_note_starting_number).padStart(parseInt(s.credit_note_padding_digits || 4, 10), '0') : '0001')
-    setCreditNotePaddingDigits(s.credit_note_padding_digits !== undefined ? String(s.credit_note_padding_digits) : '4')
-    setCreditNoteSeparator(s.credit_note_separator || '/')
+    setCreditNotePrefix(s.credit_note_prefix || '')
+    setCreditNoteFinancialYear(s.credit_note_financial_year || '')
+    setCreditNoteStartingNumber(s.credit_note_starting_number !== undefined && s.credit_note_starting_number !== null ? String(s.credit_note_starting_number) : '')
+    setCreditNotePaddingDigits(s.credit_note_padding_digits !== undefined && s.credit_note_padding_digits !== null ? String(s.credit_note_padding_digits) : '')
+    setCreditNoteSeparator(s.credit_note_separator || '')
 
-    setCgstRate(s.cgst_rate !== undefined ? String(s.cgst_rate) : '9.00')
-    setSgstRate(s.sgst_rate !== undefined ? String(s.sgst_rate) : '9.00')
-    setIgstRate(s.igst_rate !== undefined ? String(s.igst_rate) : '18.00')
+    setCgstRate(s.cgst_rate !== undefined && s.cgst_rate !== null ? String(s.cgst_rate) : '')
+    setSgstRate(s.sgst_rate !== undefined && s.sgst_rate !== null ? String(s.sgst_rate) : '')
+    setIgstRate(s.igst_rate !== undefined && s.igst_rate !== null ? String(s.igst_rate) : '')
 
-    setBankName(s.bank_name || 'Canara Bank')
-    setAccountName(s.account_name || 'Simcha Info Solutions')
+    setBankName(s.bank_name || '')
+    setAccountName(s.account_name || '')
     setAccountNo(s.account_no || '')
     setIfscCode(s.ifsc_code || '')
     setBranch(s.branch || '')
     setBankImageUrl(s.bank_image_url || '')
-    setReturnDays(s.return_days !== undefined && s.return_days !== null ? String(s.return_days) : '7')
+    setReturnDays(s.return_days !== undefined && s.return_days !== null ? String(s.return_days) : '')
     setReturnClause(s.return_policy_clause || '')
-    setDueDateDays(s.due_date_days !== undefined && s.due_date_days !== null ? String(s.due_date_days) : '15')
+    setDueDateDays(s.due_date_days !== undefined && s.due_date_days !== null ? String(s.due_date_days) : '')
 
     if (Array.isArray(s.terms_conditions)) {
       setTerms(s.terms_conditions)
+    } else {
+      setTerms([])
     }
   }
 
@@ -312,48 +312,39 @@ export default function SystemSettingsPage() {
     try {
       setIsUploadingBankImg(true)
       const compressedDataUrl = await compressImageFile(file)
-      try {
-        const res = await fetch(API_ENDPOINTS.CLOUDINARY_UPLOAD, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            file: compressedDataUrl,
-            folder: 'simcha_billing/bank'
-          })
+      const res = await fetch(API_ENDPOINTS.CLOUDINARY_UPLOAD, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          file: compressedDataUrl,
+          folder: 'bank'
         })
-        const data = await res.json()
-        if (data.success && data.url) {
-          setBankImageUrl(data.url)
-          Swal.mixin({
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 2000,
-            timerProgressBar: true
-          }).fire({
-            icon: 'success',
-            title: 'Bank image uploaded to Cloudinary'
-          })
-        } else {
-          setBankImageUrl(compressedDataUrl)
-          Swal.mixin({
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 2000,
-            timerProgressBar: true
-          }).fire({
-            icon: 'info',
-            title: 'Bank image attached locally'
-          })
-        }
-      } catch (uploadErr) {
-        setBankImageUrl(compressedDataUrl)
-      } finally {
-        setIsUploadingBankImg(false)
+      })
+      const data = await res.json()
+      if (data.success && data.url) {
+        setBankImageUrl(data.url)
+        Swal.mixin({
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 2000,
+          timerProgressBar: true
+        }).fire({
+          icon: 'success',
+          title: 'Bank image uploaded to Cloudinary'
+        })
+      } else {
+        throw new Error(data.message || 'Cloudinary upload failed')
       }
     } catch (err) {
       console.error('Error uploading bank image:', err)
+      Swal.fire({
+        icon: 'warning',
+        title: 'Cloudinary Upload Required',
+        text: err.message || 'Unable to upload image to Cloudinary. Please verify Cloudinary credentials in Settings > Configurations Settings.',
+        confirmButtonColor: '#043486'
+      })
+    } finally {
       setIsUploadingBankImg(false)
     }
   }
@@ -373,57 +364,50 @@ export default function SystemSettingsPage() {
     try {
       setIsUploadingSign(true)
       const compressedDataUrl = await compressImageFile(file)
-      try {
-        const res = await fetch(API_ENDPOINTS.CLOUDINARY_UPLOAD, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            file: compressedDataUrl,
-            folder: 'simcha_billing/signatures'
-          })
+      const res = await fetch(API_ENDPOINTS.CLOUDINARY_UPLOAD, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          file: compressedDataUrl,
+          folder: 'signatures'
         })
-        const data = await res.json()
-        if (data.success && data.url) {
-          setSignatureUrl(data.url)
-          Swal.mixin({
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 2000,
-            timerProgressBar: true
-          }).fire({
-            icon: 'success',
-            title: 'Signature uploaded to Cloudinary'
-          })
-        } else {
-          setSignatureUrl(compressedDataUrl)
-          Swal.mixin({
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 2000,
-            timerProgressBar: true
-          }).fire({
-            icon: 'info',
-            title: 'Signature attached locally'
-          })
-        }
-      } catch (uploadErr) {
-        setSignatureUrl(compressedDataUrl)
-      } finally {
-        setIsUploadingSign(false)
+      })
+      const data = await res.json()
+      if (data.success && data.url) {
+        setSignatureUrl(data.url)
+        Swal.mixin({
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 2000,
+          timerProgressBar: true
+        }).fire({
+          icon: 'success',
+          title: 'Signature uploaded to Cloudinary'
+        })
+      } else {
+        throw new Error(data.message || 'Cloudinary upload failed')
       }
     } catch (err) {
       console.error('Error uploading signature:', err)
+      Swal.fire({
+        icon: 'warning',
+        title: 'Cloudinary Upload Required',
+        text: err.message || 'Unable to upload signature to Cloudinary. Please verify Cloudinary credentials in Settings > Configurations Settings.',
+        confirmButtonColor: '#043486'
+      })
+    } finally {
       setIsUploadingSign(false)
     }
   }
 
-  const handleSubmit = async (e, tabId = activeTab) => {
+  const handleSubmit = async (e, sectionId = activeTab) => {
     if (e && e.preventDefault) e.preventDefault()
 
-    // Validation per tab
-    if (tabId === 'company') {
+    let payload = {}
+
+    // Validation & payload generation per section
+    if (sectionId === 'company') {
       if (!companyName.trim() || companyName.trim().length < 2) {
         Swal.fire({
           icon: 'warning',
@@ -434,7 +418,7 @@ export default function SystemSettingsPage() {
         return
       }
 
-      if (gstin.trim().length !== 15) {
+      if (gstin.trim() && gstin.trim().length !== 15) {
         Swal.fire({
           icon: 'warning',
           title: 'Invalid GSTIN',
@@ -444,7 +428,7 @@ export default function SystemSettingsPage() {
         return
       }
 
-      if (phone.trim().length < 10) {
+      if (phone.trim() && phone.trim().length < 10) {
         Swal.fire({
           icon: 'warning',
           title: 'Invalid Phone Number',
@@ -454,27 +438,28 @@ export default function SystemSettingsPage() {
         return
       }
 
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.test(email.trim())) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Invalid Email',
-          text: 'Please enter a valid email address.',
-          confirmButtonColor: '#043486'
-        })
-        return
+      if (email.trim()) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(email.trim())) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Invalid Email',
+            text: 'Please enter a valid email address.',
+            confirmButtonColor: '#043486'
+          })
+          return
+        }
       }
 
-      if (!address.trim()) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Address Required',
-          text: 'Please provide company address.',
-          confirmButtonColor: '#043486'
-        })
-        return
+      payload = {
+        company_name: companyName.trim(),
+        address: address.trim(),
+        phone: phone.trim(),
+        email: email.trim(),
+        gstin: gstin.trim(),
+        signature_url: signatureUrl || null
       }
-
+    } else if (sectionId === 'numbering') {
       if (!invoicePrefix.trim() || invoicePrefix.trim().length > 10) {
         Swal.fire({
           icon: 'warning',
@@ -568,6 +553,26 @@ export default function SystemSettingsPage() {
         return
       }
 
+      if (!returnPrefix.trim() || returnPrefix.trim().length > 10) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Invalid Return Prefix',
+          text: 'Return Prefix is required (maximum 10 characters).',
+          confirmButtonColor: '#043486'
+        })
+        return
+      }
+
+      if (!returnFinancialYear.trim() || returnFinancialYear.trim().length > 7) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Invalid Financial Year',
+          text: 'Return Financial Year is required (maximum 7 characters, e.g. 2026-27).',
+          confirmButtonColor: '#043486'
+        })
+        return
+      }
+
       const retStart = parseInt(returnStartingNumber, 10)
       if (isNaN(retStart) || retStart < 1 || retStart > 999999) {
         Swal.fire({
@@ -609,45 +614,8 @@ export default function SystemSettingsPage() {
         })
         return
       }
-    }
 
-    if (tabId === 'bank') {
-      if (ifscCode.trim() && ifscCode.trim().length !== 11) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Invalid IFSC Code',
-          text: 'IFSC Code must be exactly 11 characters (e.g. CNRB0002732).',
-          confirmButtonColor: '#043486'
-        })
-        return
-      }
-    }
-
-    if (tabId === 'taxes') {
-      const cgst = parseFloat(cgstRate)
-      const sgst = parseFloat(sgstRate)
-      const igst = parseFloat(igstRate)
-      if (isNaN(cgst) || cgst < 0 || cgst > 100 || isNaN(sgst) || sgst < 0 || sgst > 100 || isNaN(igst) || igst < 0 || igst > 100) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Invalid Tax Rates',
-          text: 'Tax rates must be between 0% and 100%.',
-          confirmButtonColor: '#043486'
-        })
-        return
-      }
-    }
-
-    setIsSaving(true)
-
-    try {
-      const payload = {
-        company_name: companyName.trim(),
-        address: address.trim(),
-        phone: phone.trim(),
-        email: email.trim(),
-        gstin: gstin.trim(),
-        signature_url: signatureUrl || null,
+      payload = {
         invoice_prefix: invoicePrefix.trim(),
         invoice_financial_year: invoiceFinancialYear.trim(),
         invoice_starting_number: parseInt(invoiceStartingNumber, 10) || 1,
@@ -673,21 +641,57 @@ export default function SystemSettingsPage() {
         credit_note_starting_number: parseInt(creditNoteStartingNumber, 10) || 1,
         credit_note_padding_digits: parseInt(creditNotePaddingDigits, 10) || 4,
         credit_note_separator: creditNoteSeparator || '/',
-        cgst_rate: parseFloat(cgstRate) || 9.00,
-        sgst_rate: parseFloat(sgstRate) || 9.00,
-        igst_rate: parseFloat(igstRate) || 18.00,
+        due_date_days: dueDateDays !== '' && dueDateDays !== null ? parseInt(dueDateDays, 10) : 15
+      }
+    } else if (sectionId === 'bank') {
+      if (ifscCode.trim() && ifscCode.trim().length !== 11) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Invalid IFSC Code',
+          text: 'IFSC Code must be exactly 11 characters (e.g. CNRB0002732).',
+          confirmButtonColor: '#043486'
+        })
+        return
+      }
+
+      payload = {
         bank_name: bankName.trim(),
         account_name: accountName.trim(),
         account_no: accountNo.trim(),
         ifsc_code: ifscCode.trim(),
         branch: branch.trim(),
-        bank_image_url: bankImageUrl || null,
-        return_days: parseInt(returnDays, 10) || 7,
-        return_policy_clause: returnClause ? returnClause.trim() : null,
-        due_date_days: parseInt(dueDateDays, 10) || 15,
-        terms_conditions: terms.filter(t => t.trim())
+        bank_image_url: bankImageUrl || null
+      }
+    } else if (sectionId === 'taxes') {
+      const cgst = parseFloat(cgstRate)
+      const sgst = parseFloat(sgstRate)
+      const igst = parseFloat(igstRate)
+      if (isNaN(cgst) || cgst < 0 || cgst > 100 || isNaN(sgst) || sgst < 0 || sgst > 100 || isNaN(igst) || igst < 0 || igst > 100) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Invalid Tax Rates',
+          text: 'Tax rates must be between 0% and 100%.',
+          confirmButtonColor: '#043486'
+        })
+        return
       }
 
+      payload = {
+        cgst_rate: cgst,
+        sgst_rate: sgst,
+        igst_rate: igst
+      }
+    } else if (sectionId === 'terms') {
+      payload = {
+        return_days: parseInt(returnDays, 10) || 0,
+        return_policy_clause: returnClause ? returnClause.trim() : null,
+        terms_conditions: terms.filter(t => t && t.trim())
+      }
+    }
+
+    setIsSaving(true)
+
+    try {
       const res = await fetch(API_ENDPOINTS.SETTINGS, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -696,8 +700,8 @@ export default function SystemSettingsPage() {
 
       const data = await res.json()
       if (data.success) {
-        setSavedSettings(payload)
-        toggleEditTab(tabId, false)
+        setSavedSettings(prev => ({ ...prev, ...payload }))
+        toggleEditTab(sectionId, false)
 
         Swal.fire({
           icon: 'success',
@@ -724,14 +728,12 @@ export default function SystemSettingsPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-[500px] flex items-center justify-center">
-        <div className="w-10 h-10 border-3 border-[#043486] border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
+    return <SkeletonLoader type="form" className="max-w-6xl mx-auto pb-12" />
   }
 
-  const isCurrentTabEditing = editStates[activeTab]
+  const isCurrentTabEditing = activeTab === 'company' 
+    ? (editStates.company || editStates.numbering) 
+    : editStates[activeTab]
 
   const tabs = [
     { id: 'company', label: 'Company Profile', icon: Building2 },
@@ -743,49 +745,25 @@ export default function SystemSettingsPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-12 font-['Poppins',sans-serif]">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm transition-colors">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-200/80 dark:border-slate-800 pb-3">
         <div>
-          <h1 className="text-xl font-bold text-[#292424] dark:text-white">System &amp; Company Settings</h1>
-          <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Configure Company profile, Invoice &amp; Receipt numbering schemes, Tax rates, Bank accounts and Terms.</p>
+          <h1 className="text-xl font-bold tracking-tight text-[#292424] dark:text-white uppercase flex items-center gap-2.5">
+            <Building2 className="text-[#043486] dark:text-blue-400" size={22} />
+            <span>SYSTEM SETTINGS</span>
+          </h1>
+          <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+            Configure company profile, numbering schemes, tax rates, and bank accounts.
+          </p>
         </div>
       </div>
 
-      {/* Tab Navigation Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 bg-gray-100 dark:bg-slate-950 p-1.5 border border-gray-200 dark:border-slate-800">
-        {tabs.map(tab => {
-          const Icon = tab.icon
-          const isActive = activeTab === tab.id
-          const isTabEditing = editStates[tab.id]
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2.5 p-3 text-left transition-all cursor-pointer rounded-none relative ${
-                isActive
-                  ? 'bg-[#043486] text-white shadow-sm'
-                  : 'bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 border border-transparent'
-              }`}
-            >
-              <div className={`p-1.5 rounded-none ${isActive ? 'bg-white/15 text-white' : 'bg-gray-100 dark:bg-slate-800 text-[#043486] dark:text-blue-400'}`}>
-                <Icon size={16} />
-              </div>
-              <div className="min-w-0 flex-1 flex items-center justify-between">
-                <span className="text-xs font-bold truncate">{tab.label}</span>
-                {canEdit && isTabEditing ? (
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 bg-amber-400 text-slate-900 rounded-none animate-pulse ml-1 shrink-0">
-                    EDITING
-                  </span>
-                ) : tab.badge !== undefined ? (
-                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-none ml-1 shrink-0 ${isActive ? 'bg-white text-[#043486]' : 'bg-blue-100 dark:bg-blue-950 text-[#043486] dark:text-blue-300'}`}>
-                    {tab.badge}
-                  </span>
-                ) : null}
-              </div>
-            </button>
-          )
-        })}
-      </div>      <form onSubmit={(e) => handleSubmit(e, activeTab)} className="space-y-6">
+      {/* Tab Navigation Bar (Velzon Arrow Nav Steps) */}
+      <ArrowNavTabs
+        tabs={tabs}
+        activeTab={activeTab}
+        onChange={setActiveTab}
+      />
+      <div className="space-y-6">
         
         {/* ================= TAB 1: COMPANY PROFILE & NUMBERING ================= */}
         {activeTab === 'company' && (
@@ -794,6 +772,9 @@ export default function SystemSettingsPage() {
               canEdit={canEdit}
               isEditing={editStates.company}
               onToggleEdit={(val) => toggleEditTab('company', val)}
+              onSave={() => handleSubmit(null, 'company')}
+              onCancel={() => handleCancelTab('company')}
+              isSaving={isSaving}
               companyName={companyName}
               setCompanyName={setCompanyName}
               gstin={gstin}
@@ -817,7 +798,12 @@ export default function SystemSettingsPage() {
             />
 
             <NumberingSchemesSection
-              isEditing={editStates.company}
+              canEdit={canEdit}
+              isEditing={editStates.numbering}
+              onToggleEdit={(val) => toggleEditTab('numbering', val)}
+              onSave={() => handleSubmit(null, 'numbering')}
+              onCancel={() => handleCancelTab('numbering')}
+              isSaving={isSaving}
               invoicePrefix={invoicePrefix}
               setInvoicePrefix={setInvoicePrefix}
               invoiceFinancialYear={invoiceFinancialYear}
@@ -875,6 +861,9 @@ export default function SystemSettingsPage() {
             canEdit={canEdit}
             isEditing={editStates.taxes}
             onToggleEdit={(val) => toggleEditTab('taxes', val)}
+            onSave={() => handleSubmit(null, 'taxes')}
+            onCancel={() => handleCancelTab('taxes')}
+            isSaving={isSaving}
             cgstRate={cgstRate}
             setCgstRate={setCgstRate}
             sgstRate={sgstRate}
@@ -890,6 +879,9 @@ export default function SystemSettingsPage() {
             canEdit={canEdit}
             isEditing={editStates.bank}
             onToggleEdit={(val) => toggleEditTab('bank', val)}
+            onSave={() => handleSubmit(null, 'bank')}
+            onCancel={() => handleCancelTab('bank')}
+            isSaving={isSaving}
             bankName={bankName}
             setBankName={setBankName}
             accountName={accountName}
@@ -914,6 +906,9 @@ export default function SystemSettingsPage() {
             canEdit={canEdit}
             isEditing={editStates.terms}
             onToggleEdit={(val) => toggleEditTab('terms', val)}
+            onSave={() => handleSubmit(null, 'terms')}
+            onCancel={() => handleCancelTab('terms')}
+            isSaving={isSaving}
             terms={terms}
             handleTermChange={handleTermChange}
             handleRemoveTerm={handleRemoveTerm}
@@ -927,30 +922,7 @@ export default function SystemSettingsPage() {
           />
         )}
 
-        {/* Bottom Save Action - Only shown when current active tab is being edited */}
-        {canEdit && isCurrentTabEditing && (
-          <div className="flex items-center justify-end gap-3 pt-2 animate-in fade-in duration-150">
-            <Button
-              type="button"
-              variant="secondary"
-              icon={X}
-              onClick={() => handleCancelTab(activeTab)}
-            >
-              Cancel
-            </Button>
-
-            <Button
-              type="submit"
-              variant="primary"
-              icon={Save}
-              isLoading={isSaving}
-            >
-              Save Changes
-            </Button>
-          </div>
-        )}
-
-      </form>
+      </div>
 
       {/* Signature & Image Fullscreen Zoom Modal */}
       {previewZoomImg && (

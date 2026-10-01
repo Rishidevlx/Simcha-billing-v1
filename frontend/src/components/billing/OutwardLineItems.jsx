@@ -9,7 +9,7 @@ import {
   CheckCircle2,
   FileDigit,
   ChevronDown
-} from 'lucide-react'
+} from '../common/icons'
 import SearchableSelect from '../common/SearchableSelect'
 import { Button } from '../ui'
 
@@ -42,7 +42,7 @@ export default function OutwardLineItems({
       <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <Boxes size={18} className="text-[#043486] dark:text-blue-400" />
-          <h2 className="text-base font-bold text-[#043486] dark:text-blue-400 tracking-wide uppercase">
+          <h2 className="text-sm font-bold text-[#043486] dark:text-blue-400 tracking-wide uppercase">
             Invoice Line Items ({items.length})
           </h2>
         </div>
@@ -52,7 +52,7 @@ export default function OutwardLineItems({
           variant="primary"
           icon={Plus}
           onClick={onAddItem}
-          className="text-xs"
+          className="text-xs font-semibold"
         >
           Add Line Item (Alt+A)
         </Button>
@@ -76,7 +76,7 @@ export default function OutwardLineItems({
 
               {/* 1. Category Search & Select Dropdown */}
               <div className="w-full md:w-60 shrink-0">
-                <label className="block text-[11px] font-semibold text-gray-500 dark:text-slate-400 mb-1">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
                   Material Category
                 </label>
                 <SearchableSelect
@@ -90,8 +90,8 @@ export default function OutwardLineItems({
               {/* 2. Product / Material Search & Select Dropdown */}
               <div className="flex-1 min-w-[260px]">
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-[11px] font-semibold text-gray-500 dark:text-slate-400">
-                    Item Name <span className="text-blue-500">*</span>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200">
+                    Item Name <span className="text-red-500 font-bold">*</span>
                     {item.material_id && item.current_stock !== null && item.current_stock !== undefined && (
                       <span
                         className={`ml-2 text-[10.5px] font-bold ${
@@ -143,7 +143,7 @@ export default function OutwardLineItems({
 
               {/* 3. HSN / SAC */}
               <div className="w-full sm:w-36 shrink-0">
-                <label className="block text-[11px] font-semibold text-gray-500 dark:text-slate-400 mb-1">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
                   HSN / SAC Code
                 </label>
                 <input
@@ -158,7 +158,7 @@ export default function OutwardLineItems({
 
               {/* 4. Quantity & Unit */}
               <div className="shrink-0">
-                <label className="block text-[11px] font-semibold text-gray-500 dark:text-slate-400 mb-1">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
                   Qty & Unit
                 </label>
                 <div className="flex items-center gap-1.5">
@@ -424,7 +424,7 @@ export default function OutwardLineItems({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <label className="block text-[11px] font-semibold text-gray-500 dark:text-slate-400">
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200">
                       {item.has_discount ? 'Discounted Rate (₹)' : 'Rate (₹)'}
                     </label>
                     {item.has_discount && (
@@ -455,7 +455,7 @@ export default function OutwardLineItems({
 
               {/* Tax % */}
               <div>
-                <label className="block text-[11px] font-semibold text-gray-500 dark:text-slate-400 mb-1">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
                   Tax ({item.tax_rate}%)
                 </label>
                 <div className="px-3 py-2.5 text-xs bg-gray-100 dark:bg-slate-800 rounded-none border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 font-mono font-medium flex items-center justify-end h-[41px]">
@@ -465,7 +465,7 @@ export default function OutwardLineItems({
 
               {/* Total Line Amount */}
               <div>
-                <label className="block text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 mb-1">
+                <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-400 mb-1">
                   Amount (₹)
                 </label>
                 <div className="px-3 py-2.5 text-xs font-bold font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 rounded-none flex items-center justify-end h-[41px]">

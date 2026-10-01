@@ -24,7 +24,7 @@ import {
   Hash,
   Copy,
   Check
-} from 'lucide-react'
+} from '../components/common/icons'
 import * as XLSX from 'xlsx'
 import Swal from 'sweetalert2'
 import { API_ENDPOINTS } from '../config/api'
@@ -549,6 +549,7 @@ export default function InventoryPage({ setActiveRoute }) {
     <div className="space-y-6 max-w-[1600px] mx-auto pb-12 font-['Poppins',sans-serif]">
       {/* 1. Header with Global Actions (Green Export to Excel Button) */}
       <ListPageHeader
+        icon={PackageOpen}
         title="Stock & Inventory Control"
         subtitle="Real-time multi-channel inventory tracking, automated inward/outward ledger, and reorder planning."
         actions={
@@ -556,7 +557,7 @@ export default function InventoryPage({ setActiveRoute }) {
             {/* Green Export Excel Button matching Inward & Outward List */}
             {canDownload && (
               <Button
-                variant="secondary"
+                variant="export"
                 icon={Download}
                 onClick={handleExportExcel}
                 title={selectedIds.length > 0 ? `Export ${selectedIds.length} Selected Item(s)` : 'Export All Filtered Items'}
@@ -611,6 +612,7 @@ export default function InventoryPage({ setActiveRoute }) {
       <TabNav>
         <TabButton
           active={activeTab === 'overview'}
+          variant="blue"
           icon={Boxes}
           label={`Stock Overview (${inventoryData.length})`}
           onClick={() => {
@@ -622,6 +624,7 @@ export default function InventoryPage({ setActiveRoute }) {
 
         <TabButton
           active={activeTab === 'reorder'}
+          variant="amber"
           icon={AlertTriangle}
           label={`Low Stock / Reorder (${lowStockItems.length})`}
           onClick={() => {
@@ -633,6 +636,7 @@ export default function InventoryPage({ setActiveRoute }) {
 
         <TabButton
           active={activeTab === 'scrap'}
+          variant="rose"
           icon={PackageMinus}
           label={`Scrap / Defective (${scrapList.length})`}
           onClick={() => {
@@ -883,19 +887,10 @@ export default function InventoryPage({ setActiveRoute }) {
 
                         {/* Stock Health */}
                         <td className="py-3 px-4 text-center">
-                          {isOutOfStock ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-900">
-                              <XCircle size={11} /> Out of Stock
-                            </span>
-                          ) : isLowStock ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-900">
-                              <AlertTriangle size={11} /> Low Stock
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900">
-                              <CheckCircle2 size={11} /> Healthy
-                            </span>
-                          )}
+                          <StatusPill
+                            status={isOutOfStock ? 'Out of Stock' : isLowStock ? 'Low Stock' : 'Healthy'}
+                            size="sm"
+                          />
                         </td>
 
                         {/* Quick Actions */}

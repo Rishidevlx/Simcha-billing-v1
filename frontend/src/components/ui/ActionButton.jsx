@@ -1,5 +1,5 @@
 import React from 'react'
-import { Edit2, Trash2, Eye, Printer, Mail, Download, RefreshCw } from 'lucide-react'
+import { Edit2, Trash2, Eye, Printer, Mail, Download, RefreshCw } from '../common/icons'
 
 export default function ActionButton({
   type = 'edit', // 'edit', 'delete', 'view', 'print', 'mail', 'download', 'refresh', 'custom'

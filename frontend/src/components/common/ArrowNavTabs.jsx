@@ -40,31 +40,63 @@ const VARIANT_STYLES = {
 }
 
 /**
- * Velzon Theme Compact Arrow Nav Steps (Wizard / Chevron Tabs Navigation)
+ * Velzon-Style Compact Arrow Nav Steps (Wizard / Chevron Tabs Navigation)
  */
-export function TabNav({ children, className = '' }) {
-  const childrenArray = React.Children.toArray(children).filter(Boolean)
+export default function ArrowNavTabs({
+  tabs = [],
+  activeTab,
+  onChange,
+  className = '',
+  fullWidth = false
+}) {
+  if (!tabs || tabs.length === 0) return null
 
   return (
     <div className={`overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${className}`}>
-      <div className="inline-flex items-stretch bg-white dark:bg-slate-900 rounded-none border border-gray-200/90 dark:border-slate-800 shadow-2xs font-['Poppins',sans-serif]">
-        {childrenArray.map((child, idx) => {
-          const isLast = idx === childrenArray.length - 1
-          const isActive = Boolean(child.props.active)
-          const variant = child.props.variant || 'blue'
+      <div className={`${fullWidth ? 'flex w-full' : 'inline-flex'} items-stretch bg-white dark:bg-slate-900 rounded-none border border-gray-200/90 dark:border-slate-800 shadow-2xs font-['Poppins',sans-serif]`}>
+        {tabs.map((tab, idx) => {
+          const isActive = activeTab === tab.id
+          const isLast = idx === tabs.length - 1
+          const Icon = tab.icon
+          const variant = tab.variant || 'blue'
           const styleConfig = VARIANT_STYLES[variant] || VARIANT_STYLES.blue
 
           return (
             <div
-              key={idx}
-              className="relative flex items-stretch group"
-              style={{ zIndex: childrenArray.length - idx }}
+              key={tab.id || idx}
+              className={`relative ${fullWidth ? 'flex-1' : ''} flex items-stretch group`}
+              style={{ zIndex: tabs.length - idx }}
             >
-              {React.cloneElement(child, {
-                isArrowNav: true,
-                isLast,
-                variant
-              })}
+              <button
+                type="button"
+                onClick={() => onChange && onChange(tab.id)}
+                className={`w-full py-2.5 px-4 sm:px-5 text-xs sm:text-[12.5px] transition-all cursor-pointer flex items-center justify-center gap-2 select-none relative whitespace-nowrap ${
+                  isActive
+                    ? styleConfig.activeBg
+                    : 'bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 font-medium hover:bg-gray-100/70 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                {Icon && (
+                  <Icon
+                    size={14}
+                    className={`shrink-0 ${
+                      isActive ? styleConfig.iconActive : 'text-gray-400 dark:text-slate-500'
+                    }`}
+                  />
+                )}
+                <span className="truncate">{tab.label}</span>
+                {tab.badge !== undefined && tab.badge !== null && (
+                  <span
+                    className={`ml-1 px-1.5 py-0.2 text-[10px] font-bold rounded-full ${
+                      isActive
+                        ? styleConfig.badgeActive
+                        : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700'
+                    }`}
+                  >
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
 
               {/* Velzon Arrow Chevron Divider */}
               {!isLast && (
@@ -88,54 +120,5 @@ export function TabNav({ children, className = '' }) {
         })}
       </div>
     </div>
-  )
-}
-
-export function TabButton({
-  active = false,
-  onClick,
-  icon: Icon,
-  label,
-  badge,
-  children,
-  className = '',
-  disabled = false,
-  variant = 'blue'
-}) {
-  const content = children || label
-  const styleConfig = VARIANT_STYLES[variant] || VARIANT_STYLES.blue
-
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={`py-2.5 px-4 sm:px-5 text-xs sm:text-[12.5px] transition-all cursor-pointer flex items-center justify-center gap-2 select-none relative whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${
-        active
-          ? styleConfig.activeBg
-          : 'bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 font-medium hover:bg-gray-100/70 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white'
-      } ${className}`}
-    >
-      {Icon && (
-        <Icon
-          size={14}
-          className={`shrink-0 ${
-            active ? styleConfig.iconActive : 'text-gray-400 dark:text-slate-500'
-          }`}
-        />
-      )}
-      {content && <span className="truncate">{content}</span>}
-      {badge !== undefined && badge !== null && (
-        <span
-          className={`ml-1 px-1.5 py-0.2 text-[10px] font-bold rounded-full ${
-            active
-              ? styleConfig.badgeActive
-              : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700'
-          }`}
-        >
-          {badge}
-        </span>
-      )}
-    </button>
   )
 }

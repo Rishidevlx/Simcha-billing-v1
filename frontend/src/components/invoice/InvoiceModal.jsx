@@ -6,7 +6,7 @@ import {
   FileText,
   Copy,
   Check
-} from 'lucide-react'
+} from '../common/icons'
 import html2canvas from 'html2canvas-pro'
 import jsPDF from 'jspdf'
 import Swal from 'sweetalert2'

@@ -33,8 +33,10 @@ import {
   FileDigit,
   AlertCircle,
   Hash,
-  Pencil
-} from 'lucide-react'
+  Pencil,
+  RefreshCw,
+  List
+} from '../components/common/icons'
 import * as XLSX from 'xlsx'
 import Swal from 'sweetalert2'
 import ServiceInvoiceTemplate from '../components/invoice/ServiceInvoiceTemplate'
@@ -764,40 +766,47 @@ export default function AllServicesPage({ setActiveRoute }) {
   )
 
   return (
-    <div className="space-y-6">
-      {/* 1. Header Component */}
-      <ListPageHeader
-        title="Services & Repairs Registry"
-        subtitle="Manage end-to-end service requests, track lifecycle stages, process invoices & dispatch receipts"
-        actions={
-          <>
-            {canDownload && (
-              <Button
-                variant="secondary"
-                icon={Download}
-                onClick={handleExportExcel}
-                className="!bg-[#0f766e] !hover:bg-[#115e59] !text-white !border-transparent text-xs"
-                title={selectedServiceIds.length > 0 ? `Export ${selectedServiceIds.length} Selected Record(s)` : 'Export All Filtered Records'}
-              >
-                {selectedServiceIds.length > 0 ? `EXPORT SELECTED (${selectedServiceIds.length})` : 'EXPORT TO EXCEL'}
-              </Button>
-            )}
-            {canAdd && (
-              <Button
-                variant="primary"
-                icon={Plus}
-                onClick={() => {
-                  if (setActiveRoute) setActiveRoute('new-service')
-                  navigate('/services/new')
-                }}
-                className="text-xs"
-              >
-                NEW REQUEST
-              </Button>
-            )}
-          </>
-        }
-      />
+    <div className="space-y-6 font-['Poppins',sans-serif] pb-16 animate-in fade-in duration-200">
+      {/* 1. Transparent Header with Action Buttons */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-200/80 dark:border-slate-800 pb-3">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-[#292424] dark:text-white uppercase flex items-center gap-2.5">
+            <List className="text-[#043486] dark:text-blue-400" size={22} />
+            <span>SERVICES &amp; REPAIRS REGISTRY</span>
+          </h1>
+          <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+            Manage end-to-end service requests, track lifecycle stages, process invoices &amp; dispatch receipts.
+          </p>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {canDownload && (
+            <Button
+              variant="export"
+              icon={Download}
+              onClick={handleExportExcel}
+              className="text-xs font-semibold"
+              title={selectedServiceIds.length > 0 ? `Export ${selectedServiceIds.length} Selected Record(s)` : 'Export All Filtered Records'}
+            >
+              {selectedServiceIds.length > 0 ? `EXPORT SELECTED (${selectedServiceIds.length})` : 'EXPORT TO EXCEL'}
+            </Button>
+          )}
+          {canAdd && (
+            <Button
+              variant="primary"
+              icon={Plus}
+              onClick={() => {
+                if (setActiveRoute) setActiveRoute('new-service')
+                navigate('/services/new')
+              }}
+              className="text-xs font-semibold"
+            >
+              NEW REQUEST
+            </Button>
+          )}
+        </div>
+      </div>
 
       {/* 2. KPI Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -805,7 +814,7 @@ export default function AllServicesPage({ setActiveRoute }) {
           label="Total Service Requests"
           value={stats.totalServices || 0}
           icon={Wrench}
-          accentColor="#043486"
+          variant="blue"
         />
         <ListKpiCard
           label="Total Service Revenue"
@@ -814,19 +823,19 @@ export default function AllServicesPage({ setActiveRoute }) {
             maximumFractionDigits: 2
           })}`}
           icon={IndianRupee}
-          accentColor="#059669"
+          variant="blueValue"
         />
         <ListKpiCard
           label="Active In-Progress / Repairs"
           value={stats.inProgressCount || 0}
           icon={Clock}
-          accentColor="#d97706"
+          variant="amber"
         />
         <ListKpiCard
-          label="Ready & Delivered"
+          label="Ready &amp; Delivered"
           value={stats.readyDeliveredCount || 0}
           icon={CheckCircle2}
-          accentColor="#10b981"
+          variant="emerald"
         />
       </div>
 
@@ -887,15 +896,18 @@ export default function AllServicesPage({ setActiveRoute }) {
             </select>
           </div>
 
-          {/* Reset Filters */}
-          <div className="md:col-span-1">
+          {/* Reset & Reload Filters */}
+          <div className="md:col-span-1 flex justify-center">
             <button
               type="button"
-              onClick={handleResetFilters}
-              title="Reset Filters"
-              className="w-full h-full min-h-[34px] flex items-center justify-center gap-1 py-2 px-2 text-xs font-bold text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-none border border-gray-300 dark:border-slate-700 transition-colors cursor-pointer"
+              onClick={() => {
+                handleResetFilters()
+                fetchInitialData()
+              }}
+              title="Reload Service Records"
+              className="p-2 text-gray-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors shadow-xs cursor-pointer"
             >
-              <RotateCcw size={13} />
+              <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
             </button>
           </div>
         </div>

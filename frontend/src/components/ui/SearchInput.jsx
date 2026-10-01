@@ -1,5 +1,5 @@
 import React from 'react'
-import { Search, X } from 'lucide-react'
+import { Search, X } from '../common/icons'
 
 export default function SearchInput({
   value,

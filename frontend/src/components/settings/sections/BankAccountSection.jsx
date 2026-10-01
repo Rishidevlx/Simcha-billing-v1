@@ -1,11 +1,14 @@
 import React from 'react'
-import { Landmark, Edit2, UploadCloud, ImageIcon, ZoomIn, Trash2, Info, CheckCircle2, Lock } from 'lucide-react'
+import { Landmark, Edit2, Save, X, UploadCloud, ImageIcon, ZoomIn, Trash2, Info, CheckCircle2, Lock } from '../../common/icons'
 import { SettingSectionCard } from '../../ui'
 
 export default function BankAccountSection({
   canEdit,
   isEditing,
   onToggleEdit,
+  onSave,
+  onCancel,
+  isSaving,
   bankName,
   setBankName,
   accountName,
@@ -39,9 +42,25 @@ export default function BankAccountSection({
               <span>Edit Bank Details</span>
             </button>
           ) : (
-            <span className="text-xs px-2.5 py-1 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 font-bold">
-              Editing Mode Active
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={isSaving}
+                className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-none cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={onSave}
+                disabled={isSaving}
+                className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] disabled:opacity-50 rounded-none transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Save size={13} />
+                <span>{isSaving ? 'Saving...' : 'Save Bank Details'}</span>
+              </button>
+            </div>
           )
         )
       }

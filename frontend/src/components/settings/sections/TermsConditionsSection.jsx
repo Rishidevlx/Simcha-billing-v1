@@ -1,11 +1,14 @@
 import React from 'react'
-import { FileText, Edit2, Trash2, Plus, Lock, RotateCcw } from 'lucide-react'
+import { FileText, Edit2, Save, X, Trash2, Plus, Lock, RotateCcw } from '../../common/icons'
 import { SettingSectionCard } from '../../ui'
 
 export default function TermsConditionsSection({
   canEdit,
   isEditing,
   onToggleEdit,
+  onSave,
+  onCancel,
+  isSaving,
   terms,
   handleTermChange,
   handleRemoveTerm,
@@ -35,9 +38,25 @@ export default function TermsConditionsSection({
               <span>Edit Terms</span>
             </button>
           ) : (
-            <span className="text-xs px-2.5 py-1 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 font-bold">
-              Editing Mode Active
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={isSaving}
+                className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-none cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={onSave}
+                disabled={isSaving}
+                className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] disabled:opacity-50 rounded-none transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Save size={13} />
+                <span>{isSaving ? 'Saving...' : 'Save Terms'}</span>
+              </button>
+            </div>
           )
         )
       }
@@ -144,7 +163,7 @@ export default function TermsConditionsSection({
                 disabled={!isEditing}
                 value={returnClause}
                 onChange={(e) => setReturnClause(e.target.value)}
-                placeholder="e.g. Products can only be returned within 7 days in original condition."
+                placeholder="Enter return policy clause..."
                 className={`w-full px-3.5 py-2 text-sm font-medium rounded-none transition-all ${
                   isEditing
                     ? 'text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486]'

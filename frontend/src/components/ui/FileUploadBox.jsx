@@ -1,5 +1,5 @@
 import React from 'react'
-import { UploadCloud, Image as ImageIcon, Eye, Trash2 } from 'lucide-react'
+import { UploadCloud, Image as ImageIcon, Eye, Trash2 } from '../common/icons'
 
 export default function FileUploadBox({
   label,

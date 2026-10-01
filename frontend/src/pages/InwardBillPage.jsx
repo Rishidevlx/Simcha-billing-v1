@@ -10,14 +10,17 @@ import {
   FileCheck,
   X,
   CheckCircle2,
-  ArrowLeft
-} from 'lucide-react'
+  ArrowLeft,
+  Boxes,
+  Maximize2,
+  List
+} from '../components/common/icons'
 import Swal from 'sweetalert2'
 import SearchableSelect from '../components/common/SearchableSelect'
 import InwardLineItems from '../components/inward/InwardLineItems'
 import { BillSummaryCard } from '../components/billing'
 import { Button } from '../components/ui'
-import { API_ENDPOINTS } from '../config/api'
+import { API_ENDPOINTS } from '../config/api' 
 
 const getLocalDateString = (dateVal) => {
   if (!dateVal) return ''
@@ -270,7 +273,7 @@ export default function InwardBillPage() {
     return duplicates
   }, [items])
 
-  // Keyboard Shortcuts: Alt+A (Add Item), Ctrl+Enter (Save), Alt+R (Reset)
+  // Keyboard Shortcuts: Alt+A (Add Item), Ctrl+Enter (Save), Alt+R (Reset), Alt+F (Fullscreen)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && (e.key === 'Enter' || e.key === 's')) {
@@ -282,6 +285,13 @@ export default function InwardBillPage() {
       } else if (e.altKey && (e.key === 'r' || e.key === 'R')) {
         e.preventDefault()
         handleReset()
+      } else if (e.altKey && (e.key === 'f' || e.key === 'F')) {
+        e.preventDefault()
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {})
+        } else {
+          document.exitFullscreen().catch(() => {})
+        }
       }
     }
 
@@ -398,7 +408,7 @@ export default function InwardBillPage() {
       const updated = [...prev]
       const newHasSerial = !updated[index].has_serial
       const qtyCount = Math.min(25, Math.max(1, Math.floor(parseFloat(updated[index].quantity) || 1)))
-      
+
       updated[index] = {
         ...updated[index],
         has_serial: newHasSerial,
@@ -787,10 +797,10 @@ export default function InwardBillPage() {
   }
 
   return (
-    <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 space-y-6 pb-16 font-['Poppins',sans-serif]">
-      
-      {/* 1. Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm transition-colors">
+    <div className="space-y-6 font-['Poppins',sans-serif] pb-16 animate-in fade-in duration-200">
+
+      {/* 1. Page Header (Transparent Top Bar with Inward List Button) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-200/80 dark:border-slate-800 pb-3">
         <div className="flex items-center gap-3">
           {isEditMode && (
             <button
@@ -803,32 +813,36 @@ export default function InwardBillPage() {
             </button>
           )}
           <div>
-            <h1 className="text-xl font-bold text-[#292424] dark:text-white">
-              {isEditMode ? `Edit Inward Bill (#${inwardNumber})` : 'Create Inward Bill'}
+            <h1 className="text-xl font-bold tracking-tight text-[#292424] dark:text-white uppercase flex items-center gap-2.5">
+              <Boxes className="text-[#043486] dark:text-blue-400" size={22} />
+              <span>{isEditMode ? `EDIT INWARD BILL (#${inwardNumber})` : 'CREATE INWARD BILL'}</span>
             </h1>
             <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
               {isEditMode
-                ? 'Update incoming stock quantities, supplier details, or serial numbers for this inward entry.'
-                : 'Record incoming stock, vendor shipments and purchase materials into your shop inventory.'}
+                ? 'Update incoming stock quantities and supplier details.'
+                : 'Record incoming stock and vendor purchase materials.'}
             </p>
           </div>
         </div>
 
-        {/* Keyboard Shortcuts Hint Bar */}
-        <div className="hidden md:flex items-center gap-2 text-[11px] text-gray-500 dark:text-slate-400 bg-gray-50 dark:bg-slate-950 px-3 py-1.5 border border-gray-200 dark:border-slate-800">
-          <span><kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 font-mono text-[10px] font-bold text-[#043486] dark:text-blue-400">Ctrl+Enter</kbd> {isEditMode ? 'Update' : 'Save'}</span>
-          <span>•</span>
-          <span><kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 font-mono text-[10px] font-bold text-[#043486] dark:text-blue-400">Alt+A</kbd> Add Item</span>
-          <span>•</span>
-          <span><kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 font-mono text-[10px] font-bold text-[#043486] dark:text-blue-400">Alt+R</kbd> Reset</span>
+        {/* Right Side: INWARD LIST Action Button */}
+        <div className="flex items-center gap-2.5">
+          <Button
+            variant="list"
+            icon={List}
+            onClick={() => navigate('/inward-list')}
+            className="text-xs font-semibold"
+          >
+            INWARD LIST
+          </Button>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        
+
         {/* Top Grid: Supplier & Specifications (8 cols) + Inward Summary Card & Document Upload (4 cols) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          
+
           {/* ================= LEFT MAIN COLUMN (8 COLS) ================= */}
           <div className="lg:col-span-8 space-y-6">
 
@@ -856,7 +870,7 @@ export default function InwardBillPage() {
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
-                    Inward Date *
+                    Inward Date <span className="text-red-500 font-bold">*</span>
                   </label>
                   <input
                     type="date"
@@ -879,11 +893,11 @@ export default function InwardBillPage() {
               </div>
 
               <div className="space-y-4">
-                
+
                 {/* 1. Company Name / Supplier Name */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
-                    Supplier Name *
+                    Supplier Name <span className="text-red-500 font-bold">*</span>
                   </label>
                   <input
                     type="text"
@@ -933,7 +947,7 @@ export default function InwardBillPage() {
                   {/* 4. Location / Place of Supply */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
-                      Location / Place of Supply *
+                      Location / Place of Supply <span className="text-red-500 font-bold">*</span>
                     </label>
                     <SearchableSelect
                       options={stateOptions}
@@ -965,7 +979,7 @@ export default function InwardBillPage() {
 
           {/* ================= RIGHT COLUMN: LIVE SUMMARY & HARDCOPY UPLOAD (4 COLS) ================= */}
           <div className="lg:col-span-4 lg:sticky lg:top-20 space-y-5">
-            
+
             {/* 1. Inward Summary Card */}
             <BillSummaryCard
               title="Inward Summary"
@@ -993,11 +1007,11 @@ export default function InwardBillPage() {
             {/* 2. Upload Hardcopy / Purchase Bill (Compact Sleek Dropzone) */}
             <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-4 shadow-sm space-y-2.5 transition-colors">
               <div className="flex items-center justify-between pb-2 border-b border-gray-200 dark:border-slate-800">
-                <h2 className="text-xs font-bold text-[#043486] dark:text-blue-400 tracking-wide uppercase flex items-center gap-1.5">
+                <h2 className="text-sm font-bold text-[#043486] dark:text-blue-400 tracking-wide uppercase flex items-center gap-1.5">
                   <UploadCloud size={14} />
                   <span>Hardcopy / Bill Document</span>
                 </h2>
-                <span className="text-[9.5px] text-gray-400 dark:text-slate-500 font-medium uppercase tracking-wider">Optional</span>
+                <span className="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase tracking-wider">Optional</span>
               </div>
 
               {!uploadedBill ? (
@@ -1011,13 +1025,12 @@ export default function InwardBillPage() {
                       handleFileUpload(e.dataTransfer.files[0])
                     }
                   }}
-                  className={`border-2 border-dashed py-3 px-3 text-center transition-all cursor-pointer ${
-                    isDragging
+                  className={`border-2 border-dashed py-3 px-3 text-center transition-all cursor-pointer ${isDragging
                       ? 'border-[#043486] bg-blue-50/50 dark:bg-blue-950/30'
                       : isUploadingBill
-                      ? 'border-blue-400 bg-blue-50/30 dark:bg-slate-800/40 cursor-wait'
-                      : 'border-gray-300 dark:border-slate-700 hover:border-[#043486] dark:hover:border-blue-500 hover:bg-gray-50 dark:hover:bg-slate-800/50'
-                  }`}
+                        ? 'border-blue-400 bg-blue-50/30 dark:bg-slate-800/40 cursor-wait'
+                        : 'border-gray-300 dark:border-slate-700 hover:border-[#043486] dark:hover:border-blue-500 hover:bg-gray-50 dark:hover:bg-slate-800/50'
+                    }`}
                   onClick={() => !isUploadingBill && document.getElementById('hardcopy-file-input')?.click()}
                 >
                   <input

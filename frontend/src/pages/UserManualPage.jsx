@@ -12,8 +12,11 @@ import {
   Sliders,
   ChevronRight,
   ShieldCheck,
-  Users
-} from 'lucide-react'
+  Users,
+  BookOpen
+} from '../components/common/icons'
+import ListPageHeader from '../components/common/ListPageHeader'
+import ArrowNavTabs from '../components/common/ArrowNavTabs'
 
 // Sleek, vector-sharp professional flowchart arrow with comfortable vertical breathing room
 function FlowArrow({ className = "h-8" }) {
@@ -96,34 +99,19 @@ export default function UserManualPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 sm:p-6 lg:p-8 space-y-6 transition-colors font-['Poppins',sans-serif]">
 
-      {/* 1. Simple Clean Header */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
-          User Guidance Manual
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1.5">
-          Simple step-by-step guidance and operational flowcharts.
-        </p>
-      </div>
+      {/* 1. Header with Icon, Heading and Subtitle */}
+      <ListPageHeader
+        title="USER GUIDANCE MANUAL"
+        subtitle="Simple step-by-step guidance, module workflows, and operational flowcharts."
+        icon={BookOpen}
+      />
 
-      {/* 2. Scrollable Slim Tabs Bar */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-slate-100 dark:[&::-webkit-scrollbar-track]:bg-slate-900 [&::-webkit-scrollbar-thumb]:bg-slate-300 dark:[&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full">
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab.id
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-5 py-3 text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap border-b-2 -mb-2 ${isActive
-                  ? 'border-[#043486] dark:border-blue-500 text-[#043486] dark:text-blue-400 bg-white dark:bg-slate-900 shadow-xs'
-                  : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50'
-                }`}
-            >
-              {tab.label}
-            </button>
-          )
-        })}
-      </div>
+      {/* 2. Velzon Arrow Nav Steps Tabs */}
+      <ArrowNavTabs
+        tabs={TABS}
+        activeTab={activeTab}
+        onChange={setActiveTab}
+      />
 
       {/* ================= TAB 1: HOW TO SET UP? ================= */}
       {activeTab === 'setup' && (

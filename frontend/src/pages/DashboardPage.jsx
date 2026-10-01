@@ -25,7 +25,7 @@ import {
   Wrench,
   Layers,
   PackageOpen
-} from 'lucide-react'
+} from '../components/common/icons'
 import {
   ResponsiveContainer,
   AreaChart,

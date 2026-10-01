@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useTheme } from '../../context/ThemeContext'
 import Sidebar from './Sidebar'
 import Navbar from './Navbar'
 import AiAssistantChatbot from '../ai/AiAssistantChatbot'
@@ -11,6 +12,7 @@ export default function DashboardLayout({
   onUpdateUser,
   children
 }) {
+  const { companyName } = useTheme()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [isAiEnabled, setIsAiEnabled] = useState(true)
@@ -76,6 +78,39 @@ export default function DashboardLayout({
     navigate(target)
   }
 
+  // Global Keyboard Shortcut: Alt + F for Fullscreen Toggle across all modules
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if (e.altKey && (e.key === 'f' || e.key === 'F')) {
+        e.preventDefault()
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {})
+        } else {
+          if (document.exitFullscreen) {
+            document.exitFullscreen().catch(() => {})
+          }
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleGlobalKeyDown)
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown)
+  }, [])
+
+  // Keyboard shortcut: [ for Sidebar Toggle (if not in input)
+  useEffect(() => {
+    const handleBracketKey = (e) => {
+      const tag = e.target.tagName.toLowerCase()
+      if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return
+      if (e.key === '[' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        e.preventDefault()
+        toggleSidebar()
+      }
+    }
+    window.addEventListener('keydown', handleBracketKey)
+    return () => window.removeEventListener('keydown', handleBracketKey)
+  }, [isSidebarCollapsed, isMobileOpen])
+
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark')
@@ -103,6 +138,7 @@ export default function DashboardLayout({
       {/* Sidebar */}
       <Sidebar
         isCollapsed={isSidebarCollapsed}
+        toggleSidebar={toggleSidebar}
         activePath={location.pathname}
         setActiveRoute={setActiveRoute}
         isMobileOpen={isMobileOpen}
@@ -133,7 +169,7 @@ export default function DashboardLayout({
 
         {/* Velzon-style Footer */}
         <footer className="h-14 bg-white dark:bg-slate-900 border-t border-gray-200/80 dark:border-slate-800 px-6 flex items-center justify-between text-xs text-gray-500 dark:text-slate-400 transition-colors">
-          <span>{new Date().getFullYear()} © Simcha.</span>
+          <span>{new Date().getFullYear()} © {companyName || 'Simcha'}.</span>
           <span>
             Design &amp; Developed by{' '}
             <a

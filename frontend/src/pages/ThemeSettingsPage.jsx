@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import {
   Palette,
-  Image as ImageIcon,
+  ImageIcon,
   RotateCcw,
   Save,
   Check,
@@ -17,11 +17,13 @@ import {
   Sparkles,
   Layers,
   Lock
-} from 'lucide-react'
-import Swal from 'sweetalert2'
+} from '../components/common/icons'
 import ListPageHeader from '../components/common/ListPageHeader'
+import ArrowNavTabs from '../components/common/ArrowNavTabs'
 import defaultLogo from '../assets/Logo/Logo-bg-remove.webp'
 import defaultFavicon from '../assets/Logo/Favicon.jpeg'
+import { useTheme } from '../context/ThemeContext'
+import { showToast, showConfirm, showAlert } from '../utils/alerts'
 
 const THEME_PRESETS = [
   {
@@ -38,7 +40,7 @@ const THEME_PRESETS = [
     primaryColor: '#F97316',
     secondaryColor: '#EA580C',
     accentColor: '#FB923C',
-    sidebarBg: '#1E293B'
+    sidebarBg: '#F97316'
   },
   {
     id: 'royal-purple',
@@ -46,7 +48,7 @@ const THEME_PRESETS = [
     primaryColor: '#7C3AED',
     secondaryColor: '#6D28D9',
     accentColor: '#A78BFA',
-    sidebarBg: '#1E1B4B'
+    sidebarBg: '#7C3AED'
   },
   {
     id: 'emerald-green',
@@ -54,7 +56,7 @@ const THEME_PRESETS = [
     primaryColor: '#059669',
     secondaryColor: '#047857',
     accentColor: '#10B981',
-    sidebarBg: '#064E3B'
+    sidebarBg: '#059669'
   },
   {
     id: 'crimson-red',
@@ -62,7 +64,7 @@ const THEME_PRESETS = [
     primaryColor: '#E11D48',
     secondaryColor: '#BE123C',
     accentColor: '#FB7185',
-    sidebarBg: '#1C1917'
+    sidebarBg: '#E11D48'
   },
   {
     id: 'cyber-slate',
@@ -70,12 +72,13 @@ const THEME_PRESETS = [
     primaryColor: '#4F46E5',
     secondaryColor: '#4338CA',
     accentColor: '#6366F1',
-    sidebarBg: '#0F172A'
+    sidebarBg: '#4F46E5'
   }
 ]
 
 export default function ThemeSettingsPage() {
-  const [activeTab, setActiveTab] = useState('colors') // 'colors', 'branding', 'documents', 'preview'
+  const { theme, updateTheme, isSyncing } = useTheme()
+  const [activeTab, setActiveTab] = useState('colors') // 'colors', 'branding', 'documents'
   const [previewMode, setPreviewMode] = useState('app') // 'app', 'auth', 'invoice'
 
   // Per-tab Edit Mode States
@@ -89,7 +92,7 @@ export default function ThemeSettingsPage() {
     primaryColor: '#043486',
     secondaryColor: '#0248BC',
     accentColor: '#3B82F6',
-    sidebarTheme: 'dark',
+    sidebarTheme: 'brand',
     logoUrl: '',
     faviconUrl: '',
     invoiceHeaderStyle: 'banner',
@@ -102,20 +105,93 @@ export default function ThemeSettingsPage() {
   const [logoPreview, setLogoPreview] = useState(defaultLogo)
   const [faviconPreview, setFaviconPreview] = useState(defaultFavicon)
 
-  // Load saved theme from localStorage
+  // Sync theme from ThemeContext
   useEffect(() => {
-    const savedTheme = localStorage.getItem('simcha_custom_theme')
-    if (savedTheme) {
-      try {
-        const parsed = JSON.parse(savedTheme)
-        setThemeConfig(prev => ({ ...prev, ...parsed }))
-        if (parsed.logoUrl) setLogoPreview(parsed.logoUrl)
-        if (parsed.faviconUrl) setFaviconPreview(parsed.faviconUrl)
-      } catch (err) {
-        console.error('Error reading theme from storage', err)
-      }
+    if (theme) {
+      setThemeConfig(prev => ({ ...prev, ...theme }))
+      if (theme.logoUrl) setLogoPreview(theme.logoUrl)
+      if (theme.faviconUrl) setFaviconPreview(theme.faviconUrl)
     }
-  }, [])
+  }, [theme])
+
+  // Helper to strictly enforce and maintain '#' prefix and valid hex characters
+  const formatHexInput = (val) => {
+    if (!val) return '#'
+    const clean = val.replace(/[^0-9A-Fa-f]/g, '')
+    return `#${clean.slice(0, 6)}`
+  }
+
+  // Helper to ensure valid 6-character hex fallback
+  const getValidHex = (hex, fallback = '#043486') => {
+    if (!hex || hex === '#' || hex.length < 4) return fallback
+    if (hex.length === 4) {
+      return `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`
+    }
+    return hex.length === 7 ? hex : fallback
+  }
+
+  // Handle Preset selection with instant live preview & exact sidebar color
+  const handleSelectPreset = (preset) => {
+    const updated = {
+      ...themeConfig,
+      presetId: preset.id,
+      primaryColor: preset.primaryColor,
+      secondaryColor: preset.secondaryColor,
+      accentColor: preset.accentColor,
+      sidebarBg: preset.sidebarBg || preset.primaryColor,
+      sidebarTheme: 'brand',
+      invoiceAccentColor: preset.primaryColor
+    }
+    setThemeConfig(updated)
+    updateTheme(updated, false)
+  }
+
+  // Handle Custom Hex typing with automatic '#' enforcement and live preview
+  const handleCustomColorChange = (key, rawVal) => {
+    const formatted = formatHexInput(rawVal)
+    const updated = {
+      ...themeConfig,
+      presetId: 'custom',
+      [key]: formatted
+    }
+    if (key === 'primaryColor' && (themeConfig.sidebarTheme === 'brand' || !themeConfig.sidebarBg || themeConfig.sidebarBg === themeConfig.primaryColor)) {
+      updated.sidebarBg = formatted
+    }
+    setThemeConfig(updated)
+    if (formatted.length === 7 || formatted.length === 4) {
+      updateTheme(updated, false)
+    }
+  }
+
+  // Handle Native Color Picker selection with instant live preview
+  const handleColorPickerChange = (key, val) => {
+    const updated = {
+      ...themeConfig,
+      presetId: 'custom',
+      [key]: val
+    }
+    if (key === 'primaryColor' && themeConfig.sidebarTheme === 'brand') {
+      updated.sidebarBg = val
+    }
+    setThemeConfig(updated)
+    updateTheme(updated, false)
+  }
+
+  // Handle Sidebar Style dropdown change with instant live preview
+  const handleSidebarStyleChange = (styleKey) => {
+    let bg = '#1E293B'
+    if (styleKey === 'brand') bg = themeConfig.primaryColor
+    else if (styleKey === 'midnight') bg = '#0F172A'
+    else if (styleKey === 'dark') bg = '#1E293B'
+
+    const updated = {
+      ...themeConfig,
+      sidebarTheme: styleKey,
+      sidebarBg: bg
+    }
+    setThemeConfig(updated)
+    updateTheme(updated, false)
+  }
 
   // Start Edit on a tab
   const handleStartEdit = (tab) => {
@@ -125,7 +201,7 @@ export default function ThemeSettingsPage() {
     if (tab === 'documents') setIsEditingDocs(true)
   }
 
-  // Cancel Edit on a tab
+  // Cancel Edit on a tab - Reverts live theme
   const handleCancelEdit = (tab) => {
     if (backupConfig) {
       setThemeConfig({ ...backupConfig })
@@ -134,16 +210,19 @@ export default function ThemeSettingsPage() {
 
       if (backupConfig.faviconUrl) setFaviconPreview(backupConfig.faviconUrl)
       else setFaviconPreview(defaultFavicon)
+
+      updateTheme(backupConfig, false)
     }
     if (tab === 'colors') setIsEditingColors(false)
     if (tab === 'branding') setIsEditingBranding(false)
     if (tab === 'documents') setIsEditingDocs(false)
   }
 
-  // Save changes for a tab
-  const handleSaveTab = (tab) => {
+  // Save changes for a tab and persist to backend
+  const handleSaveTab = async (tab) => {
     try {
-      localStorage.setItem('simcha_custom_theme', JSON.stringify(themeConfig))
+      await updateTheme(themeConfig, true)
+
       if (themeConfig.faviconUrl) {
         const faviconLink = document.querySelector("link[rel*='icon']")
         if (faviconLink) faviconLink.href = themeConfig.faviconUrl
@@ -153,15 +232,14 @@ export default function ThemeSettingsPage() {
       if (tab === 'branding') setIsEditingBranding(false)
       if (tab === 'documents') setIsEditingDocs(false)
 
-      Swal.fire({
-        icon: 'success',
-        title: 'Saved Successfully',
-        timer: 1500,
-        showConfirmButton: false
-      })
+      await showAlert(
+        'success',
+        'Theme Settings Saved!',
+        'Your theme colors and branding customizations have been successfully saved to the database and applied across the entire system.'
+      )
     } catch (err) {
       console.error(err)
-      Swal.fire('Error', 'Failed to save settings', 'error')
+      showAlert('error', 'Save Failed', 'Failed to save theme settings to database.')
     }
   }
 
@@ -170,7 +248,7 @@ export default function ThemeSettingsPage() {
     const file = e.target.files?.[0]
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
-        Swal.fire('Warning', 'File must be under 2MB', 'warning')
+        showToast('warning', 'File must be under 2MB')
         return
       }
       const reader = new FileReader()
@@ -188,7 +266,7 @@ export default function ThemeSettingsPage() {
     const file = e.target.files?.[0]
     if (file) {
       if (file.size > 1 * 1024 * 1024) {
-        Swal.fire('Warning', 'File must be under 1MB', 'warning')
+        showToast('warning', 'File must be under 1MB')
         return
       }
       const reader = new FileReader()
@@ -202,52 +280,41 @@ export default function ThemeSettingsPage() {
   }
 
   // Reset to default
-  const handleResetToDefaults = () => {
-    Swal.fire({
-      title: 'Reset Theme?',
-      text: 'Revert all colors, logo, and favicon to default Simcha theme?',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#043486',
-      cancelButtonColor: '#64748b',
-      confirmButtonText: 'Yes, Reset'
-    }).then(result => {
-      if (result.isConfirmed) {
-        const defaultState = {
-          presetId: 'simcha-classic',
-          primaryColor: '#043486',
-          secondaryColor: '#0248BC',
-          accentColor: '#3B82F6',
-          sidebarTheme: 'dark',
-          logoUrl: '',
-          faviconUrl: '',
-          invoiceHeaderStyle: 'banner',
-          invoiceAccentColor: '#043486'
-        }
-        setThemeConfig(defaultState)
-        setLogoPreview(defaultLogo)
-        setFaviconPreview(defaultFavicon)
-        setIsEditingColors(false)
-        setIsEditingBranding(false)
-        setIsEditingDocs(false)
-        localStorage.removeItem('simcha_custom_theme')
-
-        Swal.fire({
-          icon: 'success',
-          title: 'Reset Complete',
-          timer: 1500,
-          showConfirmButton: false
-        })
+  const handleResetToDefaults = async () => {
+    const confirmed = await showConfirm(
+      'Reset Theme?',
+      'Revert all colors, logo, and favicon to default Simcha theme?'
+    )
+    if (confirmed) {
+      const defaultState = {
+        presetId: 'simcha-classic',
+        primaryColor: '#043486',
+        secondaryColor: '#0248BC',
+        accentColor: '#3B82F6',
+        sidebarTheme: 'dark',
+        logoUrl: '',
+        faviconUrl: '',
+        invoiceHeaderStyle: 'banner',
+        invoiceAccentColor: '#043486'
       }
-    })
+      setThemeConfig(defaultState)
+      setLogoPreview(defaultLogo)
+      setFaviconPreview(defaultFavicon)
+      setIsEditingColors(false)
+      setIsEditingBranding(false)
+      setIsEditingDocs(false)
+      await updateTheme(defaultState, true)
+      showToast('success', 'Reset to default theme successfully!')
+    }
   }
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16 font-['Poppins',sans-serif]">
       {/* 1. Header */}
       <ListPageHeader
+        icon={Palette}
         title="THEME SETTINGS"
-        subtitle=""
+        subtitle="Customize application brand colors, company logos, and document templates."
         actions={
           <button
             type="button"
@@ -260,56 +327,16 @@ export default function ThemeSettingsPage() {
         }
       />
 
-      {/* 2. Clean Navigation Tabs */}
-      <div className="flex items-center border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 pt-2 shadow-2xs">
-        <button
-          type="button"
-          onClick={() => setActiveTab('colors')}
-          className={`flex items-center gap-2 px-5 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${activeTab === 'colors'
-            ? 'border-[#043486] text-[#043486] dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30'
-            : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200'
-            }`}
-        >
-          <Palette size={16} />
-          <span>Colors</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('branding')}
-          className={`flex items-center gap-2 px-5 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${activeTab === 'branding'
-            ? 'border-[#043486] text-[#043486] dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30'
-            : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200'
-            }`}
-        >
-          <ImageIcon size={16} />
-          <span>Logo &amp; Favicon</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('documents')}
-          className={`flex items-center gap-2 px-5 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${activeTab === 'documents'
-            ? 'border-[#043486] text-[#043486] dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30'
-            : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200'
-            }`}
-        >
-          <Receipt size={16} />
-          <span>Invoice Style</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('preview')}
-          className={`flex items-center gap-2 px-5 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${activeTab === 'preview'
-            ? 'border-[#043486] text-[#043486] dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30'
-            : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200'
-            }`}
-        >
-          <Eye size={16} />
-          <span>Live Preview</span>
-        </button>
-      </div>
+      {/* 2. Velzon Arrow Nav Steps Tabs */}
+      <ArrowNavTabs
+        tabs={[
+          { id: 'colors', label: 'Colors', icon: Palette },
+          { id: 'branding', label: 'Logo & Favicon', icon: ImageIcon },
+          { id: 'documents', label: 'Invoice Style', icon: Receipt }
+        ]}
+        activeTab={activeTab}
+        onChange={setActiveTab}
+      />
 
       {/* 3. Studio Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -358,9 +385,16 @@ export default function ThemeSettingsPage() {
 
               {/* Presets */}
               <div className="space-y-3">
-                <label className="text-xs font-bold text-gray-700 dark:text-slate-300 block">
-                  Presets
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-gray-700 dark:text-slate-300 block">
+                    Presets (Click to apply preset theme)
+                  </label>
+                  {isEditingColors && (
+                    <span className="text-[11px] text-blue-600 dark:text-blue-400 font-medium">
+                      Live preview enabled
+                    </span>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                   {THEME_PRESETS.map((preset) => {
                     const isSelected = themeConfig.presetId === preset.id
@@ -369,19 +403,10 @@ export default function ThemeSettingsPage() {
                         key={preset.id}
                         type="button"
                         disabled={!isEditingColors}
-                        onClick={() =>
-                          setThemeConfig(prev => ({
-                            ...prev,
-                            presetId: preset.id,
-                            primaryColor: preset.primaryColor,
-                            secondaryColor: preset.secondaryColor,
-                            accentColor: preset.accentColor,
-                            invoiceAccentColor: preset.primaryColor
-                          }))
-                        }
-                        className={`p-2.5 border text-left transition-all ${!isEditingColors ? 'opacity-80 cursor-not-allowed' : 'cursor-pointer'
+                        onClick={() => handleSelectPreset(preset)}
+                        className={`p-2.5 border text-left transition-all ${!isEditingColors ? 'opacity-80 cursor-not-allowed' : 'cursor-pointer hover:shadow-xs'
                           } ${isSelected
-                            ? 'border-[#043486] bg-blue-50/50 dark:bg-blue-950/30'
+                            ? 'border-[#043486] dark:border-blue-500 bg-blue-50/50 dark:bg-blue-950/40 ring-1 ring-[#043486] dark:ring-blue-500'
                             : 'border-gray-200 dark:border-slate-800 hover:border-gray-300'
                           }`}
                       >
@@ -391,10 +416,11 @@ export default function ThemeSettingsPage() {
                           </span>
                           {isSelected && <CheckCircle2 size={13} className="text-[#043486] dark:text-blue-400 shrink-0" />}
                         </div>
-                        <div className="flex items-center gap-1">
-                          <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: preset.primaryColor }} />
-                          <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: preset.secondaryColor }} />
-                          <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: preset.accentColor }} />
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-4 h-4 rounded-full border border-black/10 shadow-2xs" style={{ backgroundColor: preset.primaryColor }} title="Primary" />
+                          <div className="w-4 h-4 rounded-full border border-black/10 shadow-2xs" style={{ backgroundColor: preset.secondaryColor }} title="Secondary" />
+                          <div className="w-4 h-4 rounded-full border border-black/10 shadow-2xs" style={{ backgroundColor: preset.accentColor }} title="Accent" />
+                          <div className="w-4 h-4 rounded-xs border border-black/10 shadow-2xs ml-auto" style={{ backgroundColor: preset.sidebarBg }} title="Sidebar" />
                         </div>
                       </button>
                     )
@@ -403,130 +429,138 @@ export default function ThemeSettingsPage() {
               </div>
 
               {/* Custom Hex Inputs */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                {/* Primary */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700 dark:text-slate-300">
-                    Primary Color
+              <div className="space-y-3 pt-2 border-t border-gray-100 dark:border-slate-800">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-gray-700 dark:text-slate-300 block">
+                    Custom Color Options
                   </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      disabled={!isEditingColors}
-                      value={themeConfig.primaryColor}
-                      onChange={(e) =>
-                        setThemeConfig(prev => ({
-                          ...prev,
-                          presetId: 'custom',
-                          primaryColor: e.target.value
-                        }))
-                      }
-                      className={`w-9 h-9 border border-gray-300 dark:border-slate-700 p-0.5 rounded-none ${!isEditingColors ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
-                        }`}
-                    />
-                    <input
-                      type="text"
-                      disabled={!isEditingColors}
-                      value={themeConfig.primaryColor}
-                      onChange={(e) =>
-                        setThemeConfig(prev => ({
-                          ...prev,
-                          presetId: 'custom',
-                          primaryColor: e.target.value
-                        }))
-                      }
-                      className="flex-1 px-3 py-1.5 text-xs border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white font-mono uppercase focus:outline-none disabled:bg-gray-100 dark:disabled:bg-slate-800/50 disabled:text-gray-500"
-                    />
-                  </div>
+                  <span className="text-[10px] text-gray-400 font-mono">
+                    # is auto-pinned in front
+                  </span>
                 </div>
 
-                {/* Secondary */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700 dark:text-slate-300">
-                    Secondary / Hover
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      disabled={!isEditingColors}
-                      value={themeConfig.secondaryColor}
-                      onChange={(e) =>
-                        setThemeConfig(prev => ({
-                          ...prev,
-                          presetId: 'custom',
-                          secondaryColor: e.target.value
-                        }))
-                      }
-                      className={`w-9 h-9 border border-gray-300 dark:border-slate-700 p-0.5 rounded-none ${!isEditingColors ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
-                        }`}
-                    />
-                    <input
-                      type="text"
-                      disabled={!isEditingColors}
-                      value={themeConfig.secondaryColor}
-                      onChange={(e) =>
-                        setThemeConfig(prev => ({
-                          ...prev,
-                          presetId: 'custom',
-                          secondaryColor: e.target.value
-                        }))
-                      }
-                      className="flex-1 px-3 py-1.5 text-xs border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white font-mono uppercase focus:outline-none disabled:bg-gray-100 dark:disabled:bg-slate-800/50 disabled:text-gray-500"
-                    />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Primary */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-300 flex items-center justify-between">
+                      <span>Primary Color</span>
+                      <span className="text-[10px] text-gray-400 font-mono">{themeConfig.primaryColor}</span>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        disabled={!isEditingColors}
+                        value={getValidHex(themeConfig.primaryColor, '#043486')}
+                        onChange={(e) => handleColorPickerChange('primaryColor', e.target.value)}
+                        className={`w-9 h-9 border border-gray-300 dark:border-slate-700 p-0.5 rounded-none ${!isEditingColors ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
+                          }`}
+                      />
+                      <div className="flex items-center flex-1 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus-within:border-[#043486]">
+                        <span className="inline-flex items-center justify-center px-2.5 py-1.5 text-xs font-bold font-mono bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 border-r border-gray-300 dark:border-slate-700 select-none">
+                          #
+                        </span>
+                        <input
+                          type="text"
+                          disabled={!isEditingColors}
+                          value={(themeConfig.primaryColor || '').replace(/^#/, '')}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9A-Fa-f]/g, '').slice(0, 6)
+                            handleCustomColorChange('primaryColor', `#${val}`)
+                          }}
+                          placeholder="043486"
+                          maxLength={6}
+                          className="flex-1 px-2.5 py-1.5 text-xs bg-transparent dark:text-white font-mono uppercase focus:outline-none disabled:bg-gray-100 dark:disabled:bg-slate-800/50 disabled:text-gray-500"
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
 
-                {/* Accent */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700 dark:text-slate-300">
-                    Accent Color
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      disabled={!isEditingColors}
-                      value={themeConfig.accentColor}
-                      onChange={(e) =>
-                        setThemeConfig(prev => ({
-                          ...prev,
-                          presetId: 'custom',
-                          accentColor: e.target.value
-                        }))
-                      }
-                      className={`w-9 h-9 border border-gray-300 dark:border-slate-700 p-0.5 rounded-none ${!isEditingColors ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
-                        }`}
-                    />
-                    <input
-                      type="text"
-                      disabled={!isEditingColors}
-                      value={themeConfig.accentColor}
-                      onChange={(e) =>
-                        setThemeConfig(prev => ({
-                          ...prev,
-                          presetId: 'custom',
-                          accentColor: e.target.value
-                        }))
-                      }
-                      className="flex-1 px-3 py-1.5 text-xs border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white font-mono uppercase focus:outline-none disabled:bg-gray-100 dark:disabled:bg-slate-800/50 disabled:text-gray-500"
-                    />
+                  {/* Secondary */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-300 flex items-center justify-between">
+                      <span>Secondary / Hover</span>
+                      <span className="text-[10px] text-gray-400 font-mono">{themeConfig.secondaryColor}</span>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        disabled={!isEditingColors}
+                        value={getValidHex(themeConfig.secondaryColor, '#0248BC')}
+                        onChange={(e) => handleColorPickerChange('secondaryColor', e.target.value)}
+                        className={`w-9 h-9 border border-gray-300 dark:border-slate-700 p-0.5 rounded-none ${!isEditingColors ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
+                          }`}
+                      />
+                      <div className="flex items-center flex-1 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus-within:border-[#043486]">
+                        <span className="inline-flex items-center justify-center px-2.5 py-1.5 text-xs font-bold font-mono bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 border-r border-gray-300 dark:border-slate-700 select-none">
+                          #
+                        </span>
+                        <input
+                          type="text"
+                          disabled={!isEditingColors}
+                          value={(themeConfig.secondaryColor || '').replace(/^#/, '')}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9A-Fa-f]/g, '').slice(0, 6)
+                            handleCustomColorChange('secondaryColor', `#${val}`)
+                          }}
+                          placeholder="0248BC"
+                          maxLength={6}
+                          className="flex-1 px-2.5 py-1.5 text-xs bg-transparent dark:text-white font-mono uppercase focus:outline-none disabled:bg-gray-100 dark:disabled:bg-slate-800/50 disabled:text-gray-500"
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
 
-                {/* Sidebar Style */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700 dark:text-slate-300">
-                    Sidebar Style
-                  </label>
-                  <select
-                    disabled={!isEditingColors}
-                    value={themeConfig.sidebarTheme}
-                    onChange={(e) => setThemeConfig(prev => ({ ...prev, sidebarTheme: e.target.value }))}
-                    className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white focus:outline-none disabled:bg-gray-100 dark:disabled:bg-slate-800/50 disabled:text-gray-500"
-                  >
-                    <option value="dark">Dark Slate (#1E293B)</option>
-                    <option value="brand">Brand Primary Tint</option>
-                    <option value="midnight">Midnight Onyx (#0F172A)</option>
-                  </select>
+                  {/* Accent */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-300 flex items-center justify-between">
+                      <span>Accent Color</span>
+                      <span className="text-[10px] text-gray-400 font-mono">{themeConfig.accentColor}</span>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        disabled={!isEditingColors}
+                        value={getValidHex(themeConfig.accentColor, '#3B82F6')}
+                        onChange={(e) => handleColorPickerChange('accentColor', e.target.value)}
+                        className={`w-9 h-9 border border-gray-300 dark:border-slate-700 p-0.5 rounded-none ${!isEditingColors ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
+                          }`}
+                      />
+                      <div className="flex items-center flex-1 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus-within:border-[#043486]">
+                        <span className="inline-flex items-center justify-center px-2.5 py-1.5 text-xs font-bold font-mono bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 border-r border-gray-300 dark:border-slate-700 select-none">
+                          #
+                        </span>
+                        <input
+                          type="text"
+                          disabled={!isEditingColors}
+                          value={(themeConfig.accentColor || '').replace(/^#/, '')}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9A-Fa-f]/g, '').slice(0, 6)
+                            handleCustomColorChange('accentColor', `#${val}`)
+                          }}
+                          placeholder="3B82F6"
+                          maxLength={6}
+                          className="flex-1 px-2.5 py-1.5 text-xs bg-transparent dark:text-white font-mono uppercase focus:outline-none disabled:bg-gray-100 dark:disabled:bg-slate-800/50 disabled:text-gray-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sidebar Style */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-300">
+                      Sidebar Style
+                    </label>
+                    <select
+                      disabled={!isEditingColors}
+                      value={themeConfig.sidebarTheme}
+                      onChange={(e) => handleSidebarStyleChange(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white focus:outline-none focus:border-[#043486] disabled:bg-gray-100 dark:disabled:bg-slate-800/50 disabled:text-gray-500"
+                    >
+                      <option value="brand">Brand Theme Color ({themeConfig.primaryColor})</option>
+                      <option value="dark">Dark Slate (#1E293B)</option>
+                      <option value="midnight">Midnight Onyx (#0F172A)</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -730,32 +764,37 @@ export default function ThemeSettingsPage() {
                   <input
                     type="color"
                     disabled={!isEditingDocs}
-                    value={themeConfig.invoiceAccentColor || themeConfig.primaryColor}
-                    onChange={(e) => setThemeConfig(prev => ({ ...prev, invoiceAccentColor: e.target.value }))}
+                    value={getValidHex(themeConfig.invoiceAccentColor || themeConfig.primaryColor, '#043486')}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setThemeConfig(prev => ({ ...prev, invoiceAccentColor: val }))
+                      updateTheme({ ...themeConfig, invoiceAccentColor: val }, false)
+                    }}
                     className={`w-9 h-9 border border-gray-300 dark:border-slate-700 p-0.5 rounded-none ${!isEditingDocs ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
                       }`}
                   />
-                  <input
-                    type="text"
-                    disabled={!isEditingDocs}
-                    value={themeConfig.invoiceAccentColor || themeConfig.primaryColor}
-                    onChange={(e) => setThemeConfig(prev => ({ ...prev, invoiceAccentColor: e.target.value }))}
-                    className="flex-1 px-3 py-1.5 text-xs border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white font-mono uppercase focus:outline-none disabled:bg-gray-100 dark:disabled:bg-slate-800/50 disabled:text-gray-500"
-                  />
+                  <div className="flex items-center flex-1 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus-within:border-[#043486]">
+                    <span className="inline-flex items-center justify-center px-2.5 py-1.5 text-xs font-bold font-mono bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 border-r border-gray-300 dark:border-slate-700 select-none">
+                      #
+                    </span>
+                    <input
+                      type="text"
+                      disabled={!isEditingDocs}
+                      value={(themeConfig.invoiceAccentColor || themeConfig.primaryColor || '').replace(/^#/, '')}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9A-Fa-f]/g, '').slice(0, 6)
+                        setThemeConfig(prev => ({ ...prev, invoiceAccentColor: `#${val}` }))
+                        if (val.length === 6 || val.length === 3) {
+                          updateTheme({ ...themeConfig, invoiceAccentColor: `#${val}` }, false)
+                        }
+                      }}
+                      placeholder="043486"
+                      maxLength={6}
+                      className="flex-1 px-2.5 py-1.5 text-xs bg-transparent dark:text-white font-mono uppercase focus:outline-none disabled:bg-gray-100 dark:disabled:bg-slate-800/50 disabled:text-gray-500"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* TAB 4: PREVIEW INFO */}
-          {activeTab === 'preview' && (
-            <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-6 shadow-2xs space-y-3">
-              <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider block">
-                Live Preview Mode
-              </span>
-              <p className="text-xs text-gray-600 dark:text-slate-300 leading-relaxed">
-                Use the simulation switchers on the right panel to preview changes across App Shell, Login Screen, and Invoices.
-              </p>
             </div>
           )}
         </div>

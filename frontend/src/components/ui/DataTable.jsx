@@ -1,5 +1,5 @@
 import React from 'react'
-import { Inbox } from 'lucide-react'
+import { Inbox } from '../common/icons'
 
 export default function DataTable({
   columns = [],
@@ -38,9 +38,27 @@ export default function DataTable({
   return (
     <div className={`bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 shadow-xs overflow-hidden transition-colors ${className}`}>
       {isLoading ? (
-        <div className="py-20 flex flex-col items-center justify-center gap-3">
-          <div className="w-8 h-8 border-3 border-[#043486] border-t-transparent rounded-full animate-spin" />
-          <span className="text-xs text-gray-400 font-medium">{loadingMessage}</span>
+        <div className="p-4 space-y-3">
+          <div className="h-9 bg-slate-100 dark:bg-slate-800 flex items-center px-4 gap-4 animate-pulse">
+            {columns.map((_, i) => (
+              <div key={i} className="h-3 bg-slate-200 dark:bg-slate-700 rounded-xs flex-1" />
+            ))}
+          </div>
+          {Array.from({ length: 5 }).map((_, rIdx) => (
+            <div
+              key={rIdx}
+              className="h-11 border-b border-gray-100 dark:border-slate-800/70 flex items-center px-4 gap-4 animate-pulse"
+            >
+              {columns.map((_, cIdx) => (
+                <div
+                  key={cIdx}
+                  className={`h-3 bg-slate-200/80 dark:bg-slate-800 rounded-xs ${
+                    cIdx === 0 ? 'w-10' : cIdx === columns.length - 1 ? 'w-16' : 'flex-1'
+                  }`}
+                />
+              ))}
+            </div>
+          ))}
         </div>
       ) : data.length === 0 ? (
         <div className="py-16 text-center space-y-3">
@@ -53,7 +71,7 @@ export default function DataTable({
       ) : (
         <div className="overflow-x-auto">
           <table className={`w-full text-sm border-collapse font-['Poppins',sans-serif] ${tableClassName}`}>
-            <thead className="bg-[#f8fafc] dark:bg-slate-800/80 border-b border-gray-200 dark:border-slate-800 text-[11px] uppercase tracking-wider text-gray-600 dark:text-slate-300 font-bold">
+            <thead className="bg-[#f8fafc] dark:bg-slate-800/80 border-b border-gray-200 dark:border-slate-800 text-xs uppercase tracking-wider text-[#043486] dark:text-blue-400 font-bold">
               <tr>
                 {selectable && (
                   <th className="py-3 px-3.5 w-10 text-center">

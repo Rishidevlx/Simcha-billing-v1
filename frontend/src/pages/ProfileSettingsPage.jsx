@@ -15,13 +15,14 @@ import {
   Eye,
   EyeOff,
   KeyRound
-} from 'lucide-react'
+} from '../components/common/icons'
 import Swal from 'sweetalert2'
 
 import defaultPfp from '../assets/avatar/Deafult Pfp.webp'
 import maleAvatar from '../assets/avatar/Male avatar.webp'
 import femaleAvatar from '../assets/avatar/Female Avatar.webp'
 import { API_ENDPOINTS } from '../config/api'
+import ArrowNavTabs from '../components/common/ArrowNavTabs'
 
 const AVATAR_OPTIONS = [
   { id: 'default', label: 'Default', src: defaultPfp },
@@ -34,10 +35,10 @@ export default function ProfileSettingsPage({ user, onUpdateUser }) {
   const [isEditing, setIsEditing] = useState(false)
   
   // Personal Details State
-  const [name, setName] = useState(user?.name || 'Rishi')
-  const [email, setEmail] = useState(user?.email || 'admin@simcha.com')
-  const [designation, setDesignation] = useState(user?.role || 'Administrator')
-  const [phone, setPhone] = useState(user?.phone || '8122022060')
+  const [name, setName] = useState(user?.name || '')
+  const [email, setEmail] = useState(user?.email || '')
+  const [designation, setDesignation] = useState(user?.designation || user?.role || '')
+  const [phone, setPhone] = useState(user?.phone || '')
   const [selectedAvatarId, setSelectedAvatarId] = useState(user?.avatar || 'default')
   const [isSavingProfile, setIsSavingProfile] = useState(false)
 
@@ -50,25 +51,57 @@ export default function ProfileSettingsPage({ user, onUpdateUser }) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isChangingPassword, setIsChangingPassword] = useState(false)
 
+  // 1. Sync from prop
   useEffect(() => {
     if (user) {
-      setName(user.name || 'Rishi')
-      setEmail(user.email || 'admin@simcha.com')
-      setDesignation(user.role || 'Administrator')
-      setPhone(user.phone || '8122022060')
+      setName(user.name || '')
+      setEmail(user.email || '')
+      setDesignation(user.designation || user.role || '')
+      setPhone(user.phone || '')
       setSelectedAvatarId(user.avatar || 'default')
     }
   }, [user])
 
+  // 2. Fetch fresh live profile directly from DB on mount
+  useEffect(() => {
+    const fetchLiveProfile = async () => {
+      try {
+        const token = localStorage.getItem('simcha_token') || sessionStorage.getItem('simcha_token')
+        if (!token) return
+
+        const res = await fetch(API_ENDPOINTS.ME, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        const data = await res.json()
+
+        if (res.ok && data.success && data.user) {
+          const u = data.user
+          setName(u.name || '')
+          setEmail(u.email || '')
+          setDesignation(u.designation || u.role || '')
+          setPhone(u.phone || '')
+          setSelectedAvatarId(u.avatar || 'default')
+          if (onUpdateUser) {
+            onUpdateUser(u)
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch live profile:', err)
+      }
+    }
+
+    fetchLiveProfile()
+  }, [])
+
   // Get current active avatar image source
-  const currentAvatar = AVATAR_OPTIONS.find(a => a.id === selectedAvatarId)?.src || maleAvatar
+  const currentAvatar = AVATAR_OPTIONS.find(a => a.id === selectedAvatarId)?.src || defaultPfp
 
   const handleResetProfile = () => {
-    setName(user?.name || 'Rishi')
-    setEmail(user?.email || 'admin@simcha.com')
-    setDesignation(user?.role || 'Administrator')
-    setPhone(user?.phone || '8122022060')
-    setSelectedAvatarId(user?.avatar || 'male')
+    setName(user?.name || '')
+    setEmail(user?.email || '')
+    setDesignation(user?.designation || user?.role || 'Administrator')
+    setPhone(user?.phone || '')
+    setSelectedAvatarId(user?.avatar || 'default')
   }
 
   const handleCancelProfile = () => {
@@ -249,7 +282,7 @@ export default function ProfileSettingsPage({ user, onUpdateUser }) {
   return (
     <div className="space-y-6 font-['Poppins',sans-serif] animate-in fade-in duration-200">
       
-      {/* Top Breadcrumb & Title */}
+      {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-200/80 dark:border-slate-800 pb-3">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-[#292424] dark:text-white uppercase flex items-center gap-2">
@@ -259,11 +292,6 @@ export default function ProfileSettingsPage({ user, onUpdateUser }) {
           <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
             Manage your personal details, email address and security password
           </p>
-        </div>
-        <div className="flex items-center text-xs text-gray-500 dark:text-slate-400 gap-1.5 font-medium">
-          <span>Settings</span>
-          <span>›</span>
-          <span className="text-[#043486] dark:text-blue-400 font-semibold">Profile Settings</span>
         </div>
       </div>
 
@@ -368,20 +396,12 @@ export default function ProfileSettingsPage({ user, onUpdateUser }) {
               <span className="font-semibold text-[#292424] dark:text-white">{designation}</span>
             </div>
 
-            <div className="flex items-center justify-between py-1 border-b border-gray-100 dark:border-slate-800">
+            <div className="flex items-center justify-between py-1">
               <span className="text-gray-500 dark:text-slate-400 flex items-center gap-2">
                 <Phone size={14} className="text-[#043486] dark:text-blue-400" />
                 Phone:
               </span>
               <span className="font-semibold text-[#292424] dark:text-white font-mono">{phone}</span>
-            </div>
-
-            <div className="flex items-center justify-between py-1">
-              <span className="text-gray-500 dark:text-slate-400 flex items-center gap-2">
-                <Building2 size={14} className="text-[#043486] dark:text-blue-400" />
-                Company:
-              </span>
-              <span className="font-semibold text-[#292424] dark:text-white">Simcha Info Solutions</span>
             </div>
           </div>
 
@@ -390,39 +410,20 @@ export default function ProfileSettingsPage({ user, onUpdateUser }) {
         {/* Right Column: Tabbed Settings */}
         <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-none shadow-sm transition-colors">
           
-          {/* Velzon-Style Tab Navigation Header */}
-          <div className="border-b border-gray-200 dark:border-slate-800 px-6 pt-3 flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <button
-                type="button"
-                onClick={() => setActiveTab('personal')}
-                className={`pb-3 text-xs font-bold transition-all flex items-center gap-2 border-b-2 cursor-pointer ${
-                  activeTab === 'personal'
-                    ? 'text-[#043486] dark:text-blue-400 border-[#043486] dark:border-blue-400'
-                    : 'text-gray-500 dark:text-slate-400 border-transparent hover:text-gray-900 dark:hover:text-white'
-                }`}
-              >
-                <User size={15} />
-                <span>Personal Details</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('security')}
-                className={`pb-3 text-xs font-bold transition-all flex items-center gap-2 border-b-2 cursor-pointer ${
-                  activeTab === 'security'
-                    ? 'text-[#043486] dark:text-blue-400 border-[#043486] dark:border-blue-400'
-                    : 'text-gray-500 dark:text-slate-400 border-transparent hover:text-gray-900 dark:hover:text-white'
-                }`}
-              >
-                <ShieldCheck size={15} />
-                <span>Security Settings</span>
-              </button>
-            </div>
+          {/* Velzon Chevron Arrow Nav Tabs Header */}
+          <div className="border-b border-gray-200 dark:border-slate-800 p-4 flex items-center justify-between flex-wrap gap-3">
+            <ArrowNavTabs
+              tabs={[
+                { id: 'personal', label: 'Personal Details', icon: User },
+                { id: 'security', label: 'Security Settings', icon: ShieldCheck }
+              ]}
+              activeTab={activeTab}
+              onChange={setActiveTab}
+            />
 
             {/* Edit / Cancel Toggle for Personal Tab */}
             {activeTab === 'personal' && (
-              <div className="pb-2.5">
+              <div>
                 {!isEditing ? (
                   <button
                     type="button"
@@ -486,7 +487,7 @@ export default function ProfileSettingsPage({ user, onUpdateUser }) {
                     disabled={!isEditing}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="e.g. admin@simcha.com"
+                    placeholder="Enter your email address"
                     className={`w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm rounded-none transition-all font-medium ${
                       isEditing
                         ? 'text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 ring-1 ring-[#043486]/10'
@@ -509,7 +510,7 @@ export default function ProfileSettingsPage({ user, onUpdateUser }) {
                     disabled={!isEditing}
                     value={designation}
                     onChange={(e) => setDesignation(e.target.value)}
-                    placeholder="e.g. Administrator, Billing Manager, Owner"
+                    placeholder="Enter your designation"
                     className={`w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm rounded-none transition-all font-medium ${
                       isEditing
                         ? 'text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 ring-1 ring-[#043486]/10'
@@ -531,7 +532,7 @@ export default function ProfileSettingsPage({ user, onUpdateUser }) {
                     disabled={!isEditing}
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="e.g. 8122022060"
+                    placeholder="Enter official contact / phone number"
                     className={`w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm rounded-none transition-all font-medium font-mono ${
                       isEditing
                         ? 'text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 ring-1 ring-[#043486]/10'

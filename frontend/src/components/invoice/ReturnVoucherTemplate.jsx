@@ -1,7 +1,11 @@
 import React from 'react'
-import logoImg from '../../assets/Logo/Logo-bg-remove.webp'
-import faviconWatermark from '../../assets/Logo/Favicon.jpeg'
-import { Phone, Mail, MapPin } from 'lucide-react'
+import { useTheme } from '../../context/ThemeContext'
+import {
+  TemplatePageShell,
+  TemplateHeader,
+  TemplateMetaBar,
+  TemplateFooterRibbon
+} from './shared'
 
 // Number to Words converter helper
 function numberToWords(num) {
@@ -35,6 +39,8 @@ function numberToWords(num) {
 export default function ReturnVoucherTemplate({ returnItem, settings }) {
   if (!returnItem) return null
 
+  const { companyName: themeCompanyName, companyDetails } = useTheme()
+
   // Resolve settings with localStorage fallback
   let effectiveSettings = settings || {}
   if (!effectiveSettings.signature_url || !effectiveSettings.company_name) {
@@ -47,12 +53,12 @@ export default function ReturnVoucherTemplate({ returnItem, settings }) {
     } catch {}
   }
 
-  // Dynamic Company Settings with fallbacks matching InvoiceTemplate
-  const companyName = effectiveSettings?.company_name || 'SIMCHA INFO SOLUTIONS'
-  const companyGstin = effectiveSettings?.gstin || '33GEZPM1178G1ZY'
-  const companyPhone = effectiveSettings?.phone || '8122022060'
-  const companyEmail = effectiveSettings?.email || 'simchainfosolutions@gmail.com'
-  const companyAddress = effectiveSettings?.address || '7A3, Thulasi Ammal Layout 2nd Street, Lakshmipuram, Peelamedu Post, Coimbatore - 641 004.'
+  // Dynamic Company Settings with fallbacks from Theme/System Settings
+  const companyName = effectiveSettings?.company_name || themeCompanyName || companyDetails?.name || ''
+  const companyGstin = effectiveSettings?.gstin || companyDetails?.gstin || ''
+  const companyPhone = effectiveSettings?.phone || companyDetails?.phone || ''
+  const companyEmail = effectiveSettings?.email || companyDetails?.email || ''
+  const companyAddress = effectiveSettings?.address || companyDetails?.address || ''
   const signatureUrl = effectiveSettings?.signature_url || returnItem?.signature_url || null
 
   const isCreditNote = returnItem.qc_decision === 'REFUND' || (returnItem.resolution_ref && returnItem.resolution_ref.includes('CN'))
@@ -83,89 +89,37 @@ export default function ReturnVoucherTemplate({ returnItem, settings }) {
 
   return (
     <div id="return-slip-printable-area" className="w-full">
-      <div
-        className="invoice-page relative bg-white text-[#292424] font-['Poppins',sans-serif] w-full max-w-[210mm] min-h-[297mm] max-h-[297mm] h-[297mm] mx-auto p-0 flex flex-col justify-between shadow-lg print:shadow-none print:w-full print:max-w-none print:h-[297mm] print:min-h-[297mm] print:max-h-[297mm] text-[11.5px] leading-relaxed overflow-hidden box-border mb-8 print:mb-0"
-        style={{ boxSizing: 'border-box' }}
-      >
-        {/* Background Watermark */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0 opacity-[0.05]">
-          <img
-            src={faviconWatermark}
-            alt="Favicon Watermark"
-            className="w-[300px] max-w-full object-contain filter grayscale"
-          />
-        </div>
-
+      <TemplatePageShell pageIndex={1} totalPages={1}>
         {/* Main Content Area */}
         <div className="relative z-10 px-7 pt-6 pb-2 space-y-3.5 flex-1">
-
-          {/* --- EXACT FULL HEADER IDENTICAL TO INVOICE TEMPLATE --- */}
-          <div className="space-y-1">
-            <div className="flex items-start justify-between gap-4 pt-0.5">
-              {/* Left Large Logo + Branding */}
-              <div className="flex items-start gap-3.5">
-                <img
-                  src={logoImg}
-                  alt="Simcha Logo"
-                  className="h-20 w-auto object-contain shrink-0 -mt-1"
-                />
-                <div className="space-y-0.5">
-                  <h1 className="text-xl font-black text-[#043486] tracking-tight leading-none">
-                    {companyName}
-                  </h1>
-                  <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider pt-0.5">
-                    IT CONSULTING | HARDWARE &amp; SOFTWARE SOLUTIONS | SALES &amp; SERVICE
-                  </p>
-                  <p className="text-[10px] text-gray-600 leading-normal truncate max-w-lg">
-                    {companyAddress}
-                  </p>
-                  <p className="text-[10px] text-gray-700 font-medium">
-                    <strong>Mobile:</strong> {companyPhone} &nbsp;|&nbsp; <strong>Email:</strong> {companyEmail}
-                  </p>
-                </div>
-              </div>
-
-              {/* Top Right: GSTIN Header */}
-              <div className="text-right shrink-0 pt-0.5">
-                <div className="text-xs font-bold text-[#292424] font-mono tracking-wide">
-                  <span className="text-gray-500 font-bold font-sans text-[11px]">GSTIN: </span>
-                  {companyGstin}
-                </div>
-              </div>
-            </div>
-
-            {/* Thin Divider Rule */}
-            <div className="w-full h-[2px] bg-[#043486] mt-1.5" />
-          </div>
+          {/* Header with branding */}
+          <TemplateHeader
+            companyName={companyName}
+            companyGstin={companyGstin}
+            companyPhone={companyPhone}
+            companyEmail={companyEmail}
+            companyAddress={companyAddress}
+          />
 
           {/* Meta Bar */}
-          <div className="bg-[#f3f4f6] border border-gray-300 px-3.5 py-1.5 flex items-center justify-between text-xs font-bold text-[#292424]">
-            <div className="flex items-center gap-1.5">
-              <span className="text-gray-600 uppercase font-semibold text-[10.5px]">
-                {documentTitle} NUMBER:
-              </span>
-              <span className="text-[#292424] font-mono text-sm font-black">
-                {documentNumber}
-              </span>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1.5">
-                <span className="text-gray-600 uppercase font-semibold text-[10.5px]">DATE:</span>
-                <span className="text-[#292424] font-semibold text-[11.5px]">{formatDate(returnItem.return_date)}</span>
-              </div>
-              {returnItem.bill_number && (
+          <TemplateMetaBar
+            docNumberLabel={`${documentTitle} NUMBER:`}
+            docNumber={documentNumber}
+            dateLabel="DATE:"
+            dateValue={formatDate(returnItem.return_date)}
+            rightExtra={
+              returnItem.bill_number ? (
                 <div className="flex items-center gap-1.5 pl-3 border-l border-gray-300">
                   <span className="text-gray-600 uppercase font-semibold text-[10.5px]">AGAINST INVOICE:</span>
                   <span className="text-[#043486] font-mono font-bold text-[11.5px]">{returnItem.bill_number}</span>
                 </div>
-              )}
-            </div>
-          </div>
+              ) : null
+            }
+          />
 
           {/* Customer & Return Details Box: Two Columns (BILL TO & RETURN VOUCHER DETAILS) */}
           <div className="border border-gray-300 p-2.5 bg-white/80 text-[#292424]">
             <div className="grid grid-cols-2 gap-4">
-              
               {/* Left Column: BILL TO (CUSTOMER) */}
               <div className="space-y-0.5 border-r border-gray-200 pr-3">
                 <div className="flex items-start justify-between gap-2">
@@ -205,11 +159,10 @@ export default function ReturnVoucherTemplate({ returnItem, settings }) {
                   <div><strong>Return Date:</strong> <span className="font-medium text-[#292424]">{formatDate(returnItem.return_date)}</span></div>
                 </div>
               </div>
-
             </div>
           </div>
 
-          {/* --- CLEAN PRODUCT & SERIAL ITEM TABLE (NO TAX COLUMNS, EXACT INVOICE STYLING) --- */}
+          {/* --- CLEAN PRODUCT & SERIAL ITEM TABLE --- */}
           <div className="border border-gray-300 overflow-hidden text-[#292424]">
             <table className="w-full text-left border-collapse text-[10.5px]">
               <thead>
@@ -327,7 +280,7 @@ export default function ReturnVoucherTemplate({ returnItem, settings }) {
             )}
           </div>
 
-          {/* --- SIGNATURE SECTION (AUTHORIZED SIGNATORY ONLY) --- */}
+          {/* --- SIGNATURE SECTION --- */}
           <div className="pt-6 flex justify-end">
             <div className="w-56 text-center space-y-0.5">
               {signatureUrl ? (
@@ -348,45 +301,15 @@ export default function ReturnVoucherTemplate({ returnItem, settings }) {
               </div>
             </div>
           </div>
-
         </div>
 
-        {/* --- 100% FULL-WIDTH FOOTER RIBBON (EXACT SIMCHA LETTERHEAD DESIGN IDENTICAL TO INVOICE) --- */}
-        <div className="w-full bg-[#043486] text-white px-8 py-2.5 flex items-center justify-between text-[9.5px] font-medium tracking-wide z-10 shrink-0">
-          {/* Left Contact Pills */}
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded-full bg-white text-[#043486] flex items-center justify-center shrink-0 shadow-xs">
-                <Phone size={10} className="stroke-[2.5]" />
-              </div>
-              <span className="font-semibold tracking-wider font-mono">+91 {companyPhone}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded-full bg-white text-[#043486] flex items-center justify-center shrink-0 shadow-xs">
-                <Mail size={10} className="stroke-[2.5]" />
-              </div>
-              <span className="tracking-wide">{companyEmail}</span>
-            </div>
-          </div>
-
-          {/* Slanted Divider */}
-          <div className="h-5 w-[1px] bg-blue-300/40 transform rotate-12 mx-2" />
-
-          {/* Right Location Address */}
-          <div className="flex items-center gap-4 max-w-md text-right">
-            <div className="flex items-center gap-2 text-left">
-              <div className="w-5 h-5 rounded-full bg-white text-[#043486] flex items-center justify-center shrink-0 shadow-xs">
-                <MapPin size={10} className="stroke-[2.5]" />
-              </div>
-              <span className="text-[9px] leading-tight text-blue-100 truncate max-w-xs">
-                {companyAddress}
-              </span>
-            </div>
-          </div>
-        </div>
-
-      </div>
+        {/* Footer Ribbon */}
+        <TemplateFooterRibbon
+          companyPhone={companyPhone}
+          companyEmail={companyEmail}
+          companyAddress={companyAddress}
+        />
+      </TemplatePageShell>
     </div>
   )
 }
-

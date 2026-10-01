@@ -21,13 +21,15 @@ import {
   XCircle,
   Trash2,
   X,
-  RotateCcw
-} from 'lucide-react'
+  RotateCcw,
+  Search
+} from '../common/icons'
 import { API_ENDPOINTS } from '../../config/api'
 import defaultPfp from '../../assets/avatar/Deafult Pfp.webp'
 import maleAvatar from '../../assets/avatar/Male avatar.webp'
 import femaleAvatar from '../../assets/avatar/Female Avatar.webp'
 import { getUserPermissions } from '../../utils/access'
+import CommandPaletteModal from './CommandPaletteModal'
 
 const AVATAR_MAP = {
   default: defaultPfp,
@@ -52,6 +54,19 @@ export default function Navbar({
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isNotifOpen, setIsNotifOpen] = useState(false)
   const [notifFilter, setNotifFilter] = useState('all') // 'all' | 'unread' | 'critical'
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
+
+  // Global Keyboard Shortcut: Ctrl + K / Cmd + K to open Command Palette
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault()
+        setIsCommandPaletteOpen((prev) => !prev)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   // Low stock notifications state
   const [lowStockItems, setLowStockItems] = useState([])
@@ -176,18 +191,45 @@ export default function Navbar({
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
   }, [])
 
-  const currentAvatarSrc = user.avatar ? (AVATAR_MAP[user.avatar] || AVATAR_MAP.male) : AVATAR_MAP.male
+  const currentAvatarSrc = AVATAR_MAP[user?.avatar] || AVATAR_MAP.default
 
   return (
     <header className="h-16 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 transition-colors duration-200 font-['Poppins',sans-serif]">
-      {/* Left: Sidebar Toggle Button */}
-      <div className="flex items-center gap-3">
+      {/* Left: Sidebar Toggle Button & Quick Command Jump Search Bar */}
+      <div className="flex items-center gap-2 sm:gap-3">
         <button
           onClick={toggleSidebar}
           className="p-2 rounded-lg text-gray-500 dark:text-slate-400 hover:text-[#043486] dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors focus:outline-none cursor-pointer"
           aria-label="Toggle sidebar"
+          title="Toggle sidebar ([)"
         >
           <Menu size={20} />
+        </button>
+
+        {/* Quick Command / Jump Search Bar (Desktop) */}
+        <button
+          type="button"
+          onClick={() => setIsCommandPaletteOpen(true)}
+          className="hidden sm:flex items-center gap-2.5 px-3 py-1.5 bg-gray-100/80 dark:bg-slate-800/80 hover:bg-gray-200/70 dark:hover:bg-slate-700/70 text-gray-400 dark:text-slate-400 rounded-md border border-gray-200 dark:border-slate-700 transition-all cursor-pointer text-xs w-56 md:w-64 lg:w-72 justify-between group"
+          title="Jump to a module (Ctrl + K)"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <Search size={14} className="text-gray-400 dark:text-slate-400 group-hover:text-[#043486] dark:group-hover:text-blue-400 transition-colors shrink-0" />
+            <span className="text-gray-500 dark:text-slate-400 text-xs truncate">Jump to a module, tab...</span>
+          </div>
+          <kbd className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white dark:bg-slate-900 text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-slate-700 shadow-2xs shrink-0">
+            Ctrl + K
+          </kbd>
+        </button>
+
+        {/* Quick Search Icon Button (Mobile) */}
+        <button
+          type="button"
+          onClick={() => setIsCommandPaletteOpen(true)}
+          className="sm:hidden p-2 rounded-lg text-gray-500 dark:text-slate-400 hover:text-[#043486] dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          title="Search modules (Ctrl + K)"
+        >
+          <Search size={18} />
         </button>
       </div>
 
@@ -511,7 +553,7 @@ export default function Navbar({
                 {user.name}
               </span>
               <span className="text-xs text-gray-400 dark:text-slate-400 font-normal leading-tight">
-                {user.role}
+                {user?.designation || user?.role || 'Administrator'}
               </span>
             </div>
             <ChevronDown size={16} className="text-gray-400 dark:text-slate-400 hidden md:block" />
@@ -575,6 +617,12 @@ export default function Navbar({
           )}
         </div>
       </div>
+      {/* Command Palette Modal (Ctrl + K) */}
+      <CommandPaletteModal
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onNavigate={setActiveRoute}
+      />
     </header>
   )
 }

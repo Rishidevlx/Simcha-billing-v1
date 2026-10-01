@@ -84,6 +84,9 @@ export async function login(req, res) {
         name: user.name,
         email: user.email,
         role: user.role,
+        phone: user.phone || '',
+        designation: user.designation || user.role || 'Administrator',
+        avatar: user.avatar || 'default',
         admin_access,
         permissions
       }
@@ -112,7 +115,7 @@ export async function getMe(req, res) {
     const decoded = jwt.verify(token, JWT_SECRET)
 
     const pool = getPool()
-    const [rows] = await pool.query('SELECT id, name, email, role, phone, designation, avatar, created_at FROM users WHERE id = ?', [decoded.id])
+    const [rows] = await pool.query('SELECT id, name, email, role, phone, designation, avatar, status, created_at FROM users WHERE id = ?', [decoded.id])
 
     if (rows.length === 0) {
       return res.status(404).json({
@@ -121,9 +124,35 @@ export async function getMe(req, res) {
       })
     }
 
+    const userData = rows[0]
+
+    if (userData.status === 'Inactive') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account is inactive.'
+      })
+    }
+
+    let admin_access = []
+    let permissions = {}
+    const [roles] = await pool.query('SELECT admin_access, permissions FROM roles WHERE name = ?', [userData.role])
+    if (roles.length > 0) {
+      admin_access = typeof roles[0].admin_access === 'string' 
+        ? JSON.parse(roles[0].admin_access) 
+        : roles[0].admin_access
+      permissions = typeof roles[0].permissions === 'string'
+        ? JSON.parse(roles[0].permissions)
+        : roles[0].permissions
+    }
+
+    userData.admin_access = admin_access
+    userData.permissions = permissions
+    userData.designation = userData.designation || userData.role || 'Administrator'
+    userData.avatar = userData.avatar || 'default'
+
     return res.status(200).json({
       success: true,
-      user: rows[0]
+      user: userData
     })
   } catch (error) {
     return res.status(401).json({
@@ -152,18 +181,35 @@ export async function updateProfile(req, res) {
       })
     }
 
-    const pool = getPool()
-    let userId = 1
-
     const authHeader = req.headers.authorization
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        const token = authHeader.split(' ')[1]
-        const decoded = jwt.verify(token, JWT_SECRET)
-        userId = decoded.id
-      } catch (err) {
-        // fallback to user 1
-      }
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized: No token provided.'
+      })
+    }
+
+    let userId
+    try {
+      const token = authHeader.split(' ')[1]
+      const decoded = jwt.verify(token, JWT_SECRET)
+      userId = decoded.id
+    } catch (err) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid or expired token.'
+      })
+    }
+
+    const pool = getPool()
+
+    // Check duplicate email for other users
+    const [existing] = await pool.query('SELECT id FROM users WHERE email = ? AND id != ?', [email.trim().toLowerCase(), userId])
+    if (existing.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email already in use by another user.'
+      })
     }
 
     await pool.query(
@@ -178,7 +224,7 @@ export async function updateProfile(req, res) {
       ]
     )
 
-    const [updatedUsers] = await pool.query('SELECT * FROM users WHERE id = ?', [userId])
+    const [updatedUsers] = await pool.query('SELECT id, name, email, role, phone, designation, avatar, status, created_at FROM users WHERE id = ?', [userId])
     const updatedUser = updatedUsers[0]
 
     let admin_access = []
@@ -195,6 +241,8 @@ export async function updateProfile(req, res) {
 
     updatedUser.admin_access = admin_access
     updatedUser.permissions = permissions
+    updatedUser.designation = updatedUser.designation || updatedUser.role || 'Administrator'
+    updatedUser.avatar = updatedUser.avatar || 'default'
 
     return res.status(200).json({
       success: true,
@@ -512,14 +560,16 @@ export async function sendForgotPasswordOtp(req, res) {
           }
         })
 
+        const companyDisplayName = config.sender_name || 'Simcha Info Solutions'
+
         const mailOptions = {
-          from: `"${config.sender_name || 'Simcha Info Solutions'}" <${config.smtp_user}>`,
+          from: `"${companyDisplayName}" <${config.smtp_user}>`,
           to: cleanEmail,
-          subject: 'Your Password Reset Verification Code - Simcha Info Solutions',
+          subject: `Your Password Reset Verification Code - ${companyDisplayName}`,
           html: `
             <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 520px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
               <div style="background-color: #043486; padding: 20px; text-align: center; color: #ffffff;">
-                <h1 style="margin: 0; font-size: 18px; font-weight: bold; letter-spacing: 0.5px;">SIMCHA INFO SOLUTIONS</h1>
+                <h1 style="margin: 0; font-size: 18px; font-weight: bold; letter-spacing: 0.5px;">${companyDisplayName.toUpperCase()}</h1>
                 <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.9;">Password Reset Verification</p>
               </div>
               
@@ -660,7 +710,8 @@ export async function verifyForgotPasswordOtp(req, res) {
       VALUES (?, ?, ?, FALSE)
     `, [otpRecord.user_id, resetToken, resetTokenExpiresAt])
 
-    const resetLink = `http://localhost:5173/reset-password?token=${resetToken}&email=${encodeURIComponent(cleanEmail)}`
+    const origin = process.env.APP_URL || process.env.FRONTEND_URL || req.get('origin') || (req.get('host') ? `${req.protocol}://${req.get('host')}` : 'http://localhost:5173')
+    const resetLink = `${origin.replace(/\/+$/, '')}/reset-password?token=${resetToken}&email=${encodeURIComponent(cleanEmail)}`
 
     // 7. Dispatch 15-Minute Password Reset Email
     const [emailConfigs] = await pool.query('SELECT * FROM email_configs WHERE id = 1')
@@ -677,14 +728,16 @@ export async function verifyForgotPasswordOtp(req, res) {
           }
         })
 
+        const companyDisplayName = config.sender_name || 'Simcha Info Solutions'
+
         const mailOptions = {
-          from: `"${config.sender_name || 'Simcha Info Solutions'}" <${config.smtp_user}>`,
+          from: `"${companyDisplayName}" <${config.smtp_user}>`,
           to: cleanEmail,
-          subject: 'Password Reset Link - Simcha Info Solutions',
+          subject: `Password Reset Link - ${companyDisplayName}`,
           html: `
             <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 520px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
               <div style="background-color: #043486; padding: 20px; text-align: center; color: #ffffff;">
-                <h1 style="margin: 0; font-size: 18px; font-weight: bold; letter-spacing: 0.5px;">SIMCHA INFO SOLUTIONS</h1>
+                <h1 style="margin: 0; font-size: 18px; font-weight: bold; letter-spacing: 0.5px;">${companyDisplayName.toUpperCase()}</h1>
                 <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.9;">Secure Password Reset</p>
               </div>
               

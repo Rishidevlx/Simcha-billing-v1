@@ -22,11 +22,13 @@ import {
   Calendar,
   FileDigit,
   ChevronDown,
-  ArrowLeft
-} from 'lucide-react'
+  ArrowLeft,
+  List
+} from '../components/common/icons'
 import Swal from 'sweetalert2'
 import SearchableSelect from '../components/common/SearchableSelect'
 import InvoiceTemplate from '../components/invoice/InvoiceTemplate'
+import SkeletonLoader from '../components/common/SkeletonLoader'
 import { Button } from '../components/ui'
 import { BillSummaryCard, OutwardLineItems } from '../components/billing'
 import { API_ENDPOINTS } from '../config/api'
@@ -1132,11 +1134,7 @@ export default function CreateBillPage({ setActiveRoute }) {
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-[500px] flex items-center justify-center">
-        <div className="w-10 h-10 border-3 border-[#043486] border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
+    return <SkeletonLoader type="form" className="max-w-7xl mx-auto" />
   }
 
   const categoryOptions = categories.map(c => ({
@@ -1176,24 +1174,25 @@ export default function CreateBillPage({ setActiveRoute }) {
   }))
 
   return (
-    <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 space-y-6 pb-16 font-['Poppins',sans-serif]">
+    <div className="space-y-6 font-['Poppins',sans-serif] pb-16 animate-in fade-in duration-200">
       
-      {/* 1. Page Header & Quick Shortcuts Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm transition-colors">
+      {/* 1. Page Header (Transparent Top Bar with Outward List Button) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-200/80 dark:border-slate-800 pb-3">
         <div className="flex items-center gap-3">
           {isEditMode && (
             <button
               type="button"
               onClick={() => navigate('/outward-list')}
-              className="p-2.5 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-[#043486] dark:text-blue-400 rounded-none transition-colors cursor-pointer"
+              className="p-2 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-none transition-colors cursor-pointer"
               title="Back to Outward List"
             >
               <ArrowLeft size={18} />
             </button>
           )}
           <div>
-            <h1 className="text-xl font-bold text-[#292424] dark:text-white flex items-center gap-2">
-              <span>{isEditMode ? `Edit Invoice #${invoiceNumber}` : 'Create New Invoice'}</span>
+            <h1 className="text-xl font-bold tracking-tight text-[#292424] dark:text-white uppercase flex items-center gap-2.5">
+              <Receipt className="text-[#043486] dark:text-blue-400" size={22} />
+              <span>{isEditMode ? `EDIT INVOICE (#${invoiceNumber})` : 'CREATE NEW INVOICE'}</span>
               {isEditMode && (
                 <span className="px-2 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-300 text-[10px] font-bold uppercase">
                   Edit Mode
@@ -1206,17 +1205,16 @@ export default function CreateBillPage({ setActiveRoute }) {
           </div>
         </div>
 
-        {/* Keyboard Shortcuts Hint Bar */}
-        <div className="hidden md:flex items-center gap-2 text-[11px] text-gray-500 dark:text-slate-400 bg-gray-50 dark:bg-slate-950 px-3 py-1.5 border border-gray-200 dark:border-slate-800">
-          <span><kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 font-mono text-[10px] font-bold text-[#043486] dark:text-blue-400">Ctrl+Enter</kbd> {isEditMode ? 'Update' : 'Save'}</span>
-          <span>•</span>
-          <span><kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 font-mono text-[10px] font-bold text-[#043486] dark:text-blue-400">Alt+A</kbd> Add Item</span>
-          {!isEditMode && (
-            <>
-              <span>•</span>
-              <span><kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 font-mono text-[10px] font-bold text-[#043486] dark:text-blue-400">Alt+R</kbd> Reset</span>
-            </>
-          )}
+        {/* Right Side: OUTWARD LIST Action Button */}
+        <div className="flex items-center gap-2.5">
+          <Button
+            variant="list"
+            icon={List}
+            onClick={() => navigate('/outward-list')}
+            className="text-xs font-semibold"
+          >
+            OUTWARD LIST
+          </Button>
         </div>
       </div>
 
@@ -1265,7 +1263,9 @@ export default function CreateBillPage({ setActiveRoute }) {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">Invoice Date *</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
+                    Invoice Date <span className="text-red-500 font-bold">*</span>
+                  </label>
                   <input
                     type="date"
                     value={invoiceDate}
@@ -1276,7 +1276,9 @@ export default function CreateBillPage({ setActiveRoute }) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">Place of Supply *</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
+                    Place of Supply <span className="text-red-500 font-bold">*</span>
+                  </label>
                   <SearchableSelect
                     options={stateOptions}
                     value={placeOfSupply}
@@ -1287,7 +1289,7 @@ export default function CreateBillPage({ setActiveRoute }) {
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
-                    Customer / Party Type *
+                    Customer / Party Type <span className="text-red-500 font-bold">*</span>
                   </label>
                   <select
                     value={customerType}
@@ -1378,7 +1380,11 @@ export default function CreateBillPage({ setActiveRoute }) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
-                      {customerType === 'Company' ? 'Company / Business Name *' : 'Customer / Client Name *'}
+                      {customerType === 'Company' ? (
+                        <>Company / Business Name <span className="text-red-500 font-bold">*</span></>
+                      ) : (
+                        <>Customer / Client Name <span className="text-red-500 font-bold">*</span></>
+                      )}
                     </label>
                     <input
                       type="text"
@@ -1468,7 +1474,7 @@ export default function CreateBillPage({ setActiveRoute }) {
                 {!sameAsDelivery && (
                   <div className="animate-in fade-in duration-150">
                     <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
-                      Delivery / Shipping Address <span className="text-red-500">*</span>
+                      Delivery / Shipping Address <span className="text-red-500 font-bold">*</span>
                     </label>
                     <textarea
                       rows={2}

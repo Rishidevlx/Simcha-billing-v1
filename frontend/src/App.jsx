@@ -26,30 +26,56 @@ import UserListPage from './pages/UserListPage'
 import DepartmentListPage from './pages/DepartmentListPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import { ThemeProvider } from './context/ThemeContext'
+import { API_ENDPOINTS } from './config/api'
 
 export default function App() {
   const [user, setUser] = useState(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
 
-  // Verify stored token on app mount
+  // Verify stored token on app mount against live database API
   useEffect(() => {
     const checkAuth = async () => {
       const storedToken = localStorage.getItem('simcha_token') || sessionStorage.getItem('simcha_token')
       const storedUser = localStorage.getItem('simcha_user') || sessionStorage.getItem('simcha_user')
 
-      if (storedToken && storedUser) {
+      if (storedToken) {
         try {
-          const parsedUser = JSON.parse(storedUser)
-          setUser(parsedUser)
-          setIsAuthenticated(true)
+          const res = await fetch(API_ENDPOINTS.ME, {
+            headers: {
+              'Authorization': `Bearer ${storedToken}`
+            }
+          })
+          const data = await res.json()
+
+          if (res.ok && data.success && data.user) {
+            setUser(data.user)
+            setIsAuthenticated(true)
+            if (localStorage.getItem('simcha_token')) {
+              localStorage.setItem('simcha_user', JSON.stringify(data.user))
+            }
+            if (sessionStorage.getItem('simcha_token')) {
+              sessionStorage.setItem('simcha_user', JSON.stringify(data.user))
+            }
+          } else {
+            // Token is invalid, expired or user deleted in DB
+            handleLogout()
+          }
         } catch (e) {
-          console.error('Failed to parse cached user', e)
-          localStorage.removeItem('simcha_token')
-          localStorage.removeItem('simcha_user')
-          sessionStorage.removeItem('simcha_token')
-          sessionStorage.removeItem('simcha_user')
+          console.warn('Backend reachability warning, checking offline cache:', e)
+          if (storedUser) {
+            try {
+              setUser(JSON.parse(storedUser))
+              setIsAuthenticated(true)
+            } catch {
+              handleLogout()
+            }
+          } else {
+            handleLogout()
+          }
         }
+      } else {
+        handleLogout()
       }
       setIsCheckingAuth(false)
     }
@@ -81,8 +107,17 @@ export default function App() {
 
   if (isCheckingAuth) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-[#FFFFFF]">
-        <div className="w-10 h-10 border-3 border-[#043486] border-t-transparent rounded-full animate-spin" />
+      <div className="h-screen w-screen bg-[#F3F3F9] dark:bg-slate-950 flex flex-col p-6 space-y-6 font-['Poppins',sans-serif] animate-pulse">
+        <div className="h-16 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 rounded-none w-full" />
+        <div className="flex-1 space-y-6 max-w-7xl mx-auto w-full">
+          <div className="h-10 bg-white dark:bg-slate-900 rounded-none w-1/3" />
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-28 bg-white dark:bg-slate-900 rounded-none" />
+            ))}
+          </div>
+          <div className="h-80 bg-white dark:bg-slate-900 rounded-none" />
+        </div>
       </div>
     )
   }

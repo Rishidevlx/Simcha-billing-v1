@@ -21,7 +21,7 @@ import {
   Shield,
   Briefcase,
   Users
-} from 'lucide-react'
+} from '../components/common/icons'
 import Swal from 'sweetalert2'
 import * as XLSX from 'xlsx'
 import ListPageHeader from '../components/common/ListPageHeader'
@@ -329,13 +329,14 @@ export default function DepartmentListPage({ setActiveRoute }) {
     <div className="space-y-6 max-w-7xl mx-auto pb-16 font-['Poppins',sans-serif]">
       {/* 1. Page Header with Global Actions */}
       <ListPageHeader
+        icon={Building2}
         title="DEPARTMENT MANAGEMENT"
         subtitle="Organize company divisions, assign user access boundaries, and manage departmental structures."
         actions={
           activeTab === 'list' ? (
             <div className="flex items-center gap-2 flex-wrap">
               {canDownload && (
-                <Button variant="secondary" icon={Download} onClick={handleExportExcel}>
+                <Button variant="export" icon={Download} onClick={handleExportExcel}>
                   EXPORT EXCEL
                 </Button>
               )}
@@ -354,7 +355,7 @@ export default function DepartmentListPage({ setActiveRoute }) {
             </div>
           ) : (
             <Button
-              variant="primary"
+              variant="list"
               icon={List}
               onClick={() => {
                 setActiveTab('list')
@@ -526,9 +527,27 @@ export default function DepartmentListPage({ setActiveRoute }) {
             {/* Table */}
             <div className="overflow-x-auto min-h-[300px]">
               {isLoading ? (
-                <div className="flex flex-col items-center justify-center p-16 text-gray-400 dark:text-slate-500">
-                  <Loader2 className="animate-spin mb-3 text-[#043486] dark:text-blue-500" size={32} />
-                  <p className="text-xs sm:text-sm font-medium">Loading departments...</p>
+                <div className="p-4 space-y-3">
+                  <div className="h-9 bg-slate-100 dark:bg-slate-800 flex items-center px-4 gap-4 animate-pulse">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={i} className="h-3 bg-slate-200 dark:bg-slate-700 rounded-xs flex-1" />
+                    ))}
+                  </div>
+                  {Array.from({ length: 5 }).map((_, rIdx) => (
+                    <div
+                      key={rIdx}
+                      className="h-11 border-b border-gray-100 dark:border-slate-800/70 flex items-center px-4 gap-4 animate-pulse"
+                    >
+                      {Array.from({ length: 6 }).map((_, cIdx) => (
+                        <div
+                          key={cIdx}
+                          className={`h-3 bg-slate-200/80 dark:bg-slate-800 rounded-xs ${
+                            cIdx === 0 ? 'w-10' : 'flex-1'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  ))}
                 </div>
               ) : filteredDepartments.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-16 text-gray-400 dark:text-slate-500 text-center">

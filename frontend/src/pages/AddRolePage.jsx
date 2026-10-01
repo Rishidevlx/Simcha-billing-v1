@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Save, RefreshCw } from 'lucide-react'
+import { Save, RefreshCw } from '../components/common/icons'
 import Swal from 'sweetalert2'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { API_ENDPOINTS } from '../config/api'

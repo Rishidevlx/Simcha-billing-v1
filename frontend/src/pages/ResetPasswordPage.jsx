@@ -12,13 +12,16 @@ import {
   ShieldCheck,
   Loader2,
   User
-} from 'lucide-react'
+} from '../components/common/icons'
 import Swal from 'sweetalert2'
-import logoImage from '../assets/Logo/Logo-bg-remove.webp'
+import defaultLogo from '../assets/Logo/Logo-bg-remove.webp'
 import resetIllustration from '../assets/reset_illustration.png'
 import { API_ENDPOINTS } from '../config/api'
+import { useTheme } from '../context/ThemeContext'
 
 export default function ResetPasswordPage() {
+  const { logo: themeLogo } = useTheme()
+  const activeLogo = themeLogo || defaultLogo
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
 
@@ -201,11 +204,11 @@ export default function ResetPasswordPage() {
       {/* 1. TOP HEADER BAR */}
       <header className="w-full px-4 sm:px-10 py-3.5 flex flex-wrap items-center justify-between gap-4 border-b border-gray-100">
         
-        {/* Left: Simcha Logo (Larger, No text branding) */}
+        {/* Left: Brand Logo (Dynamic from Theme Settings) */}
         <div className="flex items-center">
           <img
-            src={logoImage}
-            alt="Simcha Logo"
+            src={activeLogo}
+            alt="Brand Logo"
             className="h-12 sm:h-14 w-auto object-contain transition-transform hover:scale-105"
           />
         </div>

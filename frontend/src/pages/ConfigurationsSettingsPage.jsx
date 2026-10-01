@@ -23,10 +23,12 @@ import {
   Sparkles,
   Bot,
   Cpu
-} from 'lucide-react'
+} from '../components/common/icons'
 import Swal from 'sweetalert2'
 import { API_ENDPOINTS } from '../config/api'
 import { getUserPermissions } from '../utils/access'
+import ArrowNavTabs from '../components/common/ArrowNavTabs'
+import StatusPill from '../components/ui/StatusPill'
 
 export default function ConfigurationsSettingsPage() {
   const { can, hasAny } = getUserPermissions()
@@ -45,17 +47,19 @@ export default function ConfigurationsSettingsPage() {
   const [isEditingRecipient, setIsEditingRecipient] = useState(false)
 
   const [mailFormData, setMailFormData] = useState({
-    smtp_host: 'smtp.gmail.com',
-    smtp_port: 465,
+    smtp_host: '',
+    smtp_port: '',
     smtp_secure: true,
     smtp_user: '',
     smtp_pass: '',
-    sender_name: 'SIMCHA INFO SOLUTIONS',
+    sender_name: '',
     recipient_email: '',
     auto_email_on_create: true,
     email_customer_copy: true,
-    email_subject: 'New Tax Invoice Generated - {invoice_number}',
-    email_body: 'Dear Customer / Team,\n\nPlease find attached the official Tax Invoice generated from Simcha Info Solutions Billing System.\n\nThank you for doing business with us!'
+    email_subject: '',
+    email_body: '',
+    user_invite_subject: '',
+    user_invite_body: ''
   })
   const [originalMailData, setOriginalMailData] = useState({ ...mailFormData })
 
@@ -69,7 +73,7 @@ export default function ConfigurationsSettingsPage() {
     cloud_name: '',
     api_key: '',
     api_secret: '',
-    folder_name: 'simcha_billing',
+    folder_name: '',
     is_enabled: true
   })
   const [originalCloudinaryData, setOriginalCloudinaryData] = useState({ ...cloudinaryFormData })
@@ -108,17 +112,19 @@ export default function ConfigurationsSettingsPage() {
 
         if (emailData.success && emailData.config) {
           const loadedMail = {
-            smtp_host: emailData.config.smtp_host || 'smtp.gmail.com',
-            smtp_port: emailData.config.smtp_port || 465,
+            smtp_host: emailData.config.smtp_host || '',
+            smtp_port: emailData.config.smtp_port || '',
             smtp_secure: Boolean(emailData.config.smtp_secure),
             smtp_user: emailData.config.smtp_user || '',
             smtp_pass: emailData.config.smtp_pass || '',
-            sender_name: emailData.config.sender_name || 'SIMCHA INFO SOLUTIONS',
+            sender_name: emailData.config.sender_name || '',
             recipient_email: emailData.config.recipient_email || emailData.config.smtp_user || '',
             auto_email_on_create: emailData.config.auto_email_on_create !== undefined ? Boolean(emailData.config.auto_email_on_create) : true,
             email_customer_copy: emailData.config.email_customer_copy !== undefined ? Boolean(emailData.config.email_customer_copy) : true,
-            email_subject: emailData.config.email_subject || 'New Tax Invoice Generated - {invoice_number}',
-            email_body: emailData.config.email_body || ''
+            email_subject: emailData.config.email_subject || '',
+            email_body: emailData.config.email_body || '',
+            user_invite_subject: emailData.config.user_invite_subject || 'Welcome to {company_name} - Account & Password Setup',
+            user_invite_body: emailData.config.user_invite_body || 'Your user account has been created for {company_name} Billing & Inventory System. You can log in with your temporary password or set your custom password using the secure link below:'
           }
           setMailFormData(loadedMail)
           setOriginalMailData(loadedMail)
@@ -129,7 +135,7 @@ export default function ConfigurationsSettingsPage() {
             cloud_name: cloudData.config.cloud_name || '',
             api_key: cloudData.config.api_key || '',
             api_secret: cloudData.config.api_secret || '',
-            folder_name: cloudData.config.folder_name || 'simcha_billing',
+            folder_name: cloudData.config.folder_name || '',
             is_enabled: cloudData.config.is_enabled !== undefined ? Boolean(cloudData.config.is_enabled) : true
           }
           setCloudinaryFormData(loadedCloud)
@@ -429,7 +435,9 @@ export default function ConfigurationsSettingsPage() {
       ...prev,
       recipient_email: originalMailData.recipient_email,
       email_subject: originalMailData.email_subject,
-      email_body: originalMailData.email_body
+      email_body: originalMailData.email_body,
+      user_invite_subject: originalMailData.user_invite_subject,
+      user_invite_body: originalMailData.user_invite_body
     }))
     setIsEditingRecipient(false)
   }
@@ -610,20 +618,16 @@ export default function ConfigurationsSettingsPage() {
   return (
     <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 space-y-6 pb-16 font-['Poppins',sans-serif]">
       
-      {/* 1. Page Header with Boxy Velzon Aesthetics */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm transition-colors">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-blue-50 dark:bg-blue-900/30 text-[#043486] dark:text-blue-400 rounded-none border border-blue-100 dark:border-blue-800/50">
-            <SlidersHorizontal size={22} />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-[#292424] dark:text-white uppercase tracking-wide">
-              Configurations Settings
-            </h1>
-            <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
-              Manage outgoing SMTP mail server and Cloudinary cloud media storage credentials.
-            </p>
-          </div>
+      {/* 1. Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-200/80 dark:border-slate-800 pb-3">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-[#292424] dark:text-white uppercase flex items-center gap-2.5">
+            <SlidersHorizontal className="text-[#043486] dark:text-blue-400" size={22} />
+            <span>CONFIGURATIONS SETTINGS</span>
+          </h1>
+          <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+            Manage outgoing SMTP mail server and Cloudinary cloud media storage credentials.
+          </p>
         </div>
 
         {/* Tab Action Quick Action */}
@@ -632,7 +636,7 @@ export default function ConfigurationsSettingsPage() {
             <button
               onClick={handleTestEmail}
               disabled={isTesting || isLoading}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-[#043486] dark:border-blue-500 text-[#043486] dark:text-blue-400 hover:bg-[#043486] hover:text-white dark:hover:bg-blue-600 text-xs font-bold rounded-none shadow-xs transition-all cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#043486] hover:bg-[#032b6d] dark:bg-blue-600 dark:hover:bg-blue-700 text-white text-xs font-bold rounded-none shadow-xs transition-all cursor-pointer disabled:opacity-50"
             >
               <Send size={14} />
               <span>{isTesting ? 'Testing...' : 'Send Test Email'}</span>
@@ -643,7 +647,7 @@ export default function ConfigurationsSettingsPage() {
             <button
               onClick={handleTestCloudinary}
               disabled={isTestingCloudinary || isLoading}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-sky-600 dark:border-sky-500 text-sky-600 dark:text-sky-400 hover:bg-sky-600 hover:text-white text-xs font-bold rounded-none shadow-xs transition-all cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#043486] hover:bg-[#032b6d] dark:bg-blue-600 dark:hover:bg-blue-700 text-white text-xs font-bold rounded-none shadow-xs transition-all cursor-pointer disabled:opacity-50"
             >
               <Zap size={14} />
               <span>{isTestingCloudinary ? 'Testing...' : 'Test Cloudinary Connection'}</span>
@@ -654,7 +658,7 @@ export default function ConfigurationsSettingsPage() {
             <button
               onClick={handleTestAiConnection}
               disabled={isTestingAi || isLoading}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-[#0248BC] dark:border-blue-500 text-[#0248BC] dark:text-blue-400 hover:bg-[#0248BC] hover:text-white text-xs font-bold rounded-none shadow-xs transition-all cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#043486] hover:bg-[#032b6d] dark:bg-blue-600 dark:hover:bg-blue-700 text-white text-xs font-bold rounded-none shadow-xs transition-all cursor-pointer disabled:opacity-50"
             >
               <Zap size={14} />
               <span>{isTestingAi ? 'Testing...' : 'Test AI Connection'}</span>
@@ -664,46 +668,15 @@ export default function ConfigurationsSettingsPage() {
       </div>
 
       {/* 2. Top Tab Navigation Strip */}
-      <div className="flex border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-x-auto">
-        <button
-          onClick={() => setActiveTab('mail')}
-          className={`flex items-center gap-2.5 px-6 py-3.5 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap ${
-            activeTab === 'mail'
-              ? 'border-[#043486] text-[#043486] dark:border-blue-400 dark:text-blue-400 bg-blue-50/40 dark:bg-blue-900/20'
-              : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/50'
-          }`}
-        >
-          <Mail size={17} />
-          <span>Mail Settings</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('cloudinary')}
-          className={`flex items-center gap-2.5 px-6 py-3.5 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap ${
-            activeTab === 'cloudinary'
-              ? 'border-[#043486] text-[#043486] dark:border-blue-400 dark:text-blue-400 bg-blue-50/40 dark:bg-blue-900/20'
-              : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/50'
-          }`}
-        >
-          <Cloud size={17} />
-          <span>Cloudinary Configurations</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('ai')}
-          className={`flex items-center gap-2.5 px-6 py-3.5 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap ${
-            activeTab === 'ai'
-              ? 'border-[#043486] text-[#043486] dark:border-blue-400 dark:text-blue-400 bg-blue-50/40 dark:bg-blue-900/20'
-              : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/50'
-          }`}
-        >
-          <Bot size={17} />
-          <span>Activate Virtual Assistant</span>
-          {/* {aiFormData.is_enabled && (
-            <span className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-emerald-200 dark:ring-emerald-950" />
-          )} */}
-        </button>
-      </div>
+      <ArrowNavTabs
+        tabs={[
+          { id: 'mail', label: 'Mail Settings', icon: Mail },
+          { id: 'cloudinary', label: 'Cloudinary Configurations', icon: Cloud },
+          { id: 'ai', label: 'Activate Virtual Assistant', icon: Bot }
+        ]}
+        activeTab={activeTab}
+        onChange={setActiveTab}
+      />
 
       {/* ========================================================= */}
       {/* TAB 1: MAIL SETTINGS                                     */}
@@ -849,7 +822,7 @@ export default function ConfigurationsSettingsPage() {
                       disabled={!isEditingSmtp}
                       value={mailFormData.smtp_user}
                       onChange={(e) => handleMailChange('smtp_user', e.target.value)}
-                      placeholder="e.g. simchainfosolutions@gmail.com"
+                      placeholder="Enter sender email address"
                       className={`w-full px-3.5 py-2.5 text-xs font-medium rounded-none transition-all ${
                         isEditingSmtp
                           ? 'text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486] dark:focus:border-blue-500'
@@ -873,7 +846,7 @@ export default function ConfigurationsSettingsPage() {
                       disabled={!isEditingSmtp}
                       value={mailFormData.smtp_pass}
                       onChange={(e) => handleMailChange('smtp_pass', e.target.value)}
-                      placeholder="••••••••••••••••"
+                      placeholder="Enter 16-digit app password"
                       className={`w-full pl-3.5 pr-10 py-2.5 text-xs font-medium rounded-none font-mono transition-all ${
                         isEditingSmtp
                           ? 'text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486] dark:focus:border-blue-500'
@@ -903,7 +876,7 @@ export default function ConfigurationsSettingsPage() {
                     disabled={!isEditingSmtp}
                     value={mailFormData.recipient_email}
                     onChange={(e) => handleMailChange('recipient_email', e.target.value)}
-                    placeholder="e.g. accounts@simcha.com"
+                    placeholder="Enter recipient email address"
                     className={`w-full px-3.5 py-2.5 text-xs font-medium rounded-none transition-all ${
                       isEditingSmtp
                         ? 'text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486] dark:focus:border-blue-500'
@@ -922,7 +895,7 @@ export default function ConfigurationsSettingsPage() {
                     disabled={!isEditingSmtp}
                     value={mailFormData.sender_name}
                     onChange={(e) => handleMailChange('sender_name', e.target.value)}
-                    placeholder="SIMCHA INFO SOLUTIONS"
+                    placeholder="Enter sender display name"
                     className={`w-full px-3.5 py-2.5 text-xs font-medium rounded-none transition-all ${
                       isEditingSmtp
                         ? 'text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486] dark:focus:border-blue-500'
@@ -1022,44 +995,100 @@ export default function ConfigurationsSettingsPage() {
               </div>
 
               <div className="space-y-4 text-xs">
-                {/* Email Subject */}
-                <div>
-                  <label className="block font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
-                    Email Subject Template
-                  </label>
-                  <input
-                    type="text"
-                    disabled={!isEditingRecipient}
-                    value={mailFormData.email_subject}
-                    onChange={(e) => handleMailChange('email_subject', e.target.value)}
-                    placeholder="New Tax Invoice Generated - {invoice_number}"
-                    className={`w-full px-3.5 py-2.5 text-xs font-medium rounded-none transition-all ${
-                      isEditingRecipient
-                        ? 'text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486] dark:focus:border-blue-500'
-                        : 'text-gray-700 dark:text-slate-300 bg-gray-50 dark:bg-slate-950/60 border border-gray-200 dark:border-slate-800 cursor-not-allowed'
-                    }`}
-                  />
-                  <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
-                    Available tags: <code className="text-[#043486] dark:text-blue-400 font-bold">{'{invoice_number}'}</code>, <code className="text-[#043486] dark:text-blue-400 font-bold">{'{customer_name}'}</code>
-                  </p>
+                {/* Section 1: Tax Invoice Email Template */}
+                <div className="pb-3 border-b border-gray-100 dark:border-slate-800/80 space-y-3">
+                  <div className="text-[11px] font-bold text-[#043486] dark:text-blue-400 uppercase tracking-wider">
+                    1. Outward Invoice Email Template
+                  </div>
+
+                  {/* Email Subject */}
+                  <div>
+                    <label className="block font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                      Email Subject Template
+                    </label>
+                    <input
+                      type="text"
+                      disabled={!isEditingRecipient}
+                      value={mailFormData.email_subject}
+                      onChange={(e) => handleMailChange('email_subject', e.target.value)}
+                      placeholder="Enter invoice email subject template"
+                      className={`w-full px-3.5 py-2 text-xs font-medium rounded-none transition-all ${
+                        isEditingRecipient
+                          ? 'text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486] dark:focus:border-blue-500'
+                          : 'text-gray-700 dark:text-slate-300 bg-gray-50 dark:bg-slate-950/60 border border-gray-200 dark:border-slate-800 cursor-not-allowed'
+                      }`}
+                    />
+                    <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                      Available tags: <code className="text-[#043486] dark:text-blue-400 font-bold">{'{invoice_number}'}</code>, <code className="text-[#043486] dark:text-blue-400 font-bold">{'{customer_name}'}</code>
+                    </p>
+                  </div>
+
+                  {/* Message Body Template */}
+                  <div>
+                    <label className="block font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                      Message Body Template
+                    </label>
+                    <textarea
+                      rows={3}
+                      disabled={!isEditingRecipient}
+                      value={mailFormData.email_body}
+                      onChange={(e) => handleMailChange('email_body', e.target.value)}
+                      placeholder="Enter invoice email message body template"
+                      className={`w-full px-3.5 py-2 text-xs font-medium rounded-none transition-all resize-none ${
+                        isEditingRecipient
+                          ? 'text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486] dark:focus:border-blue-500'
+                          : 'text-gray-700 dark:text-slate-300 bg-gray-50 dark:bg-slate-950/60 border border-gray-200 dark:border-slate-800 cursor-not-allowed'
+                      }`}
+                    />
+                  </div>
                 </div>
 
-                {/* Message Body Template */}
-                <div>
-                  <label className="block font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
-                    Message Body Template
-                  </label>
-                  <textarea
-                    rows={5}
-                    disabled={!isEditingRecipient}
-                    value={mailFormData.email_body}
-                    onChange={(e) => handleMailChange('email_body', e.target.value)}
-                    className={`w-full px-3.5 py-2.5 text-xs font-medium rounded-none transition-all resize-none ${
-                      isEditingRecipient
-                        ? 'text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486] dark:focus:border-blue-500'
-                        : 'text-gray-700 dark:text-slate-300 bg-gray-50 dark:bg-slate-950/60 border border-gray-200 dark:border-slate-800 cursor-not-allowed'
-                    }`}
-                  />
+                {/* Section 2: User Account & Password Setup Email Template */}
+                <div className="space-y-3 pt-1">
+                  <div className="text-[11px] font-bold text-[#043486] dark:text-blue-400 uppercase tracking-wider">
+                    2. User Password / Invite Email Template
+                  </div>
+
+                  {/* User Invite Subject Template */}
+                  <div>
+                    <label className="block font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                      User Email Subject / Heading Template
+                    </label>
+                    <input
+                      type="text"
+                      disabled={!isEditingRecipient}
+                      value={mailFormData.user_invite_subject}
+                      onChange={(e) => handleMailChange('user_invite_subject', e.target.value)}
+                      placeholder="Welcome to {company_name} - Account & Password Setup"
+                      className={`w-full px-3.5 py-2 text-xs font-medium rounded-none transition-all ${
+                        isEditingRecipient
+                          ? 'text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486] dark:focus:border-blue-500'
+                          : 'text-gray-700 dark:text-slate-300 bg-gray-50 dark:bg-slate-950/60 border border-gray-200 dark:border-slate-800 cursor-not-allowed'
+                      }`}
+                    />
+                    <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                      Available tags: <code className="text-[#043486] dark:text-blue-400 font-bold">{'{company_name}'}</code>, <code className="text-[#043486] dark:text-blue-400 font-bold">{'{user_name}'}</code>, <code className="text-[#043486] dark:text-blue-400 font-bold">{'{email}'}</code>
+                    </p>
+                  </div>
+
+                  {/* User Invite Message Body Template */}
+                  <div>
+                    <label className="block font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                      User Email Message Body Template
+                    </label>
+                    <textarea
+                      rows={3}
+                      disabled={!isEditingRecipient}
+                      value={mailFormData.user_invite_body}
+                      onChange={(e) => handleMailChange('user_invite_body', e.target.value)}
+                      placeholder="Your user account has been created for {company_name} Billing & Inventory System..."
+                      className={`w-full px-3.5 py-2 text-xs font-medium rounded-none transition-all resize-none ${
+                        isEditingRecipient
+                          ? 'text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-[#043486] dark:focus:border-blue-500'
+                          : 'text-gray-700 dark:text-slate-300 bg-gray-50 dark:bg-slate-950/60 border border-gray-200 dark:border-slate-800 cursor-not-allowed'
+                      }`}
+                    />
+                  </div>
                 </div>
 
                 {/* Live Dispatch Preview */}
@@ -1175,7 +1204,7 @@ export default function ConfigurationsSettingsPage() {
                   disabled={!isEditingCloudinary}
                   value={cloudinaryFormData.cloud_name}
                   onChange={(e) => handleCloudinaryChange('cloud_name', e.target.value)}
-                  placeholder="e.g. simcha-cloud"
+                  placeholder="Enter Cloud Name"
                   className={`w-full px-3.5 py-2.5 text-xs font-medium rounded-none transition-all ${
                     isEditingCloudinary
                       ? 'text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-sky-500'
@@ -1194,7 +1223,7 @@ export default function ConfigurationsSettingsPage() {
                   disabled={!isEditingCloudinary}
                   value={cloudinaryFormData.api_key}
                   onChange={(e) => handleCloudinaryChange('api_key', e.target.value)}
-                  placeholder="e.g. 123456789012345"
+                  placeholder="Enter API Key"
                   className={`w-full px-3.5 py-2.5 text-xs font-medium rounded-none font-mono transition-all ${
                     isEditingCloudinary
                       ? 'text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-sky-500'
@@ -1214,7 +1243,7 @@ export default function ConfigurationsSettingsPage() {
                     disabled={!isEditingCloudinary}
                     value={cloudinaryFormData.api_secret}
                     onChange={(e) => handleCloudinaryChange('api_secret', e.target.value)}
-                    placeholder="••••••••••••••••••••••••••••••••"
+                    placeholder="Enter API Secret"
                     className={`w-full pl-3.5 pr-10 py-2.5 text-xs font-medium rounded-none font-mono transition-all ${
                       isEditingCloudinary
                         ? 'text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-sky-500'
@@ -1243,7 +1272,7 @@ export default function ConfigurationsSettingsPage() {
                     disabled={!isEditingCloudinary}
                     value={cloudinaryFormData.folder_name}
                     onChange={(e) => handleCloudinaryChange('folder_name', e.target.value)}
-                    placeholder="simcha_billing"
+                    placeholder="Enter root folder name"
                     className={`w-full pl-10 pr-3.5 py-2.5 text-xs font-medium rounded-none transition-all ${
                       isEditingCloudinary
                         ? 'text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 focus:outline-none focus:border-sky-500'
@@ -1262,7 +1291,7 @@ export default function ConfigurationsSettingsPage() {
                   type="button"
                   onClick={handleTestCloudinary}
                   disabled={isTestingCloudinary}
-                  className="px-4 py-2 border border-sky-600 text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 text-xs font-bold rounded-none transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#043486] hover:bg-[#032b6d] dark:bg-blue-600 dark:hover:bg-blue-700 text-white text-xs font-bold rounded-none shadow-xs transition-all cursor-pointer disabled:opacity-50"
                 >
                   <Zap size={14} />
                   <span>{isTestingCloudinary ? 'Testing...' : 'Test Connection'}</span>
@@ -1324,15 +1353,7 @@ export default function ConfigurationsSettingsPage() {
               <div>
                 <h3 className="text-sm font-bold text-[#292424] dark:text-white flex items-center gap-2">
                   Activate Virtual Assistant
-                  {aiFormData.is_enabled ? (
-                    <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
-                      ACTIVE
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-300 dark:border-slate-700">
-                      DISABLED
-                    </span>
-                  )}
+                  <StatusPill status={aiFormData.is_enabled ? 'Active' : 'Inactive'} size="sm" />
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 leading-relaxed">
                   When enabled, the floating{' '}
@@ -1498,7 +1519,7 @@ export default function ConfigurationsSettingsPage() {
                   type="button"
                   onClick={handleTestAiConnection}
                   disabled={isTestingAi}
-                  className="px-4 py-2 border border-[#0248BC] text-[#0248BC] hover:bg-blue-50 dark:hover:bg-blue-950/40 text-xs font-bold rounded-none transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#043486] hover:bg-[#032b6d] dark:bg-blue-600 dark:hover:bg-blue-700 text-white text-xs font-bold rounded-none shadow-xs transition-all cursor-pointer disabled:opacity-50"
                 >
                   <Zap size={14} />
                   <span>{isTestingAi ? 'Testing...' : 'Test AI Connection'}</span>

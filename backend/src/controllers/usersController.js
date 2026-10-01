@@ -3,41 +3,80 @@ import crypto from 'crypto'
 import nodemailer from 'nodemailer'
 import { getPool } from '../config/db.js'
 
+// Helper to resolve dynamic production-ready base URL
+function getAppBaseUrl(req) {
+  if (process.env.APP_URL && process.env.APP_URL.trim()) {
+    return process.env.APP_URL.trim().replace(/\/+$/, '')
+  }
+  if (process.env.FRONTEND_URL && process.env.FRONTEND_URL.trim()) {
+    return process.env.FRONTEND_URL.trim().replace(/\/+$/, '')
+  }
+  if (req) {
+    const origin = req.get('origin')
+    if (origin && origin.startsWith('http')) return origin.replace(/\/+$/, '')
+    const host = req.get('host')
+    if (host) return `${req.protocol}://${host}`
+  }
+  return 'http://localhost:5173'
+}
+
 // Helper to send email with 15-minute setup link
-async function sendWelcomeEmail(email, name, rawPassword, setupLink, expiresMinutes = 15) {
+async function sendWelcomeEmail(email, name, rawPassword, setupLink, expiresMinutes = 15, baseUrl = 'http://localhost:5173') {
   try {
     const pool = getPool()
     const [rows] = await pool.query('SELECT * FROM email_configs WHERE id = 1')
     if (rows.length === 0) return false // No config
 
     const config = rows[0]
+    if (!config.smtp_user || !config.smtp_pass) return false
+
+    // Fetch live settings company name
+    const [sysRows] = await pool.query('SELECT company_name FROM settings WHERE id = 1 LIMIT 1')
+    const companyDisplayName = (sysRows && sysRows[0]?.company_name) || config.sender_name || 'Simcha Info Solutions'
+
     const transporter = nodemailer.createTransport({
       host: config.smtp_host,
-      port: config.smtp_port,
-      secure: Boolean(config.smtp_secure),
+      port: parseInt(config.smtp_port, 10) || 465,
+      secure: Number(config.smtp_port) === 465 || Boolean(config.smtp_secure),
       auth: {
-        user: config.smtp_user,
-        pass: config.smtp_pass
+        user: config.smtp_user ? config.smtp_user.trim() : '',
+        pass: config.smtp_pass ? config.smtp_pass.trim() : ''
       }
     })
 
-    const loginUrl = 'http://localhost:5173/login'
+    const loginUrl = `${baseUrl}/login`
+
+    // Template custom Subject & Body with tag replacements
+    let customSubject = config.user_invite_subject || 'Welcome to {company_name} - Account & Password Setup'
+    let customBody = config.user_invite_body || 'Your user account has been created for {company_name} Billing & Inventory System. You can log in with your temporary password or set your custom password using the secure link below:'
+
+    customSubject = customSubject
+      .replace(/\{company_name\}/gi, companyDisplayName)
+      .replace(/\{user_name\}/gi, name)
+      .replace(/\{name\}/gi, name)
+      .replace(/\{email\}/gi, email)
+
+    customBody = customBody
+      .replace(/\{company_name\}/gi, companyDisplayName)
+      .replace(/\{user_name\}/gi, name)
+      .replace(/\{name\}/gi, name)
+      .replace(/\{email\}/gi, email)
 
     const mailOptions = {
-      from: `"${config.sender_name}" <${config.smtp_user}>`,
+      from: `"${companyDisplayName}" <${config.smtp_user}>`,
       to: email,
-      subject: 'Welcome to Simcha Info Solutions - Account & Password Setup',
+      subject: customSubject,
       html: `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
           <div style="background-color: #043486; padding: 24px; text-align: center; color: #ffffff;">
-            <h1 style="margin: 0; font-size: 20px; font-weight: bold; letter-spacing: 0.5px;">SIMCHA INFO SOLUTIONS</h1>
+            <h1 style="margin: 0; font-size: 20px; font-weight: bold; letter-spacing: 0.5px;">${companyDisplayName.toUpperCase()}</h1>
             <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Operator Account & Login Credentials</p>
           </div>
           
           <div style="padding: 24px; color: #334155; line-height: 1.6;">
             <h2 style="color: #043486; font-size: 16px; margin-top: 0;">Welcome, ${name}!</h2>
-            <p style="font-size: 14px; margin-bottom: 20px;">
-              Your user account has been created for the Simcha Billing & Inventory System. You can log in with your temporary password or set your custom password using the secure link below:
+            <p style="font-size: 14px; margin-bottom: 20px; white-space: pre-line;">
+              ${customBody}
             </p>
 
             <!-- Credentials Box -->
@@ -121,16 +160,19 @@ export const createUser = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Name, Email, and Role are required' })
     }
 
-    if (phone && !/^\d{10}$/.test(phone.toString().trim())) {
+    const cleanEmail = email.trim().toLowerCase()
+    const cleanPhone = phone ? phone.toString().replace(/\D/g, '').slice(-10) : null
+
+    if (phone && cleanPhone && cleanPhone.length !== 10) {
       return res.status(400).json({ success: false, message: 'Please provide a valid 10-digit phone number' })
     }
 
     const pool = getPool()
 
     // Check if email already exists
-    const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [email])
+    const [existing] = await pool.query('SELECT id FROM users WHERE LOWER(email) = ?', [cleanEmail])
     if (existing.length > 0) {
-      return res.status(400).json({ success: false, message: 'Email already exists' })
+      return res.status(400).json({ success: false, message: 'This email address is already registered to another user.' })
     }
 
     // Auto-generate temporary password
@@ -154,11 +196,11 @@ export const createUser = async (req, res) => {
       [userId, resetToken, expiresAt]
     )
 
-    const origin = req.get('origin') || 'http://localhost:5173'
-    const setupLink = `${origin}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`
+    const origin = getAppBaseUrl(req)
+    const setupLink = `${origin}/reset-password?token=${resetToken}&email=${encodeURIComponent(cleanEmail)}`
 
     // Attempt to send email with temporary credentials & 15-minute setup link
-    const emailSent = await sendWelcomeEmail(email, name, rawPassword, setupLink, 15)
+    const emailSent = await sendWelcomeEmail(cleanEmail, name, rawPassword, setupLink, 15, origin)
 
     res.status(201).json({
       success: true,
@@ -207,10 +249,10 @@ export const resendInviteLink = async (req, res) => {
       [user.id, resetToken, expiresAt]
     )
 
-    const origin = req.get('origin') || 'http://localhost:5173'
+    const origin = getAppBaseUrl(req)
     const setupLink = `${origin}/reset-password?token=${resetToken}&email=${encodeURIComponent(user.email)}`
 
-    const emailSent = await sendWelcomeEmail(user.email, user.name, rawPassword, setupLink, 15)
+    const emailSent = await sendWelcomeEmail(user.email, user.name, rawPassword, setupLink, 15, origin)
 
     res.json({
       success: true,
@@ -235,7 +277,10 @@ export const updateUser = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Name, Email, and Role are required' })
     }
 
-    if (phone && !/^\d{10}$/.test(phone.toString().trim())) {
+    const cleanEmail = email.trim().toLowerCase()
+    const cleanPhone = phone ? phone.toString().replace(/\D/g, '').slice(-10) : null
+
+    if (phone && cleanPhone && cleanPhone.length !== 10) {
       return res.status(400).json({ success: false, message: 'Please provide a valid 10-digit phone number' })
     }
 
@@ -250,9 +295,9 @@ export const updateUser = async (req, res) => {
     const isSystemAdmin = userRows[0].role === 'Administrator' || Number(userId) === 1
 
     // Check if email exists for other users
-    const [existing] = await pool.query('SELECT id FROM users WHERE email = ? AND id != ?', [email, userId])
+    const [existing] = await pool.query('SELECT id FROM users WHERE LOWER(email) = ? AND id != ?', [cleanEmail, userId])
     if (existing.length > 0) {
-      return res.status(400).json({ success: false, message: 'Email already exists' })
+      return res.status(400).json({ success: false, message: 'This email address is already in use by another user.' })
     }
 
     const finalRole = isSystemAdmin ? 'Administrator' : role
@@ -260,7 +305,7 @@ export const updateUser = async (req, res) => {
 
     await pool.query(
       'UPDATE users SET name = ?, email = ?, phone = ?, designation = ?, department = ?, role = ?, status = ? WHERE id = ?',
-      [name, email, phone || null, designation || null, department || null, finalRole, finalStatus, userId]
+      [name.trim(), cleanEmail, cleanPhone || null, designation ? designation.trim() : null, department ? department.trim() : null, finalRole, finalStatus, userId]
     )
 
     res.json({ success: true, message: 'User updated successfully' })
@@ -292,6 +337,7 @@ export const deleteUser = async (req, res) => {
       })
     }
 
+    await pool.query('DELETE FROM password_reset_tokens WHERE user_id = ?', [userId])
     await pool.query('DELETE FROM users WHERE id = ?', [userId])
 
     res.json({ success: true, message: 'User deleted successfully' })

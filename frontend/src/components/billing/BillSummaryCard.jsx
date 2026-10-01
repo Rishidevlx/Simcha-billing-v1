@@ -1,5 +1,5 @@
 import React from 'react'
-import { IndianRupee, Save, RotateCcw, ArrowLeft } from 'lucide-react'
+import { IndianRupee, Save, RotateCcw, ArrowLeft } from '../common/icons'
 import { Button } from '../ui'
 
 /**
@@ -52,7 +52,7 @@ export default function BillSummaryCard({
           <span>{title}</span>
         </h2>
         {billNumber && (
-          <span className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/60 text-[#043486] dark:text-blue-300 border border-blue-200 dark:border-blue-900 text-xs font-mono font-bold">
+          <span className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/60 text-[#043486] dark:text-blue-300 border border-blue-200 dark:border-blue-900 text-[10px] font-mono font-bold uppercase">
             {billNumber}
           </span>
         )}
@@ -62,7 +62,7 @@ export default function BillSummaryCard({
         {/* Optional Items Breakdown list (e.g. Inward page) */}
         {itemsBreakdown && (
           <div className="p-3 bg-gray-50 dark:bg-slate-950 rounded-none border border-gray-200 dark:border-slate-800 space-y-2.5">
-            <div className="flex items-center justify-between text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider pb-1 border-b border-gray-200 dark:border-slate-800">
+            <div className="flex items-center justify-between text-xs font-bold text-[#043486] dark:text-blue-400 uppercase tracking-wider pb-1 border-b border-gray-200 dark:border-slate-800">
               <span>Item &amp; Rate</span>
               <span>Total Amount</span>
             </div>

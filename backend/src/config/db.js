@@ -60,6 +60,10 @@ export async function initDatabase() {
           keepAliveInitialDelay: 5000
         })
 
+        pool.on('error', (err) => {
+          console.warn('⚠️ TiDB Connection Pool socket notice (handled):', err.message || err.code)
+        })
+
         startKeepAlivePing()
         console.log('✅ TiDB Cloud Connection Pool ready.')
 
@@ -85,11 +89,8 @@ export async function initDatabase() {
           // Column already exists
         }
 
-        // Note: Full table creation / DDL migration logic is preserved in runDatabaseMigrations() 
-        // below for on-demand execution, saving latency on cold start.
-        if (process.env.RUN_MIGRATIONS === 'true') {
-          await runDatabaseMigrations()
-        }
+        // Run database schema migrations to guarantee all tables and columns are created safely
+        await runDatabaseMigrations()
 
         return pool
       } catch (error) {
@@ -310,10 +311,16 @@ export async function runDatabaseMigrations() {
 
         // Ensure settings table has new columns (bank_image_url, numbering schemes, signature_url)
         try {
-          await pool.query(`ALTER TABLE settings ADD COLUMN bank_image_url TEXT NULL AFTER branch;`)
+          await pool.query(`ALTER TABLE settings ADD COLUMN bank_image_url LONGTEXT NULL AFTER branch;`)
         } catch {}
         try {
-          await pool.query(`ALTER TABLE settings ADD COLUMN signature_url TEXT NULL AFTER bank_image_url;`)
+          await pool.query(`ALTER TABLE settings MODIFY COLUMN bank_image_url LONGTEXT NULL;`)
+        } catch {}
+        try {
+          await pool.query(`ALTER TABLE settings ADD COLUMN signature_url LONGTEXT NULL AFTER bank_image_url;`)
+        } catch {}
+        try {
+          await pool.query(`ALTER TABLE settings MODIFY COLUMN signature_url LONGTEXT NULL;`)
         } catch {}
         try {
           await pool.query(`ALTER TABLE settings ADD COLUMN invoice_financial_year VARCHAR(20) DEFAULT '2026-27';`)
@@ -398,6 +405,35 @@ export async function runDatabaseMigrations() {
           await pool.query(`ALTER TABLE settings ADD COLUMN due_date_days INT DEFAULT 15 AFTER return_days;`)
         } catch {}
 
+        // Ensure settings table has theme configuration columns
+        try {
+          await pool.query(`ALTER TABLE settings ADD COLUMN primary_color VARCHAR(50) DEFAULT '#043486';`)
+        } catch {}
+        try {
+          await pool.query(`ALTER TABLE settings ADD COLUMN secondary_color VARCHAR(50) DEFAULT '#0248BC';`)
+        } catch {}
+        try {
+          await pool.query(`ALTER TABLE settings ADD COLUMN accent_color VARCHAR(50) DEFAULT '#3B82F6';`)
+        } catch {}
+        try {
+          await pool.query(`ALTER TABLE settings ADD COLUMN sidebar_theme VARCHAR(50) DEFAULT 'dark';`)
+        } catch {}
+        try {
+          await pool.query(`ALTER TABLE settings ADD COLUMN logo_url TEXT NULL;`)
+        } catch {}
+        try {
+          await pool.query(`ALTER TABLE settings ADD COLUMN favicon_url TEXT NULL;`)
+        } catch {}
+        try {
+          await pool.query(`ALTER TABLE settings ADD COLUMN invoice_accent_color VARCHAR(50) DEFAULT '#043486';`)
+        } catch {}
+        try {
+          await pool.query(`ALTER TABLE settings ADD COLUMN invoice_header_style VARCHAR(50) DEFAULT 'banner';`)
+        } catch {}
+        try {
+          await pool.query(`ALTER TABLE settings ADD COLUMN theme_config JSON NULL;`)
+        } catch {}
+
         // Ensure materials and bill_items have return_policy column
         try {
           await pool.query(`ALTER TABLE materials ADD COLUMN return_policy BOOLEAN DEFAULT FALSE AFTER serial_tracking;`)
@@ -477,9 +513,19 @@ try {
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         `)
 
-        // Ensure email_customer_copy column exists in existing databases
+        // Ensure email_customer_copy and user invite columns exist in existing databases
         try {
           await pool.query(`ALTER TABLE email_configs ADD COLUMN email_customer_copy BOOLEAN DEFAULT TRUE AFTER auto_email_on_create;`)
+        } catch {
+          // Column already exists
+        }
+        try {
+          await pool.query(`ALTER TABLE email_configs ADD COLUMN user_invite_subject VARCHAR(255) DEFAULT 'Welcome to {company_name} - Account & Password Setup' AFTER email_body;`)
+        } catch {
+          // Column already exists
+        }
+        try {
+          await pool.query(`ALTER TABLE email_configs ADD COLUMN user_invite_body TEXT AFTER user_invite_subject;`)
         } catch {
           // Column already exists
         }
@@ -859,6 +905,9 @@ export function getPool() {
       queueLimit: 0,
       enableKeepAlive: true,
       keepAliveInitialDelay: 5000
+    })
+    pool.on('error', (err) => {
+      console.warn('⚠️ TiDB Connection Pool socket notice (handled):', err.message || err.code)
     })
     startKeepAlivePing()
   }

@@ -21,7 +21,7 @@ import {
   Package,
   ListFilter,
   PlusCircle
-} from 'lucide-react'
+} from '../components/common/icons'
 import Swal from 'sweetalert2'
 import SearchableSelect from '../components/common/SearchableSelect'
 import { API_ENDPOINTS } from '../config/api'
@@ -324,25 +324,14 @@ export default function AddMaterialPage({ editMaterialId = null, onSaved, setAct
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center text-xs text-gray-500 dark:text-slate-400 gap-1.5 font-medium">
-            <span>Home</span>
-            <span>›</span>
-            <span>Materials</span>
-            <span>›</span>
-            <span className="text-[#043486] dark:text-blue-400 font-semibold">
-              {targetEditId ? 'Edit' : 'Add Material'}
-            </span>
-          </div>
-
-          {setActiveRoute && (
-            <Button
-              variant="secondary"
-              icon={ListFilter}
-              onClick={() => setActiveRoute('all-materials')}
-            >
-              All Materials
-            </Button>
-          )}
+          <Button
+            variant="list"
+            icon={List}
+            onClick={() => setActiveRoute('all-materials')}
+            className="text-xs font-semibold"
+          >
+            MATERIAL LIST
+          </Button>
         </div>
       </div>
 

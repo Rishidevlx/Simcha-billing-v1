@@ -22,9 +22,10 @@ import {
   Hash,
   ShieldCheck,
   Clock,
-  Receipt,
-  ImageDown
-} from 'lucide-react'
+  List,
+  ImageDown,
+  RefreshCw
+} from '../components/common/icons'
 import * as XLSX from 'xlsx'
 import Swal from 'sweetalert2'
 import ListPageHeader from '../components/common/ListPageHeader'
@@ -60,10 +61,10 @@ export default function InwardReportsPage() {
   // Get User Permissions
   const simchaUser = JSON.parse(localStorage.getItem('simcha_user') || '{}')
   const hasFullAccess = simchaUser.role === 'Administrator' || (simchaUser.admin_access || []).includes('Full Admin Access')
-  
+
   const inwardListPerms = (simchaUser.permissions || {})['inward_list'] || []
   const inwardPerms = (simchaUser.permissions || {})['inward'] || []
-  
+
   const canAdd = hasFullAccess || inwardPerms.includes('Add')
   const canEdit = hasFullAccess || inwardListPerms.includes('Edit') || inwardPerms.includes('Edit')
   const canDelete = hasFullAccess || inwardListPerms.includes('Delete') || inwardPerms.includes('Delete')
@@ -175,7 +176,7 @@ export default function InwardReportsPage() {
         const supplierName = (item.supplier_name || '').toLowerCase()
         const phone = (item.supplier_phone || '').toLowerCase()
         const gstin = (item.supplier_gstin || '').toLowerCase()
-        
+
         const matchSearch =
           inwardNo.includes(query) ||
           supplierName.includes(query) ||
@@ -377,48 +378,55 @@ export default function InwardReportsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-16 font-['Poppins',sans-serif]">
-      
-      {/* 1. Header & Action Buttons */}
-      <ListPageHeader
-        title="Inward List"
-        subtitle="Comprehensive log of all inward inventory purchases, supplier details, and material records."
-        actions={
-          <>
-            {canDownload && (
-              <Button
-                variant="secondary"
-                icon={Download}
-                onClick={handleExportExcel}
-                className="!bg-[#0f766e] !hover:bg-[#115e59] !text-white !border-transparent text-xs"
-                title={selectedIds.length > 0 ? `Export ${selectedIds.length} Selected Record(s)` : 'Export All Filtered Records'}
-              >
-                {selectedIds.length > 0 ? `EXPORT SELECTED (${selectedIds.length})` : 'EXPORT TO EXCEL'}
-              </Button>
-            )}
-            {canAdd && (
-              <Button
-                variant="primary"
-                icon={Plus}
-                onClick={() => {
-                  if (setActiveRoute) setActiveRoute('inward')
-                  navigate('/inward')
-                }}
-                className="text-xs"
-              >
-                CREATE NEW INWARD
-              </Button>
-            )}
-          </>
-        }
-      />
+    <div className="space-y-6 font-['Poppins',sans-serif] pb-16 animate-in fade-in duration-200">
+
+      {/* 1. Transparent Header with Action Buttons */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-200/80 dark:border-slate-800 pb-3">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-[#292424] dark:text-white uppercase flex items-center gap-2.5">
+            <List className="text-[#043486] dark:text-blue-400" size={22} />
+            <span>INWARD LIST</span>
+          </h1>
+          <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+            Comprehensive log of all inward inventory purchases & material records.
+          </p>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {canDownload && (
+            <Button
+              variant="export"
+              icon={Download}
+              onClick={handleExportExcel}
+              className="text-xs font-semibold"
+              title={selectedIds.length > 0 ? `Export ${selectedIds.length} Selected Record(s)` : 'Export All Filtered Records'}
+            >
+              {selectedIds.length > 0 ? `EXPORT SELECTED (${selectedIds.length})` : 'EXPORT TO EXCEL'}
+            </Button>
+          )}
+          {canAdd && (
+            <Button
+              variant="primary"
+              icon={Plus}
+              onClick={() => {
+                if (setActiveRoute) setActiveRoute('inward')
+                navigate('/inward')
+              }}
+              className="text-xs font-semibold"
+            >
+              CREATE NEW INWARD
+            </Button>
+          )}
+        </div>
+      </div>
 
       {/* 2. KPI Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <ListKpiCard
           label="Total Inward Entries"
           value={stats.totalInwards || inwards.length}
-          icon={Receipt}
+          icon={List}
           variant="blue"
         />
         <ListKpiCard
@@ -437,7 +445,7 @@ export default function InwardReportsPage() {
 
       {/* 3. Advanced Multi-Filter Bar & Date Range Filtering */}
       <div className="bg-white dark:bg-slate-900 p-5 rounded-none border border-gray-200 dark:border-slate-800 shadow-xs space-y-4 transition-colors">
-        
+
         {/* Top Search & Action Row */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="w-full sm:w-96 max-w-md">
@@ -458,11 +466,14 @@ export default function InwardReportsPage() {
           <div>
             <button
               type="button"
-              onClick={handleResetFilters}
-              title="Reset Filters"
-              className="flex items-center justify-center p-2.5 text-xs font-bold text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-none border border-gray-300 dark:border-slate-700 transition-colors cursor-pointer"
+              onClick={() => {
+                handleResetFilters()
+                fetchInwardData()
+              }}
+              title="Reload Inward Data"
+              className="p-2 text-gray-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors shadow-xs cursor-pointer"
             >
-              <RotateCcw size={14} />
+              <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
             </button>
           </div>
         </div>
@@ -521,9 +532,27 @@ export default function InwardReportsPage() {
       {/* 4. Inward Table (Crisp Boxie Layout) */}
       <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 shadow-xs overflow-hidden transition-colors">
         {isLoading ? (
-          <div className="py-20 flex flex-col items-center justify-center gap-3">
-            <div className="w-8 h-8 border-3 border-[#043486] border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs text-gray-400 font-medium">Loading inward entries...</span>
+          <div className="p-4 space-y-3">
+            <div className="h-9 bg-slate-100 dark:bg-slate-800 flex items-center px-4 gap-4 animate-pulse">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="h-3 bg-slate-200 dark:bg-slate-700 rounded-xs flex-1" />
+              ))}
+            </div>
+            {Array.from({ length: 6 }).map((_, rIdx) => (
+              <div
+                key={rIdx}
+                className="h-11 border-b border-gray-100 dark:border-slate-800/70 flex items-center px-4 gap-4 animate-pulse"
+              >
+                {Array.from({ length: 8 }).map((_, cIdx) => (
+                  <div
+                    key={cIdx}
+                    className={`h-3 bg-slate-200/80 dark:bg-slate-800 rounded-xs ${
+                      cIdx === 0 ? 'w-10' : cIdx === 7 ? 'w-16' : 'flex-1'
+                    }`}
+                  />
+                ))}
+              </div>
+            ))}
           </div>
         ) : paginatedInwards.length === 0 ? (
           <div className="py-16 text-center space-y-3">
@@ -534,7 +563,7 @@ export default function InwardReportsPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm border-collapse font-['Poppins',sans-serif]">
-              <thead className="bg-[#f8fafc] dark:bg-slate-800/80 border-b border-gray-200 dark:border-slate-800 text-[11px] uppercase tracking-wider text-gray-600 dark:text-slate-300 font-bold">
+              <thead className="bg-[#f8fafc] dark:bg-slate-800/80 border-b border-gray-200 dark:border-slate-800 text-xs uppercase tracking-wider text-gray-600 dark:text-slate-300 font-bold">
                 <tr>
                   {/* Select All Checkbox */}
                   <th className="py-3 px-3.5 w-10 text-center">
@@ -570,11 +599,10 @@ export default function InwardReportsPage() {
                   return (
                     <tr
                       key={inv.id}
-                      className={`transition-colors ${
-                        isSelected
+                      className={`transition-colors ${isSelected
                           ? 'bg-blue-50/80 dark:bg-blue-950/40 border-l-2 border-[#043486] dark:border-blue-500'
                           : 'hover:bg-blue-50/40 dark:hover:bg-slate-800/40'
-                      }`}
+                        }`}
                     >
                       {/* Checkbox */}
                       <td className="py-3.5 px-3.5 text-center">
@@ -707,7 +735,7 @@ export default function InwardReportsPage() {
       {selectedInward && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col font-['Poppins',sans-serif]">
-            
+
             {/* Modal Header */}
             <div className="px-6 py-4 bg-[#405189] dark:bg-slate-800 text-white flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -729,7 +757,7 @@ export default function InwardReportsPage() {
 
             {/* Modal Body */}
             <div className="p-6 overflow-y-auto space-y-6">
-              
+
               {/* Supplier & Entry Information Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-4 bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-800 space-y-2">
@@ -816,7 +844,7 @@ export default function InwardReportsPage() {
                           <td className="py-3 px-3">
                             <p className="font-bold text-gray-900 dark:text-white">{it.item_name}</p>
                             {it.description && <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">{it.description}</p>}
-                            
+
                             {/* Serial numbers badge list */}
                             {it.has_serial && it.serial_numbers_list && it.serial_numbers_list.length > 0 && (
                               <div className="mt-2 pt-1.5 border-t border-gray-100 dark:border-slate-800">

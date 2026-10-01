@@ -13,15 +13,18 @@ import {
   Loader2,
   Clock,
   RotateCcw
-} from 'lucide-react'
+} from '../components/common/icons'
 import Input from '../components/ui/Input'
 import Button from '../components/ui/Button'
 import Checkbox from '../components/ui/Checkbox'
-import logoImg from '../assets/Logo/Logo-bg-remove.webp'
+import defaultLogo from '../assets/Logo/Logo-bg-remove.webp'
 import growthAnimation from '../assets/lottiefiles/growth-software.json'
 import { API_ENDPOINTS } from '../config/api'
+import { useTheme } from '../context/ThemeContext'
 
 export default function LoginPage({ onLogin }) {
+  const { logo: themeLogo, companyName } = useTheme()
+  const activeLogo = themeLogo || defaultLogo
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -240,8 +243,8 @@ export default function LoginPage({ onLogin }) {
         {/* Top: Large Right-side Logo */}
         <div className="w-full flex justify-end">
           <img
-            src={logoImg}
-            alt="Simcha Logo"
+            src={activeLogo}
+            alt="Brand Logo"
             className="h-16 sm:h-20 lg:h-24 w-auto object-contain transition-transform hover:scale-105 duration-200"
           />
         </div>
@@ -254,7 +257,7 @@ export default function LoginPage({ onLogin }) {
               Welcome Back
             </h1>
             <p className="mt-2 text-xs sm:text-sm text-gray-500 font-normal">
-              Please enter your credentials to login to Simcha Billing.
+              Please enter your credentials to login to {companyName || 'Simcha'} Billing.
             </p>
           </div>
 
@@ -276,7 +279,7 @@ export default function LoginPage({ onLogin }) {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@simcha.com"
+                placeholder="Enter your email address"
               />
             </div>
 

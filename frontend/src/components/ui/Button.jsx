@@ -16,7 +16,13 @@ export default function Button({
 
   const variants = {
     primary:
+      "relative overflow-hidden bg-transparent border border-[#043486] dark:border-blue-500 text-[#043486] dark:text-blue-400 hover:text-white dark:hover:text-white before:absolute before:inset-0 before:bg-[#043486] dark:before:bg-[#043486] before:-translate-x-full hover:before:translate-x-0 before:transition-transform before:duration-300 before:ease-out shadow-xs group z-0 [&>*]:relative [&>*]:z-10",
+    create:
+      "relative overflow-hidden bg-transparent border border-[#043486] dark:border-blue-500 text-[#043486] dark:text-blue-400 hover:text-white dark:hover:text-white before:absolute before:inset-0 before:bg-[#043486] dark:before:bg-[#043486] before:-translate-x-full hover:before:translate-x-0 before:transition-transform before:duration-300 before:ease-out shadow-xs group z-0 [&>*]:relative [&>*]:z-10",
+    list:
       "bg-[#043486] hover:bg-[#0248BC] text-white border border-transparent shadow-xs hover:shadow-sm",
+    export:
+      "bg-[#0f766e] hover:bg-[#115e59] text-white border border-transparent shadow-xs hover:shadow-sm",
     secondary:
       "bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800",
     outline:
@@ -24,7 +30,7 @@ export default function Button({
     danger:
       "bg-rose-600 hover:bg-rose-700 text-white border border-transparent shadow-xs",
     success:
-      "bg-emerald-600 hover:bg-emerald-700 text-white border border-transparent shadow-xs",
+      "bg-[#0f766e] hover:bg-[#115e59] text-white border border-transparent shadow-xs hover:shadow-sm",
     ghost:
       "bg-transparent text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 border-transparent shadow-none",
     reset:

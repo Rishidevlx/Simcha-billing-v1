@@ -1,9 +1,15 @@
 import React from 'react'
-import logoImg from '../../assets/Logo/Logo-bg-remove.webp'
-import faviconWatermark from '../../assets/Logo/Favicon.jpeg'
-import { Phone, Mail, MapPin } from 'lucide-react'
+import { useTheme } from '../../context/ThemeContext'
+import {
+  TemplatePageShell,
+  TemplateHeader,
+  TemplateMetaBar,
+  TemplatePartyBox,
+  TemplateSummaryGrid,
+  TemplateFooterRibbon
+} from './shared'
 
-// Helper function to paginate invoice items into strictly 5 items per A4 page
+// Helper function to paginate service invoice items into strictly 5 items per A4 page
 function paginateInvoiceItems(items) {
   if (!items || items.length === 0) {
     return [{
@@ -42,18 +48,20 @@ export default function ServiceInvoiceTemplate({ service, bill, settings }) {
   const data = service || bill
   if (!data) return null
 
-  // Resolve dynamic settings with fallbacks
-  const companyName = settings?.company_name || 'SIMCHA INFO SOLUTIONS'
-  const companyGstin = settings?.gstin || '33GEZPM1178G1ZY'
-  const companyPhone = settings?.phone || '8122022060'
-  const companyEmail = settings?.email || 'simchainfosolutions@gmail.com'
-  const companyAddress = settings?.address || '7A3, Thulasi Ammal Layout 2nd Street, Lakshmipuram, Peelamedu Post, Coimbatore - 641 004.'
+  const { companyName: themeCompanyName, companyDetails } = useTheme()
 
-  const bankName = settings?.bank_name || 'Canara Bank'
-  const bankBranch = settings?.branch || 'Peelamedu'
-  const bankAccountName = settings?.account_name || 'Simcha Info Solutions'
-  const bankAccountNo = settings?.account_no || '120041754011'
-  const bankIfsc = settings?.ifsc_code || 'CNRB0002732'
+  // Resolve dynamic settings with fallbacks from Theme/System Settings
+  const companyName = settings?.company_name || themeCompanyName || companyDetails?.name || ''
+  const companyGstin = settings?.gstin || companyDetails?.gstin || ''
+  const companyPhone = settings?.phone || companyDetails?.phone || ''
+  const companyEmail = settings?.email || companyDetails?.email || ''
+  const companyAddress = settings?.address || companyDetails?.address || ''
+
+  const bankName = settings?.bank_name || ''
+  const bankBranch = settings?.branch || ''
+  const bankAccountName = settings?.account_name || companyName || ''
+  const bankAccountNo = settings?.account_no || ''
+  const bankIfsc = settings?.ifsc_code || ''
   const bankImageUrl = settings?.bank_image_url || ''
   
   const defaultTermsList = Array.isArray(settings?.terms_conditions) && settings.terms_conditions.length > 0
@@ -100,132 +108,43 @@ export default function ServiceInvoiceTemplate({ service, bill, settings }) {
   return (
     <div id="service-invoice-printable-area" className="w-full">
       {paginatedPages.map((page) => (
-        <div
+        <TemplatePageShell
           key={page.pageIndex}
-          className="invoice-page relative bg-white text-[#292424] font-['Poppins',sans-serif] w-full max-w-[210mm] min-h-[297mm] max-h-[297mm] h-[297mm] mx-auto p-0 flex flex-col justify-between shadow-lg print:shadow-none print:w-full print:max-w-none print:h-[297mm] print:min-h-[297mm] print:max-h-[297mm] text-[11.5px] leading-relaxed overflow-hidden box-border mb-8 print:mb-0"
-          style={{
-            pageBreakAfter: page.pageIndex < page.totalPages ? 'always' : 'avoid',
-            breakAfter: page.pageIndex < page.totalPages ? 'page' : 'avoid',
-            boxSizing: 'border-box'
-          }}
+          pageIndex={page.pageIndex}
+          totalPages={page.totalPages}
         >
-          {/* Background Watermark */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0 opacity-[0.05]">
-            <img
-              src={faviconWatermark}
-              alt="Favicon Watermark"
-              className="w-[300px] max-w-full object-contain filter grayscale"
-            />
-          </div>
-
           {/* Main Content Area */}
           <div className="relative z-10 px-7 pt-6 pb-2 space-y-3 flex-1">
-
-            {/* --- FIXED FULL HEADER FOR ALL PAGES --- */}
-            <div className="space-y-1">
-              <div className="flex items-start justify-between gap-4 pt-0.5">
-                {/* Left Large Logo + Branding */}
-                <div className="flex items-start gap-3.5">
-                  <img
-                    src={logoImg}
-                    alt="Simcha Logo"
-                    className="h-20 w-auto object-contain shrink-0 -mt-1"
-                  />
-                  <div className="space-y-0.5">
-                    <h1 className="text-xl font-black text-[#043486] tracking-tight leading-none">
-                      {companyName}
-                    </h1>
-                    <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider pt-0.5">
-                      IT CONSULTING | HARDWARE &amp; SOFTWARE SOLUTIONS | SALES &amp; SERVICE
-                    </p>
-                    <p className="text-[10px] text-gray-600 leading-normal truncate max-w-lg">
-                      {companyAddress}
-                    </p>
-                    <p className="text-[10px] text-gray-700 font-medium">
-                      <strong>Mobile:</strong> {companyPhone} &nbsp;|&nbsp; <strong>Email:</strong> {companyEmail}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Top Right: GSTIN Header */}
-                <div className="text-right shrink-0 pt-0.5">
-                  <div className="text-xs font-bold text-[#292424] font-mono tracking-wide">
-                    <span className="text-gray-500 font-bold font-sans text-[11px]">GSTIN: </span>
-                    {companyGstin}
-                  </div>
-                  <div className="mt-1">
-                    <span className="text-[9.5px] font-extrabold uppercase px-2 py-0.5 bg-[#043486]/10 text-[#043486] border border-[#043486]/20">
-                      SERVICE INVOICE
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Thin Divider Rule */}
-              <div className="w-full h-[2px] bg-[#043486] mt-1.5" />
-            </div>
+            {/* Full Header */}
+            <TemplateHeader
+              companyName={companyName}
+              companyGstin={companyGstin}
+              companyPhone={companyPhone}
+              companyEmail={companyEmail}
+              companyAddress={companyAddress}
+            />
 
             {/* Service Meta Bar */}
-            <div className="bg-[#f3f4f6] border border-gray-300 px-3.5 py-1.5 flex items-center justify-between text-xs font-bold text-[#292424]">
-              <div className="flex items-center gap-1.5">
-                <span className="text-gray-600 uppercase font-semibold text-[10.5px]">SERVICE INVOICE NUMBER:</span>
-                <span className="text-[#292424] font-mono text-sm font-black">{data.service_number || data.invoice_number}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-gray-600 uppercase font-semibold text-[10.5px]">SERVICE DATE:</span>
-                <span className="text-[#292424] font-semibold text-[11.5px]">{formatDate(data.service_date || data.invoice_date)}</span>
-              </div>
-            </div>
+            <TemplateMetaBar
+              docNumberLabel="SERVICE INVOICE NUMBER:"
+              docNumber={data.service_number || data.invoice_number}
+              dateLabel="SERVICE DATE:"
+              dateValue={formatDate(data.service_date || data.invoice_date)}
+            />
 
-            {/* Customer Bill To Details */}
-            <div className="border border-gray-300 p-2.5 bg-white/80 text-[#292424]">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <span className="text-[9.5px] font-black text-[#292424] uppercase tracking-wider block mb-0.5">
-                    BILL TO / CLIENT
-                  </span>
-                  <h3 className="text-[13px] font-bold text-[#292424]">
-                    {data.customer_name}
-                  </h3>
-                </div>
-
-                {/* Copy Type Tag */}
-                <div className="text-right shrink-0">
-                  <span className="text-[9.5px] font-bold uppercase tracking-widest text-[#292424] bg-gray-100 border border-gray-300 px-2.5 py-0.5 inline-block">
-                    {data.copy_type === 'DUPLICATE' ? 'DUPLICATE' : (data.copy_type === 'TRIPLICATE' ? 'TRIPLICATE' : 'ORIGINAL')}
-                  </span>
-                </div>
-              </div>
-
-              {data.customer_address && (
-                <p className="text-[10.5px] text-gray-700 leading-snug whitespace-pre-line mt-0.5">
-                  {data.customer_address}
-                </p>
-              )}
-              <div className="space-y-0.5 pt-1 text-[10.5px] font-medium text-gray-700">
-                {data.customer_phone && (
-                  <div>
-                    <strong>Mobile:</strong> <span className="font-mono text-[#292424]">{data.customer_phone}</span>
-                  </div>
-                )}
-                {data.customer_email && (
-                  <div>
-                    <strong>Email:</strong> <span className="text-[#292424]">{data.customer_email}</span>
-                  </div>
-                )}
-                <div>
-                  <strong>Place of Supply:</strong> <span className="text-[#292424]">{data.place_of_supply || '33-Tamil Nadu'}</span>
-                </div>
-                <div>
-                  <strong>Customer Type:</strong> <span className="text-[#292424]">{data.customer_type || 'Individual'}</span>
-                </div>
-                {data.customer_gstin && (
-                  <div>
-                    <strong>Customer GSTIN:</strong> <span className="font-mono font-bold uppercase text-[#292424]">{data.customer_gstin}</span>
-                  </div>
-                )}
-              </div>
-            </div>
+            {/* Customer Bill To Details (Single Column Mode) */}
+            <TemplatePartyBox
+              mode="single-column"
+              billTitle="BILL TO / CLIENT"
+              customerName={data.customer_name}
+              customerAddress={data.customer_address}
+              customerPhone={data.customer_phone}
+              customerEmail={data.customer_email}
+              placeOfSupply={data.place_of_supply}
+              customerType={data.customer_type || 'Individual'}
+              customerGstin={data.customer_gstin}
+              copyType={data.copy_type}
+            />
 
             {/* --- LINE ITEMS TABLE --- */}
             <div className="border border-gray-300 overflow-hidden text-[#292424]">
@@ -317,171 +236,40 @@ export default function ServiceInvoiceTemplate({ service, bill, settings }) {
 
             {/* --- 3-COLUMN SUMMARY --- */}
             {page.showSummary && (
-              <div className="grid grid-cols-12 gap-4 pt-2 text-[#292424]">
-
-                {/* Left Column (5/12): Bank Details & Terms */}
-                <div className="col-span-5 space-y-2.5">
-                  <div className="space-y-0.5 text-[10.5px]">
-                    <span className="font-black text-[#292424] uppercase tracking-wider block text-[10.5px] mb-0.5">
-                      BANK DETAILS
-                    </span>
-                    <div className="space-y-0.5 text-gray-800 font-medium text-[10.5px]">
-                      <div><strong>Beneficiary:</strong> {bankAccountName}</div>
-                      <div><strong>Bank:</strong> {bankName}</div>
-                      <div><strong>Account No:</strong> <span className="font-mono font-bold text-[#292424]">{bankAccountNo}</span></div>
-                      <div><strong>IFSC Code:</strong> <span className="font-mono font-bold text-[#292424]">{bankIfsc}</span></div>
-                      <div><strong>Branch:</strong> {bankBranch}</div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-0.5 text-[9.5px] pt-1">
-                    <span className="font-black text-[#292424] uppercase tracking-wider block text-[10px] mb-0.5">
-                      TERMS &amp; CONDITIONS
-                    </span>
-                    <ol className="list-decimal list-inside space-y-0.5 text-gray-700 leading-snug">
-                      {termsList.map((t, idx) => (
-                        <li key={idx} className="leading-tight">{t}</li>
-                      ))}
-                    </ol>
-                  </div>
-                </div>
-
-                {/* Center Column (3/12): Scan to Pay */}
-                <div className="col-span-3 flex flex-col items-center justify-start text-center pt-1">
-                  <span className="text-[10px] font-black uppercase text-[#292424] tracking-wider mb-2">
-                    SCAN TO PAY
-                  </span>
-                  {bankImageUrl ? (
-                    <div className="flex items-center justify-center">
-                      <img
-                        src={bankImageUrl}
-                        alt="Scan to Pay QR"
-                        className="h-32 w-32 max-h-36 max-w-full object-contain mx-auto"
-                      />
-                    </div>
-                  ) : (
-                    <div className="h-28 w-28 flex items-center justify-center text-[10px] text-gray-400 italic">
-                      No QR Image
-                    </div>
-                  )}
-                </div>
-
-                {/* Right Column (4/12): Tax Breakdown, Totals & Signatory */}
-                <div className="col-span-4 flex flex-col justify-between text-[#292424] pl-1">
-                  <div className="space-y-0.5 text-[10.5px]">
-                    <div className="flex justify-between text-gray-700 py-0.5">
-                      <span>Taxable Amount</span>
-                      <span className="font-mono font-semibold text-[#292424]">
-                        ₹ {parseFloat(data.taxable_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-                    </div>
-
-                    {isGstInvoice && parseFloat(data.total_tax || 0) > 0 && (
-                      <>
-                        {isIntraState ? (
-                          <>
-                            <div className="flex justify-between text-gray-700 py-0.5 text-[10px]">
-                              <span>CGST ({data.cgst_rate || settings?.cgst_rate || 9}%)</span>
-                              <span className="font-mono text-[#292424]">
-                                ₹ {parseFloat(data.cgst_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </span>
-                            </div>
-                            <div className="flex justify-between text-gray-700 py-0.5 text-[10px]">
-                              <span>SGST ({data.sgst_rate || settings?.sgst_rate || 9}%)</span>
-                              <span className="font-mono text-[#292424]">
-                                ₹ {parseFloat(data.sgst_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </span>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="flex justify-between text-gray-700 py-0.5 text-[10px]">
-                            <span>IGST ({data.igst_rate || settings?.igst_rate || 18}%)</span>
-                            <span className="font-mono text-[#292424]">
-                              ₹ {parseFloat(data.igst_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </span>
-                          </div>
-                        )}
-                      </>
-                    )}
-
-                    {data.round_off && parseFloat(data.round_off) !== 0 && (
-                      <div className="flex justify-between text-gray-500 py-0.5 text-[10px]">
-                        <span>Round Off</span>
-                        <span className="font-mono text-[#292424]">{data.round_off > 0 ? `+₹${data.round_off}` : `-₹${Math.abs(data.round_off)}`}</span>
-                      </div>
-                    )}
-
-                    <div className="border-t border-b border-gray-400 py-1 my-0.5 flex justify-between items-center text-xs font-black text-[#292424]">
-                      <span>Service Total</span>
-                      <span className="text-sm font-mono font-black">
-                        ₹ {parseFloat(data.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-                    </div>
-
-                    {data.amount_in_words && (
-                      <div className="pt-0.5 text-[9px] text-gray-600 leading-tight">
-                        <strong className="text-gray-800">In Words: </strong>
-                        <span className="italic text-[#292424] font-medium capitalize">
-                          {data.amount_in_words}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Authorized Signatory Block */}
-                  <div className="pt-2 text-center space-y-0.5">
-                    {(settings?.signature_url || data.signature_url) && (
-                      <div className="flex justify-center items-center h-10 mb-1">
-                        <img
-                          src={settings?.signature_url || data.signature_url}
-                          alt="Authorized Signature"
-                          className="max-h-10 max-w-[140px] object-contain"
-                        />
-                      </div>
-                    )}
-                    <div className="w-full border-t border-gray-400 pt-1">
-                      <p className="text-[9.5px] text-gray-600 font-medium">Authorized signatory for</p>
-                      <p className="text-[10.5px] font-black text-[#043486] uppercase tracking-wide">
-                        {companyName}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
+              <TemplateSummaryGrid
+                bankAccountName={bankAccountName}
+                bankName={bankName}
+                bankAccountNo={bankAccountNo}
+                bankIfsc={bankIfsc}
+                bankBranch={bankBranch}
+                bankImageUrl={bankImageUrl}
+                termsList={termsList}
+                taxableAmount={data.taxable_amount}
+                isGstInvoice={isGstInvoice}
+                isIntraState={isIntraState}
+                cgstRate={data.cgst_rate || settings?.cgst_rate || 9}
+                cgstAmount={data.cgst_amount}
+                sgstRate={data.sgst_rate || settings?.sgst_rate || 9}
+                sgstAmount={data.sgst_amount}
+                igstRate={data.igst_rate || settings?.igst_rate || 18}
+                igstAmount={data.igst_amount}
+                roundOff={data.round_off}
+                totalAmount={data.total_amount}
+                amountInWords={data.amount_in_words}
+                totalLabel="Service Total"
+                signatureUrl={settings?.signature_url || data.signature_url}
+                companyName={companyName}
+              />
             )}
           </div>
 
-          {/* --- FOOTER RIBBON --- */}
-          <div className="w-full bg-[#043486] text-white py-2.5 px-7 mt-auto z-10 shrink-0">
-            <div className="flex items-center justify-between text-[10px] font-medium">
-              <div className="space-y-0.5 shrink-0">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-white text-[#043486] flex items-center justify-center shrink-0">
-                    <Phone size={8.5} fill="#043486" />
-                  </div>
-                  <span className="font-semibold tracking-wide">+91 {companyPhone}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-white text-[#043486] flex items-center justify-center shrink-0">
-                    <Mail size={8.5} />
-                  </div>
-                  <span className="tracking-wide text-[9.5px]">{companyEmail}</span>
-                </div>
-              </div>
-
-              <div className="h-7 w-[1.5px] bg-white/40 rotate-[25deg] mx-4 shrink-0" />
-
-              <div className="flex items-center gap-2 flex-1 max-w-lg">
-                <div className="w-4 h-4 rounded-full bg-white text-[#043486] flex items-center justify-center shrink-0">
-                  <MapPin size={8.5} fill="#043486" />
-                </div>
-                <span className="leading-tight text-[9.5px] text-blue-100">{companyAddress}</span>
-              </div>
-            </div>
-          </div>
-
-        </div>
+          {/* Footer Ribbon */}
+          <TemplateFooterRibbon
+            companyPhone={companyPhone}
+            companyEmail={companyEmail}
+            companyAddress={companyAddress}
+          />
+        </TemplatePageShell>
       ))}
     </div>
   )

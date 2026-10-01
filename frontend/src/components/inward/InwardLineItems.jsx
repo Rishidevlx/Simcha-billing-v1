@@ -1,5 +1,5 @@
 import React from 'react'
-import { Boxes, Plus, Trash2, Copy, Hash, AlertCircle } from 'lucide-react'
+import { Boxes, Plus, Trash2, Copy, Hash, AlertCircle } from '../common/icons'
 import SearchableSelect from '../common/SearchableSelect'
 
 export default function InwardLineItems({
@@ -20,7 +20,7 @@ export default function InwardLineItems({
       <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <Boxes size={18} className="text-[#043486] dark:text-blue-400" />
-          <h2 className="text-base font-bold text-[#043486] dark:text-blue-400 tracking-wide uppercase">
+          <h2 className="text-sm font-bold text-[#043486] dark:text-blue-400 tracking-wide uppercase">
             Inward Materials / Line Items ({items.length})
           </h2>
         </div>
@@ -57,8 +57,8 @@ export default function InwardLineItems({
 
                 {/* 1. Item Name / Material Search & Select */}
                 <div className="flex-1 min-w-[220px]">
-                  <label className="block text-[11px] font-semibold text-gray-500 dark:text-slate-400 mb-1">
-                    Item Name <span className="text-blue-500">*</span>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
+                    Item Name <span className="text-red-500 font-bold">*</span>
                   </label>
                   <SearchableSelect
                     options={materialOptions}
@@ -70,7 +70,7 @@ export default function InwardLineItems({
 
                 {/* 2. HSN / SAC Code (Auto fetched & Non-editable) */}
                 <div className="w-full sm:w-28 shrink-0">
-                  <label className="block text-[11px] font-semibold text-gray-500 dark:text-slate-400 mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
                     HSN / SAC
                   </label>
                   <input
@@ -78,13 +78,13 @@ export default function InwardLineItems({
                     value={item.hsn_code || ''}
                     readOnly
                     placeholder="HSN"
-                    className="w-full px-3 py-2.5 text-xs font-mono text-center text-gray-700 dark:text-slate-300 bg-gray-100 dark:bg-slate-800/80 border border-gray-300 dark:border-slate-700 rounded-none cursor-not-allowed select-none font-medium h-[41px]"
+                    className="w-full px-3 py-2.5 text-sm font-mono text-center text-[#292424] dark:text-white bg-gray-100 dark:bg-slate-800/80 border border-gray-300 dark:border-slate-700 rounded-none cursor-not-allowed select-none font-medium h-[41px]"
                   />
                 </div>
 
                 {/* 3. Quantity (Max 25) */}
                 <div className="w-full sm:w-24 shrink-0">
-                  <label className="block text-[11px] font-semibold text-gray-500 dark:text-slate-400 mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
                     Qty <span className="text-[10px] text-gray-400 font-normal">(Max 25)</span>
                   </label>
                   <input
@@ -96,26 +96,26 @@ export default function InwardLineItems({
                     onChange={(e) => onItemChange(index, 'quantity', e.target.value)}
                     title="Quantity (Max 25)"
                     placeholder="Qty"
-                    className="w-full px-2 py-2.5 text-xs text-center font-bold text-[#292424] dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 h-[41px]"
+                    className="w-full px-2 py-2.5 text-sm text-center font-medium text-[#292424] dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 h-[41px]"
                   />
                 </div>
 
                 {/* 4. Unit Type (Auto fetched & Non-editable) */}
                 <div className="w-full sm:w-24 shrink-0">
-                  <label className="block text-[11px] font-semibold text-gray-500 dark:text-slate-400 mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
                     Unit
                   </label>
                   <input
                     type="text"
                     value={item.unit || 'NOS'}
                     readOnly
-                    className="w-full px-2 py-2.5 text-xs text-center uppercase font-semibold text-gray-700 dark:text-slate-300 bg-gray-100 dark:bg-slate-800/80 border border-gray-300 dark:border-slate-700 rounded-none cursor-not-allowed select-none h-[41px]"
+                    className="w-full px-2 py-2.5 text-sm text-center uppercase font-medium text-[#292424] dark:text-white bg-gray-100 dark:bg-slate-800/80 border border-gray-300 dark:border-slate-700 rounded-none cursor-not-allowed select-none h-[41px]"
                   />
                 </div>
 
                 {/* 5. Rate (₹) (Editable) */}
                 <div className="w-full sm:w-28 shrink-0">
-                  <label className="block text-[11px] font-semibold text-gray-500 dark:text-slate-400 mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
                     Rate (₹)
                   </label>
                   <input
@@ -125,16 +125,16 @@ export default function InwardLineItems({
                     value={item.rate !== undefined ? item.rate : ''}
                     onChange={(e) => onItemChange(index, 'rate', e.target.value)}
                     placeholder="0.00"
-                    className="w-full px-3 py-2.5 text-xs font-semibold text-right font-mono text-[#292424] dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 h-[41px]"
+                    className="w-full px-3 py-2.5 text-sm font-medium text-right font-mono text-[#292424] dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 h-[41px]"
                   />
                 </div>
 
                 {/* 6. Amount (₹) */}
                 <div className="w-full sm:w-32 shrink-0">
-                  <label className="block text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 mb-1">
+                  <label className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">
                     Amount (₹)
                   </label>
-                  <div className="px-3 py-2.5 text-xs font-bold font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 rounded-none flex items-center justify-end h-[41px]">
+                  <div className="px-3 py-2.5 text-sm font-bold font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 rounded-none flex items-center justify-end h-[41px]">
                     ₹ {Number(item.amount || 0).toFixed(2)}
                   </div>
                 </div>
@@ -167,7 +167,7 @@ export default function InwardLineItems({
                 <div>
                   {/* Description / Notes */}
                   <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 dark:text-slate-400 mb-1">
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
                       Description / Notes <span className="text-gray-400 text-[10px] font-normal">(Optional)</span>
                     </label>
                     <input
@@ -175,7 +175,7 @@ export default function InwardLineItems({
                       value={item.description || ''}
                       onChange={(e) => onItemChange(index, 'description', e.target.value)}
                       placeholder="Notes (optional)"
-                      className="w-full px-3 py-2 text-xs text-[#292424] dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 placeholder:text-gray-400 dark:placeholder:text-slate-500"
+                      className="w-full px-3 py-2 text-sm font-medium text-[#292424] dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 placeholder:text-gray-400 dark:placeholder:text-slate-500"
                     />
                   </div>
                 </div>
@@ -209,11 +209,10 @@ export default function InwardLineItems({
                               value={serialVal}
                               onChange={(e) => onSerialNumberChange(index, sIdx, e.target.value)}
                               placeholder={`Serial #${sIdx + 1}`}
-                              className={`w-full pl-9 pr-8 py-2.5 text-xs sm:text-sm font-mono text-[#292424] dark:text-white rounded-none focus:outline-none transition-colors ${
-                                isDuplicate
+                              className={`w-full pl-9 pr-8 py-2.5 text-xs sm:text-sm font-mono text-[#292424] dark:text-white rounded-none focus:outline-none transition-colors ${isDuplicate
                                   ? 'bg-red-50 dark:bg-red-950/40 border-2 border-red-500 text-red-700 dark:text-red-300 focus:border-red-600'
                                   : 'bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 focus:border-[#043486] dark:focus:border-blue-500'
-                              } placeholder:text-gray-400 dark:placeholder:text-slate-500`}
+                                } placeholder:text-gray-400 dark:placeholder:text-slate-500`}
                             />
                             {isDuplicate && (
                               <div

@@ -14,14 +14,16 @@ export async function getEmailConfig(req, res) {
           smtp_host: 'smtp.gmail.com',
           smtp_port: 465,
           smtp_secure: true,
-          smtp_user: 'simchainfosolutions@gmail.com',
+          smtp_user: '',
           smtp_pass: '',
-          sender_name: 'SIMCHA INFO SOLUTIONS',
-          recipient_email: 'simchainfosolutions@gmail.com',
+          sender_name: '',
+          recipient_email: '',
           auto_email_on_create: true,
           email_customer_copy: true,
           email_subject: 'New Tax Invoice Generated - {invoice_number}',
-          email_body: 'Dear Customer, Please find attached the tax invoice generated for your transaction.'
+          email_body: 'Dear Customer / Team,\n\nPlease find attached the official Tax Invoice generated for your transaction.\n\nThank you for doing business with us!',
+          user_invite_subject: 'Welcome to {company_name} - Account & Password Setup',
+          user_invite_body: 'Your user account has been created for {company_name} Billing & Inventory System. You can log in with your temporary password or set your custom password using the secure link below:'
         }
       })
     }
@@ -33,7 +35,9 @@ export async function getEmailConfig(req, res) {
         ...config,
         smtp_secure: Boolean(config.smtp_secure),
         auto_email_on_create: Boolean(config.auto_email_on_create),
-        email_customer_copy: config.email_customer_copy !== undefined ? Boolean(config.email_customer_copy) : true
+        email_customer_copy: config.email_customer_copy !== undefined ? Boolean(config.email_customer_copy) : true,
+        user_invite_subject: config.user_invite_subject || 'Welcome to {company_name} - Account & Password Setup',
+        user_invite_body: config.user_invite_body || 'Your user account has been created for {company_name} Billing & Inventory System. You can log in with your temporary password or set your custom password using the secure link below:'
       }
     })
   } catch (error) {
@@ -54,12 +58,14 @@ export async function updateEmailConfig(req, res) {
       smtp_secure = true,
       smtp_user = '',
       smtp_pass = '',
-      sender_name = 'SIMCHA INFO SOLUTIONS',
+      sender_name = '',
       recipient_email = '',
       auto_email_on_create = true,
       email_customer_copy = true,
       email_subject = 'New Tax Invoice Generated - {invoice_number}',
-      email_body = ''
+      email_body = '',
+      user_invite_subject = 'Welcome to {company_name} - Account & Password Setup',
+      user_invite_body = ''
     } = req.body
 
     const pool = getPool()
@@ -67,8 +73,9 @@ export async function updateEmailConfig(req, res) {
     await pool.query(`
       INSERT INTO email_configs (
         id, smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass,
-        sender_name, recipient_email, auto_email_on_create, email_customer_copy, email_subject, email_body
-      ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        sender_name, recipient_email, auto_email_on_create, email_customer_copy,
+        email_subject, email_body, user_invite_subject, user_invite_body
+      ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         smtp_host = VALUES(smtp_host),
         smtp_port = VALUES(smtp_port),
@@ -81,6 +88,8 @@ export async function updateEmailConfig(req, res) {
         email_customer_copy = VALUES(email_customer_copy),
         email_subject = VALUES(email_subject),
         email_body = VALUES(email_body),
+        user_invite_subject = VALUES(user_invite_subject),
+        user_invite_body = VALUES(user_invite_body),
         updated_at = CURRENT_TIMESTAMP
     `, [
       smtp_host,
@@ -93,7 +102,9 @@ export async function updateEmailConfig(req, res) {
       auto_email_on_create ? 1 : 0,
       email_customer_copy ? 1 : 0,
       email_subject.trim(),
-      email_body
+      email_body,
+      user_invite_subject ? user_invite_subject.trim() : 'Welcome to {company_name} - Account & Password Setup',
+      user_invite_body
     ])
 
     return res.status(200).json({

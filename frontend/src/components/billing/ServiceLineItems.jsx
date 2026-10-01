@@ -8,7 +8,7 @@ import {
   AlertCircle,
   CheckSquare,
   Square
-} from 'lucide-react'
+} from '../common/icons'
 import { Button } from '../ui'
 
 /**
@@ -30,7 +30,7 @@ export default function ServiceLineItems({
       <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <Wrench size={18} className="text-[#043486] dark:text-blue-400" />
-          <h2 className="text-base font-bold text-[#043486] dark:text-blue-400 tracking-wide uppercase">
+          <h2 className="text-sm font-bold text-[#043486] dark:text-blue-400 tracking-wide uppercase">
             Service Description &amp; Spare Parts ({items.length})
           </h2>
         </div>
@@ -40,7 +40,7 @@ export default function ServiceLineItems({
           variant="primary"
           icon={Plus}
           onClick={onAddItem}
-          className="text-xs"
+          className="text-xs font-semibold"
         >
           Add Line Item (Alt+A)
         </Button>
@@ -68,8 +68,8 @@ export default function ServiceLineItems({
 
                 {/* 2. Product Name (e.g. Laptop, Monitor, Printer) */}
                 <div className="flex-[1.4] min-w-[120px]">
-                  <label className="block text-[11px] font-semibold text-gray-600 dark:text-slate-300 mb-1">
-                    Product <span className="text-blue-500">*</span>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
+                    Product <span className="text-red-500 font-bold">*</span>
                   </label>
                   <input
                     type="text"
@@ -83,7 +83,7 @@ export default function ServiceLineItems({
 
                 {/* 3. Brand / Model (e.g. Dell Inspiron 15, HP LaserJet) */}
                 <div className="flex-1 min-w-[100px]">
-                  <label className="block text-[11px] font-semibold text-gray-600 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
                     Brand / Model
                   </label>
                   <input
@@ -97,7 +97,7 @@ export default function ServiceLineItems({
 
                 {/* 4. Issue / Reported Problem */}
                 <div className="flex-1 min-w-[100px]">
-                  <label className="block text-[11px] font-semibold text-gray-600 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
                     Issue
                   </label>
                   <input
@@ -111,7 +111,7 @@ export default function ServiceLineItems({
 
                 {/* 5. Quantity */}
                 <div className="w-full sm:w-16 shrink-0">
-                  <label className="block text-[11px] font-semibold text-gray-600 dark:text-slate-300 mb-1 text-center">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1 text-center">
                     Qty
                   </label>
                   <input
@@ -126,7 +126,7 @@ export default function ServiceLineItems({
 
                 {/* 6. Rate (₹) */}
                 <div className="w-full sm:w-24 shrink-0">
-                  <label className="block text-[11px] font-semibold text-gray-600 dark:text-slate-300 mb-1 text-right">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1 text-right">
                     Rate (₹)
                   </label>
                   <input
@@ -142,7 +142,7 @@ export default function ServiceLineItems({
 
                 {/* 7. Amount (₹) */}
                 <div className="w-full sm:w-28 shrink-0">
-                  <label className="block text-[11px] font-semibold text-gray-600 dark:text-slate-300 mb-1 text-right">
+                  <label className="block text-xs font-bold text-gray-700 dark:text-slate-200 mb-1 text-right">
                     Amount (₹)
                   </label>
                   <div className="px-2 py-1.5 text-xs text-right font-black text-gray-900 dark:text-white bg-gray-100 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-none font-mono h-[38px] flex items-center justify-end">

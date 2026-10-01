@@ -1,4 +1,4 @@
-import { Check } from 'lucide-react'
+import { Check } from '../common/icons'
 
 export default function Checkbox({
   label,

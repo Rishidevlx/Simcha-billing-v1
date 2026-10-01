@@ -7,34 +7,69 @@ export default function StatusPill({
 }) {
   const normalized = String(status || '').toLowerCase().trim()
 
+  // Velzon Label Flag Badge Solid Background Colors
   const statusStyles = {
-    active: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
-    paid: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
-    completed: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
-    delivered: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
+    // Success / Active / Healthy / Passed
+    active: 'bg-[#0ab39c] text-white',
+    paid: 'bg-[#0ab39c] text-white',
+    completed: 'bg-[#0ab39c] text-white',
+    delivered: 'bg-[#0ab39c] text-white',
+    healthy: 'bg-[#0ab39c] text-white',
+    'stock healthy': 'bg-[#0ab39c] text-white',
+    passed: 'bg-[#0ab39c] text-white',
+    'qc passed': 'bg-[#0ab39c] text-white',
+    adjusted: 'bg-[#0ab39c] text-white',
+    approved: 'bg-[#0ab39c] text-white',
     
-    pending: 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
-    'in progress': 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
-    draft: 'bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-slate-300 border-gray-200 dark:border-slate-700',
+    // Warning / Pending / Low Stock / Partial
+    pending: 'bg-[#f7b84b] text-white',
+    'pending qc': 'bg-[#f7b84b] text-white',
+    'qc pending': 'bg-[#f7b84b] text-white',
+    'low stock': 'bg-[#f7b84b] text-white',
+    partial: 'bg-[#f7b84b] text-white',
     
-    inactive: 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800',
-    cancelled: 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800',
-    rejected: 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800',
-    overdue: 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800'
+    // Info / Blue / Purple / Replaced / Credit Note
+    'in progress': 'bg-[#299cdb] text-white',
+    processing: 'bg-[#299cdb] text-white',
+    replaced: 'bg-[#299cdb] text-white',
+    issued: 'bg-[#299cdb] text-white',
+    'credit note': 'bg-[#6559cc] text-white',
+    'credit note issued': 'bg-[#6559cc] text-white',
+    refunded: 'bg-[#6559cc] text-white',
+    refund: 'bg-[#6559cc] text-white',
+    
+    // Draft / Neutral
+    draft: 'bg-[#3577f1] text-white',
+    
+    // Danger / Inactive / Out of Stock / Rejected / Failed
+    inactive: 'bg-[#f06548] text-white',
+    cancelled: 'bg-[#f06548] text-white',
+    cancel: 'bg-[#f06548] text-white',
+    rejected: 'bg-[#f06548] text-white',
+    'out of stock': 'bg-[#f06548] text-white',
+    'qc failed': 'bg-[#f06548] text-white',
+    failed: 'bg-[#f06548] text-white',
+    defective: 'bg-[#f06548] text-white',
+    overdue: 'bg-[#f06548] text-white',
+    deleted: 'bg-[#f06548] text-white'
   }
 
-  const currentStyle = statusStyles[normalized] || 'bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-slate-300 border-gray-200 dark:border-slate-700'
+  const currentStyle = statusStyles[normalized] || 'bg-[#212529] text-white'
 
   const sizeStyles = {
-    sm: 'px-1.5 py-0.5 text-[10px]',
-    md: 'px-2 py-0.5 text-[11px]'
+    sm: 'pl-3 pr-2 py-0.5 text-[9.5px]',
+    md: 'pl-3.5 pr-2.5 py-0.5 text-[10.5px]'
   }
 
   return (
     <span
-      className={`inline-flex items-center justify-center font-bold uppercase tracking-wider border rounded-none shadow-2xs ${currentStyle} ${sizeStyles[size] || sizeStyles.md} ${className}`}
+      style={{
+        clipPath: 'polygon(8px 0%, 100% 0%, 100% 100%, 8px 100%, 0% 50%)'
+      }}
+      className={`inline-flex items-center justify-center gap-1.5 font-bold uppercase tracking-wider ${currentStyle} ${sizeStyles[size] || sizeStyles.md} ${className}`}
     >
-      {status}
+      <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
+      <span>{status}</span>
     </span>
   )
 }

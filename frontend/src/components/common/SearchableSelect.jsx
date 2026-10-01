@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { ChevronDown, Check, X } from 'lucide-react'
+import { ChevronDown, Check, X } from './icons'
 
 export default function SearchableSelect({
   options = [],
@@ -153,13 +153,12 @@ export default function SearchableSelect({
           onKeyDown={handleKeyDown}
           onFocus={() => !disabled && setIsOpen(true)}
           placeholder={placeholder}
-          className={`w-full px-3.5 py-2.5 pr-14 text-xs sm:text-sm text-[#292424] dark:text-white rounded-none border transition-all placeholder:text-gray-400 dark:placeholder:text-slate-500 ${
-            disabled
+          className={`w-full px-3.5 py-2.5 pr-14 text-xs sm:text-sm text-[#292424] dark:text-white rounded-none border transition-all placeholder:text-gray-400 dark:placeholder:text-slate-500 ${disabled
               ? 'bg-gray-100 dark:bg-slate-900 border-gray-200 dark:border-slate-800 text-gray-400 cursor-not-allowed'
               : isOpen
-              ? 'border-[#0248BC] dark:border-blue-500 ring-1 ring-[#0248BC] dark:ring-blue-500 bg-white dark:bg-slate-950'
-              : 'border-gray-300 dark:border-slate-700 hover:border-gray-400 dark:hover:border-slate-600 bg-white dark:bg-slate-950'
-          }`}
+                ? 'border-[#0248BC] dark:border-blue-500 ring-1 ring-[#0248BC] dark:ring-blue-500 bg-white dark:bg-slate-950'
+                : 'border-gray-300 dark:border-slate-700 hover:border-gray-400 dark:hover:border-slate-600 bg-white dark:bg-slate-950'
+            }`}
         />
 
         {/* Right action icons (Clear X and Chevron) */}
@@ -197,7 +196,7 @@ export default function SearchableSelect({
 
       {/* Dropdown Options List */}
       {isOpen && (
-        <div 
+        <div
           ref={optionsListRef}
           className="absolute left-0 right-0 top-full mt-1 z-50 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-none shadow-xl max-h-56 overflow-y-auto p-1 space-y-0.5 animate-in fade-in zoom-in-95 duration-150"
         >
@@ -219,13 +218,12 @@ export default function SearchableSelect({
                     e.preventDefault()
                     handleSelect(opt)
                   }}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-none transition-colors cursor-pointer text-left ${
-                    isSelected
+                  className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-none transition-colors cursor-pointer text-left ${isSelected
                       ? 'bg-blue-50 dark:bg-blue-950/50 text-[#043486] dark:text-blue-300 font-bold border border-blue-200 dark:border-blue-900/60'
                       : isHighlighted
-                      ? 'bg-gray-100 dark:bg-slate-800 text-[#043486] dark:text-blue-400'
-                      : 'text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-[#043486] dark:hover:text-blue-400'
-                  }`}
+                        ? 'bg-gray-100 dark:bg-slate-800 text-[#043486] dark:text-blue-400'
+                        : 'text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-[#043486] dark:hover:text-blue-400'
+                    }`}
                 >
                   <div className="flex flex-col">
                     <span className="truncate">{opt.label}</span>

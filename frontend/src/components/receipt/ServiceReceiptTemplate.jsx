@@ -1,7 +1,12 @@
 import React from 'react'
-import logoImg from '../../assets/Logo/Logo-bg-remove.webp'
-import faviconWatermark from '../../assets/Logo/Favicon.jpeg'
-import { Phone, Mail, MapPin } from 'lucide-react'
+import { useTheme } from '../../context/ThemeContext'
+import {
+  TemplatePageShell,
+  TemplateHeader,
+  TemplateMetaBar,
+  TemplatePartyBox,
+  TemplateFooterRibbon
+} from '../invoice/shared'
 
 // Helper function to paginate receipt items into strictly 5 items per A4 page
 function paginateReceiptItems(items) {
@@ -42,12 +47,14 @@ export default function ServiceReceiptTemplate({ service, bill, settings }) {
   const data = service || bill
   if (!data) return null
 
-  // Resolve dynamic settings with fallbacks
-  const companyName = settings?.company_name || 'SIMCHA INFO SOLUTIONS'
-  const companyGstin = settings?.gstin || '33GEZPM1178G1ZY'
-  const companyPhone = settings?.phone || '8122022060'
-  const companyEmail = settings?.email || 'simchainfosolutions@gmail.com'
-  const companyAddress = settings?.address || '7A3, Thulasi Ammal Layout 2nd Street, Lakshmipuram, Peelamedu Post, Coimbatore - 641 004.'
+  const { companyName: themeCompanyName, companyDetails } = useTheme()
+
+  // Resolve dynamic settings with fallbacks from Theme/System Settings
+  const companyName = settings?.company_name || themeCompanyName || companyDetails?.name || ''
+  const companyGstin = settings?.gstin || companyDetails?.gstin || ''
+  const companyPhone = settings?.phone || companyDetails?.phone || ''
+  const companyEmail = settings?.email || companyDetails?.email || ''
+  const companyAddress = settings?.address || companyDetails?.address || ''
 
   const defaultTermsList = Array.isArray(settings?.terms_conditions) && settings.terms_conditions.length > 0
     ? settings.terms_conditions
@@ -93,148 +100,49 @@ export default function ServiceReceiptTemplate({ service, bill, settings }) {
   return (
     <div id="service-receipt-printable-area" className="w-full">
       {paginatedPages.map((page) => (
-        <div
+        <TemplatePageShell
           key={page.pageIndex}
-          className="receipt-page relative bg-white text-[#292424] font-['Poppins',sans-serif] w-full max-w-[210mm] min-h-[297mm] max-h-[297mm] h-[297mm] mx-auto p-0 flex flex-col justify-between shadow-lg print:shadow-none print:w-full print:max-w-none print:h-[297mm] print:min-h-[297mm] print:max-h-[297mm] text-[11.5px] leading-relaxed overflow-hidden box-border mb-8 print:mb-0"
-          style={{
-            pageBreakAfter: page.pageIndex < page.totalPages ? 'always' : 'avoid',
-            breakAfter: page.pageIndex < page.totalPages ? 'page' : 'avoid',
-            boxSizing: 'border-box'
-          }}
+          pageIndex={page.pageIndex}
+          totalPages={page.totalPages}
         >
-          {/* Subtle Watermark in Background */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 opacity-[0.06]">
-            <img
-              src={faviconWatermark}
-              alt="Simcha Watermark"
-              className="w-80 max-w-full grayscale object-contain"
-            />
-          </div>
-
           {/* Page Main Content */}
           <div className="relative z-10 px-8 pt-7 flex-1 flex flex-col justify-start space-y-2">
-            
-            {/* --- PAGE 1: Header --- */}
-            {page.isFirstPage ? (
-              <div className="space-y-1.5">
-                <div className="flex items-start justify-between gap-4">
-                  {/* Top Left: Logo & Company Address */}
-                  <div className="flex items-start gap-4">
-                    <img
-                      src={logoImg}
-                      alt="Simcha Logo"
-                      className="h-20 w-auto object-contain shrink-0 -mt-1"
-                    />
-                    <div className="space-y-0.5">
-                      <h1 className="text-xl font-black text-[#043486] tracking-tight leading-none">
-                        {companyName}
-                      </h1>
-                      <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider pt-0.5">
-                        IT CONSULTING | HARDWARE &amp; SOFTWARE SOLUTIONS | SALES &amp; SERVICE
-                      </p>
-                      <p className="text-[10px] text-gray-600 leading-normal truncate max-w-lg">
-                        {companyAddress}
-                      </p>
-                      <p className="text-[10px] text-gray-700 font-medium">
-                        <strong>Mobile:</strong> {companyPhone} &nbsp;|&nbsp; <strong>Email:</strong> {companyEmail}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Top Right: GSTIN Header */}
-                  <div className="text-right shrink-0 pt-0.5">
-                    <div className="text-xs font-bold text-[#292424] font-mono tracking-wide">
-                      <span className="text-gray-500 font-bold font-sans text-[11px]">GSTIN: </span>
-                      {companyGstin}
-                    </div>
-                    <div className="mt-1">
-                      <span className="text-[9.5px] font-extrabold uppercase px-2 py-0.5 bg-[#043486]/10 text-[#043486] border border-[#043486]/20">
-                        SERVICE PAYMENT RECEIPT
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Thin Divider Rule */}
-                <div className="w-full h-[2px] bg-[#043486] mt-1.5" />
-              </div>
-            ) : (
-              /* --- PAGE 2+: Compact Header --- */
-              <div className="border-b-2 border-[#043486] pb-2 mb-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <img src={logoImg} alt="Simcha Logo" className="h-9 w-auto object-contain" />
-                    <div>
-                      <h2 className="text-sm font-black text-[#043486] tracking-tight leading-none">{companyName}</h2>
-                      <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">
-                        SERVICE PAYMENT RECEIPT
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right text-[10.5px] font-semibold text-gray-700">
-                    <div><span className="text-gray-500 font-normal">Date: </span>{formatDate(new Date())}</div>
-                    <div className="font-mono text-[9.5px] text-gray-500">GSTIN: {companyGstin}</div>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Header */}
+            <TemplateHeader
+              companyName={companyName}
+              companyGstin={companyGstin}
+              companyPhone={companyPhone}
+              companyEmail={companyEmail}
+              companyAddress={companyAddress}
+            />
 
             {/* Receipt Meta Bar */}
-            <div className="bg-[#f3f4f6] border border-gray-300 px-3.5 py-1.5 flex items-center justify-between text-xs font-bold text-[#292424]">
-              <div className="flex items-center gap-1.5">
-                <span className="text-gray-600 uppercase font-semibold text-[10.5px]">RECEIPT NUMBER:</span>
-                <span className="text-[#292424] font-mono text-sm font-black">{data.receipt_number || data.service_number}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-gray-600 uppercase font-semibold text-[10.5px]">SERVICE REF:</span>
-                <span className="text-[#292424] font-mono font-bold text-xs">{data.service_number}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-gray-600 uppercase font-semibold text-[10.5px]">RECEIPT DATE:</span>
-                <span className="text-[#292424] font-semibold text-[11.5px]">{formatDate(new Date())}</span>
-              </div>
-            </div>
+            <TemplateMetaBar
+              docNumberLabel="RECEIPT NUMBER:"
+              docNumber={data.receipt_number || data.service_number}
+              dateLabel="RECEIPT DATE:"
+              dateValue={formatDate(data.service_date || new Date())}
+              rightExtra={
+                <div className="flex items-center gap-1.5 pl-3 border-l border-gray-300">
+                  <span className="text-gray-600 uppercase font-semibold text-[10.5px]">SERVICE REF:</span>
+                  <span className="text-[#043486] font-mono font-bold text-xs">{data.service_number}</span>
+                </div>
+              }
+            />
 
             {/* Customer Details Box */}
-            <div className="border border-gray-300 p-2.5 bg-white/80 text-[#292424]">
-              <div>
-                <span className="text-[9.5px] font-black text-[#292424] uppercase tracking-wider block mb-0.5">
-                  RECEIVED FROM
-                </span>
-                <h3 className="text-[13px] font-bold text-[#292424]">
-                  {data.customer_name}
-                </h3>
-              </div>
-
-              {data.customer_address && (
-                <p className="text-[10.5px] text-gray-700 leading-snug whitespace-pre-line mt-0.5">
-                  {data.customer_address}
-                </p>
-              )}
-              <div className="space-y-0.5 pt-1 text-[10.5px] font-medium text-gray-700">
-                {data.customer_phone && (
-                  <div>
-                    <strong>Mobile:</strong> <span className="font-mono text-[#292424]">{data.customer_phone}</span>
-                  </div>
-                )}
-                {data.customer_email && (
-                  <div>
-                    <strong>Email:</strong> <span className="text-[#292424]">{data.customer_email}</span>
-                  </div>
-                )}
-                <div>
-                  <strong>Place of Supply:</strong> <span className="text-[#292424]">{data.place_of_supply || '33-Tamil Nadu'}</span>
-                </div>
-                <div>
-                  <strong>Customer Type:</strong> <span className="text-[#292424]">{data.customer_type || 'Individual'}</span>
-                </div>
-                {data.customer_gstin && (
-                  <div>
-                    <strong>Customer GSTIN:</strong> <span className="font-mono font-bold uppercase text-[#292424]">{data.customer_gstin}</span>
-                  </div>
-                )}
-              </div>
-            </div>
+            <TemplatePartyBox
+              mode="single-column"
+              billTitle="RECEIVED FROM"
+              customerName={data.customer_name}
+              customerAddress={data.customer_address}
+              customerPhone={data.customer_phone}
+              customerEmail={data.customer_email}
+              placeOfSupply={data.place_of_supply}
+              customerType={data.customer_type || 'Individual'}
+              customerGstin={data.customer_gstin}
+              copyType={data.copy_type}
+            />
 
             {/* --- LINE ITEMS TABLE --- */}
             <div className="border border-gray-300 overflow-hidden text-[#292424]">
@@ -327,7 +235,6 @@ export default function ServiceReceiptTemplate({ service, bill, settings }) {
             {/* --- SUMMARY SECTION --- */}
             {page.showSummary && (
               <div className="grid grid-cols-12 gap-6 pt-2 text-[#292424]">
-
                 {/* Left Column (6/12): Terms & Payment Mode */}
                 <div className="col-span-6 space-y-2">
                   <div className="space-y-0.5 text-[9.5px]">
@@ -388,31 +295,31 @@ export default function ServiceReceiptTemplate({ service, bill, settings }) {
                     {data.round_off && parseFloat(data.round_off) !== 0 && (
                       <div className="flex justify-between text-gray-500 py-0.5 text-[10px]">
                         <span>Round Off</span>
-                        <span className="font-mono">
-                          {data.round_off > 0 ? `+₹${data.round_off}` : `-₹${Math.abs(data.round_off)}`}
-                        </span>
+                        <span className="font-mono">{data.round_off > 0 ? `+₹${data.round_off}` : `-₹${Math.abs(data.round_off)}`}</span>
                       </div>
                     )}
 
-                    {/* Total Amount Received */}
                     <div className="border-t border-b border-gray-400 py-1 my-1 flex justify-between items-center text-xs font-black text-[#292424]">
-                      <span className="text-xs uppercase">Total Amount Received</span>
+                      <span className="text-xs uppercase">Service Total</span>
                       <span className="text-sm font-black font-mono text-[#043486]">
                         ₹ {parseFloat(data.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
 
                     {data.amount_in_words && (
-                      <div className="text-[9.5px] text-gray-600 leading-tight pt-0.5 capitalize">
-                        <strong>Received (in words):</strong> {data.amount_in_words}
+                      <div className="pt-0.5 text-[9px] text-gray-600 leading-tight">
+                        <strong className="text-gray-800">In Words: </strong>
+                        <span className="italic text-[#292424] font-medium capitalize">
+                          {data.amount_in_words}
+                        </span>
                       </div>
                     )}
                   </div>
 
                   {/* Authorized Signatory */}
-                  <div className="mt-4 text-center pt-2">
+                  <div className="pt-4 text-right pr-2">
                     {(settings?.signature_url || data.signature_url) && (
-                      <div className="flex justify-center items-center h-10 mb-1">
+                      <div className="flex justify-end items-center h-10 mb-1">
                         <img
                           src={settings?.signature_url || data.signature_url}
                           alt="Authorized Signature"
@@ -420,53 +327,25 @@ export default function ServiceReceiptTemplate({ service, bill, settings }) {
                         />
                       </div>
                     )}
-                    <div className="inline-block border-t border-gray-400 pt-1 px-8 min-w-[190px]">
-                      <p className="text-[9.5px] text-gray-600">Authorized signatory for</p>
-                      <p className="text-[10.5px] font-black text-[#292424] uppercase tracking-wide">
+                    <div className="inline-block border-t border-gray-400 pt-1 text-center min-w-[180px]">
+                      <p className="text-[9.5px] text-gray-600 font-medium">Authorized Signatory</p>
+                      <p className="text-[10px] font-black text-[#043486] uppercase tracking-wide">
                         {companyName}
                       </p>
                     </div>
                   </div>
-
                 </div>
-
               </div>
             )}
-
           </div>
 
-          {/* --- FOOTER RIBBON --- */}
-          <div className="w-full bg-[#043486] text-white px-8 py-2.5 flex items-center justify-between text-[9.5px] font-medium tracking-wide z-10 shrink-0">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full bg-white text-[#043486] flex items-center justify-center shrink-0 shadow-xs">
-                  <Phone size={10} className="stroke-[2.5]" />
-                </div>
-                <span className="font-semibold tracking-wider font-mono">+91 {companyPhone}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full bg-white text-[#043486] flex items-center justify-center shrink-0 shadow-xs">
-                  <Mail size={10} className="stroke-[2.5]" />
-                </div>
-                <span className="tracking-wide">{companyEmail}</span>
-              </div>
-            </div>
-
-            <div className="h-5 w-[1px] bg-blue-300/40 transform rotate-12 mx-2" />
-
-            <div className="flex items-center gap-4 max-w-md text-right">
-              <div className="flex items-center gap-2 text-left">
-                <div className="w-5 h-5 rounded-full bg-white text-[#043486] flex items-center justify-center shrink-0 shadow-xs">
-                  <MapPin size={10} className="stroke-[2.5]" />
-                </div>
-                <span className="text-[9px] leading-tight text-blue-100 truncate max-w-xs">
-                  {companyAddress}
-                </span>
-              </div>
-            </div>
-          </div>
-
-        </div>
+          {/* Footer Ribbon */}
+          <TemplateFooterRibbon
+            companyPhone={companyPhone}
+            companyEmail={companyEmail}
+            companyAddress={companyAddress}
+          />
+        </TemplatePageShell>
       ))}
     </div>
   )

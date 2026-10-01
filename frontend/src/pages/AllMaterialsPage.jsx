@@ -21,7 +21,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight
-} from 'lucide-react'
+} from '../components/common/icons'
 import Swal from 'sweetalert2'
 import { API_ENDPOINTS } from '../config/api'
 import { getUserPermissions } from '../utils/access'

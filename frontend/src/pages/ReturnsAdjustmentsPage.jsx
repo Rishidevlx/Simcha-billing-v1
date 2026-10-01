@@ -34,7 +34,7 @@ import {
   ArrowUpRight,
   Pencil,
   Edit3
-} from 'lucide-react'
+} from '../components/common/icons'
 import * as XLSX from 'xlsx'
 import Swal from 'sweetalert2'
 import { API_ENDPOINTS } from '../config/api'
@@ -979,6 +979,7 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
     <div className="space-y-6 max-w-[1600px] mx-auto pb-12 font-['Poppins',sans-serif]">
       {/* 1. Header with Global Actions (Excel & New Request Button) */}
       <ListPageHeader
+        icon={RotateCcw}
         title="Returns & Stock Adjustments"
         subtitle="Manage product returns, inspection quality checks (QC), restock movements, replacements, and credit notes."
         actions={
@@ -986,7 +987,7 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
             {/* Green Export Excel Button */}
             {canDownload && (
               <Button
-                variant="secondary"
+                variant="export"
                 icon={Download}
                 onClick={handleExportExcel}
                 title={selectedIds.length > 0 ? `Export ${selectedIds.length} Selected Record(s)` : 'Export All Filtered Records'}
@@ -1047,6 +1048,7 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
         {canAdd && (
           <TabButton
             active={activeTab === 'entry'}
+            variant="blue"
             icon={PackagePlus}
             label="Return Entry"
             onClick={() => {
@@ -1060,6 +1062,7 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
         {/* 2. Pending QC Inspection */}
         <TabButton
           active={activeTab === 'pending'}
+          variant="amber"
           icon={Clock}
           label={`Pending QC (${summaryMetrics.pending})`}
           onClick={() => {
@@ -1072,6 +1075,7 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
         {/* 3. Completed & Resolved Returns */}
         <TabButton
           active={activeTab === 'completed'}
+          variant="emerald"
           icon={CheckCircle2}
           label={`Completed & Resolved (${summaryMetrics.completed})`}
           onClick={() => {
@@ -1084,6 +1088,7 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
         {/* 4. Defective & QC Failed Products */}
         <TabButton
           active={activeTab === 'defective'}
+          variant="rose"
           icon={AlertTriangle}
           label={`Defective & QC Failed (${summaryMetrics.defective})`}
           onClick={() => {
@@ -1096,6 +1101,7 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
         {/* 5. Credit Notes Tab */}
         <TabButton
           active={activeTab === 'credit_notes'}
+          variant="purple"
           icon={CreditCard}
           label={`Credit Notes (${summaryMetrics.creditNotes})`}
           onClick={() => {
@@ -1792,19 +1798,16 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                               </span>
                             </td>
                             <td className="py-3 px-4 text-center whitespace-nowrap">
-                              {item.qc_decision === 'REPLACE' ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
-                                  <RotateCcw size={10} /> Replaced
-                                </span>
-                              ) : item.qc_decision === 'REFUND' ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-900">
-                                  <CreditCard size={10} /> Credit Note
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                                  <XCircle size={10} /> Rejected
-                                </span>
-                              )}
+                              <StatusPill
+                                status={
+                                  item.qc_decision === 'REPLACE'
+                                    ? 'Replaced'
+                                    : item.qc_decision === 'REFUND'
+                                    ? 'Credit Note'
+                                    : 'Rejected'
+                                }
+                                size="sm"
+                              />
                             </td>
                           </>
                         )}
@@ -1828,15 +1831,14 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                               )}
                             </td>
                             <td className="py-3 px-4 text-center whitespace-nowrap">
-                              {item.qc_decision === 'REFUND' || item.qc_decision === 'Credit Note' ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-900">
-                                  <CreditCard size={10} /> Credit Note
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
-                                  <RotateCcw size={10} /> Replaced
-                                </span>
-                              )}
+                              <StatusPill
+                                status={
+                                  item.qc_decision === 'REFUND' || item.qc_decision === 'Credit Note'
+                                    ? 'Credit Note'
+                                    : 'Replaced'
+                                }
+                                size="sm"
+                              />
                             </td>
                           </>
                         )}
@@ -1868,9 +1870,7 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                               ₹{parseFloat(item.refund_amount || item.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </td>
                             <td className="py-3 px-4 text-center whitespace-nowrap">
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-900">
-                                <CreditCard size={10} /> Credit Note Issued
-                              </span>
+                              <StatusPill status="Credit Note Issued" size="sm" />
                             </td>
                           </>
                         )}
@@ -1890,9 +1890,7 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                               </span>
                             </td>
                             <td className="py-3 px-4 text-center whitespace-nowrap">
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 animate-pulse">
-                                <Clock size={11} /> Pending QC
-                              </span>
+                              <StatusPill status="Pending QC" size="sm" />
                             </td>
                           </>
                         )}
