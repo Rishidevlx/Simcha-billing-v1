@@ -24,11 +24,11 @@ export default function TemplateHeader({
     <div className="space-y-1">
       <div className="flex items-start justify-between gap-4 pt-0.5">
         {/* Left Compact Logo + Branding */}
-        <div className="flex items-start gap-3">
+        <div className="flex items-center gap-3.5">
           <img
             src={activeLogo}
             alt={effectiveCompanyName || "Company Logo"}
-            className="h-9 sm:h-10 max-h-10 max-w-[130px] w-auto object-contain shrink-0 mt-0.5"
+            className="h-12 sm:h-14 max-h-14 max-w-[160px] w-auto object-contain shrink-0"
           />
           <div className="space-y-0.5">
             <h1 className="text-lg font-black text-[#043486] tracking-tight leading-none uppercase">

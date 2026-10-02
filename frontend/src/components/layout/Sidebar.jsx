@@ -300,10 +300,10 @@ export default function Sidebar({
         <div className="relative">
           <div
             style={{ backgroundColor: sidebarBg }}
-            className="h-18 sm:h-20 flex items-center justify-center px-4 border-b border-white/10 transition-all duration-300"
+            className="h-20 sm:h-22 flex items-center justify-center px-4 py-2 border-b border-white/10 transition-all duration-300"
           >
             {isCollapsed ? (
-              <div className="w-12 h-12 flex items-center justify-center p-1.5 overflow-hidden hover:scale-105 transition-transform">
+              <div className="w-13 h-13 flex items-center justify-center p-1 overflow-hidden hover:scale-105 transition-transform">
                 <img
                   src={themeFavicon || faviconImg}
                   alt="Favicon"
@@ -315,7 +315,7 @@ export default function Sidebar({
                 <img
                   src={themeLogo || logoImg}
                   alt="Brand Logo"
-                  className="h-12 sm:h-13 max-w-[210px] w-auto object-contain drop-shadow-xs transition-transform hover:scale-105 duration-200"
+                  className="h-14 sm:h-16 max-h-16 max-w-[225px] w-auto object-contain drop-shadow-md transition-transform hover:scale-105 duration-200 brightness-0 invert"
                 />
               </div>
             )}
