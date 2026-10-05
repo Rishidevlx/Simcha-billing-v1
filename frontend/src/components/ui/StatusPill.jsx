@@ -20,6 +20,8 @@ export default function StatusPill({
     'qc passed': 'bg-[#0ab39c] text-white',
     adjusted: 'bg-[#0ab39c] text-white',
     approved: 'bg-[#0ab39c] text-white',
+    converted: 'bg-[#0ab39c] text-white',
+    'converted to bill': 'bg-[#0ab39c] text-white',
     
     // Warning / Pending / Low Stock / Partial
     pending: 'bg-[#f7b84b] text-white',

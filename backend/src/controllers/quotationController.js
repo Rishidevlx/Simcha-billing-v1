@@ -738,6 +738,45 @@ export async function convertQuotationToInvoice(req, res) {
       })
     }
 
+    // Check Inventory Stock for all items before converting
+    const stockErrors = []
+    for (const it of itemRows) {
+      let matId = it.material_id
+      if (!matId && it.item_name) {
+        const [lookup] = await pool.query('SELECT id, name, current_stock, opening_stock, unit FROM materials WHERE name = ? LIMIT 1', [it.item_name.trim()])
+        if (lookup.length > 0) {
+          matId = lookup[0].id
+        }
+      }
+
+      if (matId) {
+        const [mRows] = await pool.query('SELECT id, name, current_stock, opening_stock, unit FROM materials WHERE id = ?', [matId])
+        if (mRows.length > 0) {
+          const availStock = parseFloat(mRows[0].current_stock ?? mRows[0].opening_stock ?? 0)
+          const reqQty = parseFloat(it.quantity) || 1
+          if (availStock < reqQty) {
+            stockErrors.push({
+              itemName: it.item_name || mRows[0].name,
+              required: reqQty,
+              available: availStock,
+              shortage: reqQty - availStock,
+              unit: it.unit || mRows[0].unit || 'NOS'
+            })
+          }
+        }
+      }
+    }
+
+    if (stockErrors.length > 0) {
+      const errListStr = stockErrors.map(e => `• ${e.itemName}: Required ${e.required} ${e.unit}, Available ${e.available} ${e.unit} (Shortage: ${e.shortage} ${e.unit})`).join('\n')
+      return res.status(400).json({
+        success: false,
+        isStockError: true,
+        stockErrors,
+        message: `Insufficient inventory stock to convert this quotation:\n\n${errListStr}\n\nPlease add an Inward Entry for the shortage before converting to an Outward Bill.`
+      })
+    }
+
     // Determine target invoice number
     let finalInvoiceNumber = (invoice_number || '').trim()
     if (!finalInvoiceNumber) {
@@ -915,7 +954,8 @@ export async function convertQuotationToInvoice(req, res) {
       success: true,
       message: `Quotation #${quotation.quotation_number} successfully converted to Invoice #${finalInvoiceNumber}!`,
       billId: newBillId,
-      invoiceNumber: finalInvoiceNumber
+      invoiceNumber: finalInvoiceNumber,
+      invoice_number: finalInvoiceNumber
     })
   } catch (error) {
     console.error('Error converting quotation to invoice:', error)

@@ -40,7 +40,7 @@ import QuotationTemplate from '../components/quotation/QuotationTemplate'
 import ListKpiCard from '../components/common/ListKpiCard'
 import ListDateRangeFilter from '../components/common/ListDateRangeFilter'
 import ListPagePagination from '../components/common/ListPagePagination'
-import { Button, ActionButton, SearchInput, Checkbox, TabNav, TabButton } from '../components/ui'
+import { Button, ActionButton, SearchInput, Checkbox, StatusPill, TabNav, TabButton } from '../components/ui'
 import { API_ENDPOINTS } from '../config/api'
 import { getUserPermissions } from '../utils/access'
 
@@ -416,15 +416,53 @@ export default function AllQuotationsPage({ setActiveRoute }) {
       const data = await res.json()
 
       if (res.ok && data.success) {
+        const invNum = data.invoiceNumber || data.invoice_number || ''
         Swal.fire({
           icon: 'success',
           title: 'Converted to Invoice!',
-          html: `Quotation converted successfully! Invoice <strong>#${data.invoice_number}</strong> generated.`,
+          html: `Quotation converted successfully! Invoice <strong>#${invNum}</strong> generated.`,
           confirmButtonText: 'View Invoices',
           confirmButtonColor: '#043486'
         }).then(() => {
           fetchQuotations()
           navigate('/outward-list')
+        })
+      } else if (data.isStockError && data.stockErrors) {
+        const listHtml = data.stockErrors.map(e => `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #e2e8f0; font-size:12px; text-align:left;">
+            <div>
+              <div style="font-weight:700; color:#0f172a;">${e.itemName}</div>
+              <div style="color:#64748b; font-size:11px;">Shortage: <span style="color:#e11d48; font-weight:700;">${e.shortage} ${e.unit}</span></div>
+            </div>
+            <div style="text-align:right; font-family:monospace;">
+              <span style="color:#043486; font-weight:700;">Req: ${e.required}</span> <span style="color:#94a3b8;">/</span> <span style="color:#10b981; font-weight:700;">Stock: ${e.available}</span>
+            </div>
+          </div>
+        `).join('')
+
+        Swal.fire({
+          icon: 'warning',
+          title: 'Insufficient Inventory Stock',
+          html: `
+            <p style="font-size:13px; color:#475569; margin-bottom:12px; text-align:left;">
+              Cannot convert Quotation <strong>#${qtn.quotation_number}</strong> because required product quantities exceed currently available stock:
+            </p>
+            <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:4px; padding:8px 12px; margin-bottom:14px; max-height:200px; overflow-y:auto;">
+              ${listHtml}
+            </div>
+            <p style="font-size:12px; color:#64748b; text-align:left;">
+              Please create an <strong>Inward Bill (Purchase)</strong> for the shortage items, then try converting again.
+            </p>
+          `,
+          showCancelButton: true,
+          confirmButtonText: 'Go to Inward Entry',
+          cancelButtonText: 'Close',
+          confirmButtonColor: '#043486',
+          cancelButtonColor: '#64748b'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            navigate('/inward')
+          }
         })
       } else {
         throw new Error(data.message || 'Failed to convert quotation to invoice.')
@@ -917,46 +955,37 @@ export default function AllQuotationsPage({ setActiveRoute }) {
 
                       {/* Status Dropdown / Pill */}
                       <td className="py-3.5 px-3 text-center">
-                        <select
-                          value={q.quotation_status || 'Draft'}
-                          disabled={isConverted || isCancelled}
-                          onChange={(e) => handleUpdateStatus(q.id, e.target.value)}
-                          className={`px-2.5 py-1.5 text-[11px] font-bold uppercase rounded-none border focus:outline-none transition-colors ${
-                            isConverted
-                              ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 cursor-not-allowed'
-                              : isApproved
-                              ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-800 cursor-pointer'
-                              : isSent
-                              ? 'bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-400 border-sky-300 dark:border-sky-800 cursor-pointer'
-                              : isCancelled
-                              ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700 cursor-not-allowed opacity-60'
-                              : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800 cursor-pointer'
-                          }`}
-                        >
-                          <option value="Draft">Draft</option>
-                          <option value="Sent">Sent</option>
-                          <option value="Approved">Approved</option>
-                          <option value="Converted" disabled>Converted</option>
-                          <option value="Cancelled">Cancel</option>
-                        </select>
+                        {isConverted ? (
+                          <StatusPill status="Converted" size="sm" />
+                        ) : isCancelled ? (
+                          <StatusPill status="Cancelled" size="sm" />
+                        ) : (
+                          <select
+                            value={q.quotation_status || 'Draft'}
+                            onChange={(e) => handleUpdateStatus(q.id, e.target.value)}
+                            className={`px-2.5 py-1.5 text-[11px] font-bold uppercase rounded-none border focus:outline-none transition-colors cursor-pointer ${
+                              isApproved
+                                ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-800'
+                                : isSent
+                                ? 'bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-400 border-sky-300 dark:border-sky-800'
+                                : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800'
+                            }`}
+                          >
+                            <option value="Draft">Draft</option>
+                            <option value="Sent">Sent</option>
+                            <option value="Approved">Approved</option>
+                            <option value="Cancelled">Cancel</option>
+                          </select>
+                        )}
                       </td>
 
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-center">
                         <div className="flex items-center justify-center gap-1">
-                          
-                          {/* 1. View & Print Modal (Blue) - Always active for viewing */}
-                          <ActionButton
-                            icon={Eye}
-                            title="View / Print Quotation"
-                            onClick={() => handleViewQuotation(q)}
-                            className="!text-[#043486] dark:!text-blue-400 hover:!bg-blue-50 dark:hover:!bg-slate-800"
-                          />
-
-                          {/* Extra actions ONLY in Quotations Registry tab */}
-                          {activeTab === 'registry' && (
+                          {/* Actions in Quotations Registry tab */}
+                          {activeTab === 'registry' ? (
                             <>
-                              {/* 2. Send Email (Indigo) - Disabled if Cancelled */}
+                              {/* 1. Send Email (Indigo) - Disabled if Cancelled */}
                               <ActionButton
                                 icon={Send}
                                 title={isCancelled ? "Quotation is Cancelled" : "Send Quotation PDF Email"}
@@ -969,7 +998,7 @@ export default function AllQuotationsPage({ setActiveRoute }) {
                                 }
                               />
 
-                              {/* 3. Convert to Outward Invoice (Emerald) - Active ONLY when isApproved */}
+                              {/* 2. Convert to Outward Invoice (Emerald) - Active ONLY when isApproved */}
                               {!isConverted && (
                                 <ActionButton
                                   icon={FileCheck}
@@ -990,7 +1019,7 @@ export default function AllQuotationsPage({ setActiveRoute }) {
                                 />
                               )}
 
-                              {/* 4. Edit Quotation (Amber) - Disabled if Approved, Converted, or Cancelled */}
+                              {/* 3. Edit Quotation (Amber) - Disabled if Approved, Converted, or Cancelled */}
                               {canEdit && (
                                 <ActionButton
                                   icon={Pencil}
@@ -1017,7 +1046,7 @@ export default function AllQuotationsPage({ setActiveRoute }) {
                                 />
                               )}
 
-                              {/* 5. Delete Quotation (Red) - Disabled if Cancelled */}
+                              {/* 4. Delete Quotation (Red) - Disabled if Cancelled */}
                               {canDelete && (
                                 <ActionButton
                                   icon={Trash2}
@@ -1032,6 +1061,8 @@ export default function AllQuotationsPage({ setActiveRoute }) {
                                 />
                               )}
                             </>
+                          ) : (
+                            <span className="text-gray-400 dark:text-slate-600 font-mono text-xs">-</span>
                           )}
 
                         </div>

@@ -148,7 +148,7 @@ export default function ReceiptTemplate({ bill, settings, company }) {
             {/* Customer Details Box: Two Columns (RECEIVED FROM & DELIVERY ADDRESS) */}
             <TemplatePartyBox
               mode="two-column"
-              billTitle="RECEIVED FROM (BILL TO)"
+              billTitle="Payment Received From"
               customerName={bill.customer_name}
               customerAddress={bill.customer_address}
               customerPhone={bill.customer_phone}

@@ -58,8 +58,23 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
 
   const navigate = useNavigate()
 
-  // Active Tab: 'entry' | 'all' | 'pending' | 'restocked' | 'refunded'
-  const [activeTab, setActiveTab] = useState(canAdd ? 'entry' : 'pending')
+  // Active Tab: 'entry' | 'all' | 'pending' | 'completed' | 'credit_notes' | 'defective'
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const urlTab = params.get('tab')
+      if (urlTab) return urlTab
+    } catch (e) {}
+    return canAdd ? 'entry' : 'pending'
+  })
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const urlTab = params.get('tab')
+      if (urlTab) setActiveTab(urlTab)
+    } catch (e) {}
+  }, [])
 
   // Data States
   const [loading, setLoading] = useState(false)

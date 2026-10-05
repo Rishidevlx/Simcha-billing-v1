@@ -758,6 +758,12 @@ export async function runDatabaseMigrations() {
         try {
           await pool.query(`ALTER TABLE service_bills MODIFY COLUMN service_status VARCHAR(50) DEFAULT 'Received';`)
         } catch {}
+        try {
+          await pool.query(`ALTER TABLE service_bills ADD COLUMN quotation_email_sent BOOLEAN DEFAULT FALSE;`)
+        } catch {}
+        try {
+          await pool.query(`ALTER TABLE service_bills ADD COLUMN quotation_email_sent_at DATETIME NULL;`)
+        } catch {}
 
         await pool.query(`
           CREATE TABLE IF NOT EXISTS service_bill_items (

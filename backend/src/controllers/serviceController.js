@@ -1,5 +1,5 @@
 import { getPool } from '../config/db.js'
-import { sendReceiptEmail } from '../services/emailService.js'
+import { sendReceiptEmail, sendServiceQuotationEmail } from '../services/emailService.js'
 
 const MONTH_NAMES = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
 
@@ -726,3 +726,26 @@ export async function sendServiceReceiptEmail(req, res) {
     })
   }
 }
+
+// Send Service Quotation Email & Auto-Update Status to 'Quotations'
+export async function sendServiceQuotationEmailController(req, res) {
+  try {
+    const { id } = req.params
+    const { recipient_email, email } = req.body || {}
+    const targetEmail = recipient_email || email
+
+    const result = await sendServiceQuotationEmail(id, targetEmail)
+    if (!result.success) {
+      return res.status(500).json(result)
+    }
+
+    return res.status(200).json(result)
+  } catch (error) {
+    console.error('Error dispatching service quotation email:', error)
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to dispatch service quotation email.'
+    })
+  }
+}
+

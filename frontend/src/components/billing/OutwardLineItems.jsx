@@ -34,7 +34,8 @@ export default function OutwardLineItems({
   onSerialNumberChange,
   onAddItem,
   onDuplicateItem,
-  onRemoveItem
+  onRemoveItem,
+  isQuotation = false
 }) {
   return (
     <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-6 shadow-sm space-y-4 transition-colors w-full">
@@ -43,7 +44,7 @@ export default function OutwardLineItems({
         <div className="flex items-center gap-2">
           <Boxes size={18} className="text-[#043486] dark:text-blue-400" />
           <h2 className="text-sm font-bold text-[#043486] dark:text-blue-400 tracking-wide uppercase">
-            Invoice Line Items ({items.length})
+            {isQuotation ? 'Quotation Line Items' : 'Invoice Line Items'} ({items.length})
           </h2>
         </div>
 
@@ -92,7 +93,7 @@ export default function OutwardLineItems({
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200">
                     Item Name <span className="text-red-500 font-bold">*</span>
-                    {item.material_id && item.current_stock !== null && item.current_stock !== undefined && (
+                    {!isQuotation && item.material_id && item.current_stock !== null && item.current_stock !== undefined && (
                       <span
                         className={`ml-2 text-[10.5px] font-bold ${
                           parseFloat(item.current_stock) <= 0
@@ -121,7 +122,7 @@ export default function OutwardLineItems({
                 />
 
                 {/* Stock Validations Warning Message Under Input Field */}
-                {item.material_id && item.current_stock !== null && item.current_stock !== undefined && (
+                {!isQuotation && item.material_id && item.current_stock !== null && item.current_stock !== undefined && (
                   <>
                     {parseFloat(item.current_stock) <= 0 ? (
                       <div className="mt-1 flex items-center gap-1.5 text-[11px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-2.5 py-0.5 border border-red-200 dark:border-red-900 animate-pulse">
@@ -171,6 +172,7 @@ export default function OutwardLineItems({
                     title="Quantity"
                     placeholder="Qty"
                     className={`w-20 px-2 py-2.5 text-xs text-center font-bold bg-white dark:bg-slate-900 border rounded-none focus:outline-none h-[41px] ${
+                      !isQuotation &&
                       item.material_id &&
                       item.current_stock !== null &&
                       (parseFloat(item.current_stock) <= 0 || (parseFloat(item.quantity) || 1) > parseFloat(item.current_stock))

@@ -158,7 +158,7 @@ export default function ServiceInvoiceTemplate({ service, bill, settings, compan
             {/* Customer Bill To Details (Single Column Mode) */}
             <TemplatePartyBox
               mode="single-column"
-              billTitle="BILL TO / CLIENT"
+              billTitle="Billing Details"
               customerName={data.customer_name}
               customerAddress={data.customer_address}
               customerPhone={data.customer_phone}

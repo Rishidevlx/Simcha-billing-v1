@@ -73,8 +73,10 @@ const getLocalDateString = (dateVal) => {
 
 export const SERVICE_STATUS_STAGES = [
   'Received',
+  'Quotations',
   'Quotation',
   'Customer Approval',
+  'Approved',
   'Payment Received',
   'Repair In-Progress',
   'Ready',
@@ -84,25 +86,25 @@ export const SERVICE_STATUS_STAGES = [
 
 export const SERVICE_TABS = [
   {
-    id: 'intake',
-    label: 'Intake & Approval',
-    description: 'Received, Quotation, Customer Approval & Payment Received',
-    statuses: ['Received', 'Quotation', 'Customer Approval', 'Payment Received'],
-    allowedTransitions: ['Received', 'Quotation', 'Customer Approval', 'Payment Received', 'Cancelled']
+    id: 'quotation_approval',
+    label: 'Quotation & approval',
+    description: 'Received, Quotations & Customer Approval',
+    statuses: ['Received', 'Quotation', 'Quotations', 'Customer Approval', 'Draft'],
+    allowedTransitions: ['Ready', 'Quotations', 'Approved', 'Cancel']
   },
   {
-    id: 'repairs',
-    label: 'Repairs & Ready',
-    description: 'Repair In-Progress, Ready & Completed Repairs',
-    statuses: ['Repair In-Progress', 'Ready'],
-    allowedTransitions: ['Repair In-Progress', 'Ready', 'Delivered', 'Cancelled']
+    id: 'repair_ready',
+    label: 'Repair & ready',
+    description: 'Approved, Repair In-Progress & Ready',
+    statuses: ['Approved', 'Repair In-Progress', 'Ready', 'Payment Received'],
+    allowedTransitions: ['Approved', 'Repair In-Progress', 'Ready', 'Delivered', 'Cancel']
   },
   {
     id: 'delivered',
     label: 'Delivered',
     description: 'Delivered & Handed Over Records',
     statuses: ['Delivered'],
-    allowedTransitions: ['Delivered', 'Cancelled']
+    allowedTransitions: ['Delivered', 'Cancel']
   },
   {
     id: 'cancelled',
@@ -122,7 +124,7 @@ export default function AllServicesPage({ setActiveRoute }) {
 
   const navigate = useNavigate()
   const [services, setServices] = useState([])
-  const [activeTab, setActiveTab] = useState('intake')
+  const [activeTab, setActiveTab] = useState('quotation_approval')
   const [stats, setStats] = useState({
     totalServices: 0,
     totalValue: 0,
@@ -447,6 +449,97 @@ export default function AllServicesPage({ setActiveRoute }) {
     }
   }
 
+  // Send Quotation Email to Customer & Automatically Move Status to 'Quotations'
+  const handleSendQuotationEmail = async (service) => {
+    // 1. Obtain & confirm recipient email
+    let targetEmail = (service.customer_email || '').trim()
+
+    if (!targetEmail) {
+      const promptResult = await Swal.fire({
+        title: 'Send Service Quotation',
+        text: `Customer email is missing for "${service.customer_name}". Please enter recipient email:`,
+        input: 'email',
+        inputPlaceholder: 'customer@example.com',
+        showCancelButton: true,
+        confirmButtonColor: '#043486',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Send Quotation PDF',
+        inputValidator: (val) => {
+          if (!val || !val.trim()) {
+            return 'Please enter a valid email address!'
+          }
+        }
+      })
+
+      if (!promptResult.isConfirmed || !promptResult.value) return
+      targetEmail = promptResult.value.trim()
+    } else {
+      const confirmResult = await Swal.fire({
+        title: 'Send Service Quotation?',
+        html: `<p class="text-sm text-gray-600 dark:text-slate-300">Send official service quotation PDF for <b>${service.service_number}</b> to <b>${targetEmail}</b>?</p>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#043486',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, Send Quotation'
+      })
+
+      if (!confirmResult.isConfirmed) return
+    }
+
+    // 2. Dispatch Email API
+    try {
+      Swal.fire({
+        title: 'Sending Quotation...',
+        text: 'Generating PDF and dispatching quotation email...',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading()
+        }
+      })
+
+      const res = await fetch(API_ENDPOINTS.SERVICE_SEND_QUOTATION(service.id), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipient_email: targetEmail, email: targetEmail })
+      })
+      const data = await res.json()
+
+      if (data.success) {
+        setServices(prev =>
+          prev.map(s =>
+            s.id === service.id
+              ? {
+                  ...s,
+                  service_status: 'Quotations',
+                  quotation_email_sent: 1,
+                  quotation_email_sent_at: new Date().toISOString()
+                }
+              : s
+          )
+        )
+        fetchInitialData(true)
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Quotation Sent Successfully!',
+          text: `Service quotation PDF has been emailed to ${targetEmail}. Status updated to Quotations.`,
+          confirmButtonColor: '#043486'
+        })
+      } else {
+        throw new Error(data.message || 'Failed to dispatch quotation email.')
+      }
+    } catch (err) {
+      console.error('Error sending quotation email:', err)
+      Swal.fire({
+        icon: 'error',
+        title: 'Failed to Send Quotation',
+        text: err.message || 'Error occurred while sending quotation email.',
+        confirmButtonColor: '#043486'
+      })
+    }
+  }
+
   // Send Receipt Email to Customer (Active ONLY from 'Payment Received' onwards)
   const handleSendReceiptEmail = async (service) => {
     // 1. Validate status
@@ -622,11 +715,11 @@ export default function AllServicesPage({ setActiveRoute }) {
 
   // Dynamic Tab Counts for Badge Badges
   const tabCounts = useMemo(() => {
-    const intake = services.filter(s =>
-      ['Received', 'Quotation', 'Customer Approval', 'Payment Received'].includes(s.service_status)
+    const quotation_approval = services.filter(s =>
+      ['Received', 'Quotation', 'Quotations', 'Customer Approval', 'Draft'].includes(s.service_status)
     ).length
-    const repairs = services.filter(s =>
-      ['Repair In-Progress', 'Ready'].includes(s.service_status)
+    const repair_ready = services.filter(s =>
+      ['Approved', 'Repair In-Progress', 'Ready', 'Payment Received'].includes(s.service_status)
     ).length
     const delivered = services.filter(s =>
       s.service_status === 'Delivered'
@@ -635,7 +728,7 @@ export default function AllServicesPage({ setActiveRoute }) {
       ['Cancelled', 'Cancel'].includes(s.service_status)
     ).length
 
-    return { intake, repairs, delivered, cancelled }
+    return { quotation_approval, repair_ready, delivered, cancelled }
   }, [services])
 
   // Filter Logic based on Active Tab + Search + Sub-status + Payment Mode + Date Range
@@ -763,8 +856,10 @@ export default function AllServicesPage({ setActiveRoute }) {
       case 'Received':
         return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
       case 'Quotation':
+      case 'Quotations':
         return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800'
       case 'Customer Approval':
+      case 'Approved':
         return 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800'
       case 'Payment Received':
         return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
@@ -958,6 +1053,9 @@ export default function AllServicesPage({ setActiveRoute }) {
         className: 'whitespace-nowrap',
         render: (_, service) => {
           const isCancelled = ['Cancelled', 'Cancel'].includes(service.service_status)
+          const isQuotationTab = activeTab === 'quotation_approval'
+          const isQuotationSent = service.quotation_email_sent === 1 || service.quotation_email_sent === true
+
           const isReceiptActive =
             !isCancelled &&
             [
@@ -966,12 +1064,12 @@ export default function AllServicesPage({ setActiveRoute }) {
               'Ready',
               'Delivered'
             ].includes(service.service_status)
-          const isEmailSent =
+          const isReceiptSent =
             service.receipt_email_sent === 1 || service.receipt_email_sent === true
 
           return (
             <div className="flex items-center justify-center gap-1.5">
-              {/* 1. Direct Print / View Receipt Modal (Active from Payment Received onwards) - Like Outward List */}
+              {/* 1. Direct Print / View Receipt Modal (When active from Payment Received onwards) */}
               <ActionButton
                 icon={FileCheck}
                 onClick={() => handlePrintReceipt(service.id)}
@@ -988,26 +1086,50 @@ export default function AllServicesPage({ setActiveRoute }) {
                 }
               />
 
-              {/* 2. Send Receipt Email Icon (Indigo / Red when sent) */}
-              <ActionButton
-                icon={Send}
-                disabled={!isReceiptActive}
-                onClick={() => handleSendReceiptEmail(service)}
-                title={
-                  !isReceiptActive
-                    ? 'Receipt email available from Payment Received stage onwards'
-                    : isEmailSent
-                    ? 'Receipt Email Sent'
-                    : 'Send Receipt PDF via Email'
-                }
-                className={
-                  !isReceiptActive
-                    ? '!text-gray-300 dark:!text-slate-700 opacity-40'
-                    : isEmailSent
-                    ? '!text-red-500 hover:!bg-red-50 dark:hover:!bg-slate-800'
-                    : '!text-indigo-600 dark:!text-indigo-400 hover:!bg-indigo-50 dark:hover:!bg-slate-800'
-                }
-              />
+              {/* 2. Send Action Icon */}
+              {isQuotationTab ? (
+                /* Quotation Tab: Send Quotation Email (Active by default!) */
+                <ActionButton
+                  icon={Send}
+                  disabled={isCancelled}
+                  onClick={() => handleSendQuotationEmail(service)}
+                  title={
+                    isCancelled
+                      ? 'Cannot send quotation for cancelled service'
+                      : isQuotationSent
+                      ? 'Quotation Email Sent (Click to resend)'
+                      : 'Send Service Quotation via Email (Auto-updates status to Quotations)'
+                  }
+                  className={
+                    isCancelled
+                      ? '!text-gray-300 dark:!text-slate-700 opacity-40'
+                      : isQuotationSent
+                      ? '!text-red-500 hover:!bg-red-50 dark:hover:!bg-slate-800'
+                      : '!text-indigo-600 dark:!text-indigo-400 hover:!bg-indigo-50 dark:hover:!bg-slate-800'
+                  }
+                />
+              ) : (
+                /* Other Tabs: Send Receipt Email */
+                <ActionButton
+                  icon={Send}
+                  disabled={!isReceiptActive}
+                  onClick={() => handleSendReceiptEmail(service)}
+                  title={
+                    !isReceiptActive
+                      ? 'Receipt email available from Payment Received stage onwards'
+                      : isReceiptSent
+                      ? 'Receipt Email Sent'
+                      : 'Send Receipt PDF via Email'
+                  }
+                  className={
+                    !isReceiptActive
+                      ? '!text-gray-300 dark:!text-slate-700 opacity-40'
+                      : isReceiptSent
+                      ? '!text-red-500 hover:!bg-red-50 dark:hover:!bg-slate-800'
+                      : '!text-indigo-600 dark:!text-indigo-400 hover:!bg-indigo-50 dark:hover:!bg-slate-800'
+                  }
+                />
+              )}
 
               {/* 3. Edit Service Record */}
               {canEdit && (
@@ -1028,15 +1150,7 @@ export default function AllServicesPage({ setActiveRoute }) {
                 />
               )}
 
-              {/* 4. View Service Invoice Modal (Blue) */}
-              <ActionButton
-                type="view"
-                onClick={() => handleViewService(service.id)}
-                title="View Service Invoice"
-                className="!text-[#043486] dark:!text-blue-400 hover:!bg-blue-50 dark:hover:!bg-slate-800"
-              />
-
-              {/* 5. Delete Service Record */}
+              {/* 4. Delete Service Record */}
               {canDelete && (
                 <ActionButton
                   type="delete"
@@ -1227,12 +1341,12 @@ export default function AllServicesPage({ setActiveRoute }) {
       {/* 4. Tab Navigation Bar (Standard Module Chevron Arrow Nav) */}
       <TabNav>
         <TabButton
-          active={activeTab === 'intake'}
+          active={activeTab === 'quotation_approval'}
           variant="blue"
           icon={FileText}
-          label={`Intake & Approval (${tabCounts.intake})`}
+          label={`Quotation & approval (${tabCounts.quotation_approval})`}
           onClick={() => {
-            setActiveTab('intake')
+            setActiveTab('quotation_approval')
             setStatusFilter('ALL')
             setCurrentPage(1)
             setSelectedServiceIds([])
@@ -1240,12 +1354,12 @@ export default function AllServicesPage({ setActiveRoute }) {
         />
 
         <TabButton
-          active={activeTab === 'repairs'}
+          active={activeTab === 'repair_ready'}
           variant="amber"
           icon={Clock}
-          label={`Repairs & Ready (${tabCounts.repairs})`}
+          label={`Repair & ready (${tabCounts.repair_ready})`}
           onClick={() => {
-            setActiveTab('repairs')
+            setActiveTab('repair_ready')
             setStatusFilter('ALL')
             setCurrentPage(1)
             setSelectedServiceIds([])

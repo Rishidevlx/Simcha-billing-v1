@@ -153,7 +153,7 @@ export default function ServiceReceiptTemplate({ service, bill, settings, compan
             {/* Customer Details Box */}
             <TemplatePartyBox
               mode="single-column"
-              billTitle="RECEIVED FROM"
+              billTitle="Payment Received From"
               customerName={data.customer_name}
               customerAddress={data.customer_address}
               customerPhone={data.customer_phone}

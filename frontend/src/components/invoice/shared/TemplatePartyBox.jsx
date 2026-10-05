@@ -2,7 +2,7 @@ import React from 'react'
 
 export default function TemplatePartyBox({
   mode = 'two-column', // 'two-column' | 'single-column'
-  billTitle = 'BILL TO (BUYER)',
+  billTitle = 'Billing Details',
   customerName = '',
   customerAddress = '',
   customerPhone = '',
@@ -24,7 +24,7 @@ export default function TemplatePartyBox({
       <div className="border border-gray-300 p-2.5 bg-white/80 text-[#292424]">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <span className="text-[9.5px] font-black text-[#043486] uppercase tracking-wider block mb-0.5">
+            <span className="text-[12px] font-black text-[#043486] uppercase tracking-wider block mb-0.5">
               {billTitle}
             </span>
             <h3 className="text-[13px] font-bold text-[#292424]">
@@ -85,7 +85,7 @@ export default function TemplatePartyBox({
         <div className="space-y-0.5 border-r border-gray-200 pr-3">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <span className="text-[9.5px] font-black text-[#043486] uppercase tracking-wider block mb-0.5">
+              <span className="text-[12px] font-black text-[#043486] uppercase tracking-wider block mb-0.5">
                 {billTitle}
               </span>
               <h3 className="text-[12.5px] font-bold text-[#292424]">
@@ -120,7 +120,7 @@ export default function TemplatePartyBox({
 
         {/* Right Column: SHIP TO / DELIVERY ADDRESS */}
         <div className="space-y-0.5 pl-1">
-          <span className="text-[9.5px] font-black text-[#043486] uppercase tracking-wider block mb-0.5">
+          <span className="text-[12px] font-black text-[#043486] uppercase tracking-wider block mb-0.5">
             {shipTitle}
           </span>
           <h3 className="text-[12.5px] font-bold text-[#292424]">

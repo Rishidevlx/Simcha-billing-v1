@@ -123,12 +123,12 @@ export default function ReturnVoucherTemplate({ returnItem, settings, company })
           {/* Customer & Return Details Box: Two Columns (BILL TO & RETURN VOUCHER DETAILS) */}
           <div className="border border-gray-300 p-2.5 bg-white/80 text-[#292424]">
             <div className="grid grid-cols-2 gap-4">
-              {/* Left Column: BILL TO (CUSTOMER) */}
+              {/* Left Column: CUSTOMER DETAILS */}
               <div className="space-y-0.5 border-r border-gray-200 pr-3">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <span className="text-[9.5px] font-black text-[#043486] uppercase tracking-wider block mb-0.5">
-                      BILL TO (CUSTOMER)
+                    <span className="text-[12px] font-black text-[#043486] uppercase tracking-wider block mb-0.5">
+                      CUSTOMER DETAILS
                     </span>
                     <h3 className="text-[12.5px] font-bold text-[#292424]">
                       {returnItem.customer_name}
@@ -152,7 +152,7 @@ export default function ReturnVoucherTemplate({ returnItem, settings, company })
 
               {/* Right Column: RETURN & VOUCHER DETAILS */}
               <div className="space-y-0.5 pl-1">
-                <span className="text-[9.5px] font-black text-[#043486] uppercase tracking-wider block mb-0.5">
+                <span className="text-[12px] font-black text-[#043486] uppercase tracking-wider block mb-0.5">
                   RETURN &amp; VOUCHER DETAILS
                 </span>
                 <div className="space-y-0.5 pt-0.5 text-[10px] font-medium text-gray-700">

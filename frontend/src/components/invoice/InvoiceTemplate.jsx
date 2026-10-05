@@ -161,7 +161,7 @@ export default function InvoiceTemplate({ bill, settings, company }) {
             {/* Customer Details Box (BILL TO & SHIP TO) */}
             <TemplatePartyBox
               mode="two-column"
-              billTitle="BILL TO (BUYER)"
+              billTitle="Billing Details"
               customerName={bill.customer_name}
               customerAddress={bill.customer_address}
               customerPhone={bill.customer_phone}

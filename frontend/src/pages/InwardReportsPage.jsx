@@ -687,14 +687,6 @@ export default function InwardReportsPage() {
                             />
                           )}
 
-                          {/* View Inward Details (Blue) */}
-                          <ActionButton
-                            type="view"
-                            onClick={() => handleOpenDetails(inv.id)}
-                            className="!text-[#043486] dark:!text-blue-400 hover:!bg-blue-50 dark:hover:!bg-slate-800"
-                            title="View Inward Details"
-                          />
-
                           {/* Delete Inward Record */}
                           {canDelete && (
                             <ActionButton

@@ -255,25 +255,41 @@ export function generateInvoiceHtml(bill, settings = {}) {
             </div>
           </div>
 
-          <!-- Customer Details with Copy Type on the Right -->
+          <!-- Customer Details: Two Columns (BILL TO & DELIVERY ADDRESS) -->
           <div class="customer-card">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <!-- Left: BILL TO -->
+              <div style="border-right: 1px solid #e5e7eb; padding-right: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                  <div>
+                    <div class="customer-title">BILLING DETAILS</div>
+                    <div class="customer-name">${bill.customer_name}</div>
+                  </div>
+                  <span style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #292424; background: #f3f4f6; border: 1px solid #d1d5db; padding: 2px 6px;">
+                    ${bill.copy_type === 'DUPLICATE' ? 'DUPLICATE' : (bill.copy_type === 'TRIPLICATE' ? 'TRIPLICATE' : 'ORIGINAL')}
+                  </span>
+                </div>
+                ${bill.customer_address ? `<div style="color: #374151; margin-top: 3px; font-size: 10px; line-height: 1.3;">${bill.customer_address}</div>` : ''}
+                <div style="margin-top: 4px; color: #374151; font-size: 10px; line-height: 1.4;">
+                  ${bill.customer_phone ? `<div><strong>Mobile:</strong> <span style="font-family: monospace;">${bill.customer_phone}</span></div>` : ''}
+                  ${bill.customer_email ? `<div><strong>Email:</strong> <span>${bill.customer_email}</span></div>` : ''}
+                  ${bill.customer_gstin ? `<div><strong>Customer GSTIN:</strong> <span style="font-family: monospace; font-weight: bold;">${bill.customer_gstin}</span></div>` : ''}
+                </div>
+              </div>
+
+              <!-- Right: DELIVERY ADDRESS -->
               <div>
-                <div class="customer-title">BILL TO</div>
-                <div class="customer-name">${bill.customer_name}</div>
+                <div class="customer-title">DELIVERY / SHIPPING ADDRESS</div>
+                <div style="color: #374151; margin-top: 3px; font-size: 10px; line-height: 1.3;">
+                  ${bill.same_as_billing || !bill.delivery_address || bill.delivery_address.trim() === ''
+                    ? (bill.customer_address ? bill.customer_address : 'Same as billing address')
+                    : bill.delivery_address}
+                </div>
+                <div style="margin-top: 4px; color: #374151; font-size: 10px; line-height: 1.4;">
+                  <div><strong>Place of Supply:</strong> ${bill.place_of_supply || '33-Tamil Nadu'}</div>
+                  ${bill.has_due_date && bill.due_date ? `<div><strong>Due Date:</strong> ${formatDate(bill.due_date)}</div>` : ''}
+                </div>
               </div>
-              <div style="text-align: right;">
-                <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #292424; background: #f3f4f6; border: 1px solid #d1d5db; padding: 3px 8px; display: inline-block;">
-                  ${bill.copy_type === 'DUPLICATE' ? 'DUPLICATE' : (bill.copy_type === 'TRIPLICATE' ? 'TRIPLICATE' : 'ORIGINAL')}
-                </span>
-              </div>
-            </div>
-            ${bill.customer_address ? `<div style="color: #374151; margin-top: 4px; margin-bottom: 4px;">${bill.customer_address}</div>` : ''}
-            <div style="margin-top: 4px; color: #374151;">
-              ${bill.customer_phone ? `<div><strong>Mobile:</strong> <span style="font-family: monospace;">${bill.customer_phone}</span></div>` : ''}
-              ${bill.customer_email ? `<div><strong>Email:</strong> <span>${bill.customer_email}</span></div>` : ''}
-              <div><strong>Place of Supply:</strong> ${bill.place_of_supply || '33-Tamil Nadu'}</div>
-              ${bill.customer_gstin ? `<div><strong>Customer GSTIN:</strong> <span style="font-family: monospace; font-weight: bold;">${bill.customer_gstin}</span></div>` : ''}
             </div>
           </div>
         ` : `
@@ -632,9 +648,9 @@ export function generateInvoiceHtml(bill, settings = {}) {
         }
 
         .customer-title {
-          font-size: 10px;
+          font-size: 11.5px;
           font-weight: 900;
-          color: #292424;
+          color: #043486;
           text-transform: uppercase;
           letter-spacing: 0.5px;
           margin-bottom: 4px;
@@ -1132,6 +1148,11 @@ export function generateReceiptHtml(bill, settings = {}) {
   const companyEmail = settings.email || 'simchainfosolutions@gmail.com'
   const companyAddress = settings.address || '7A3, Thulasi Ammal Layout 2nd Street, Lakshmipuram, Peelamedu Post, Coimbatore - 641 004.'
   const signatureUrl = settings.signature_url || settings.signatureUrl || bill.signature_url || ''
+  const bankName = settings.bank_name || 'HDFC BANK'
+  const bankAccountName = settings.account_holder_name || settings.company_name || 'SIMCHA INFO SOLUTIONS'
+  const bankAccountNo = settings.account_number || '50200085472190'
+  const bankIfsc = settings.ifsc_code || 'HDFC0000240'
+  const bankBranch = settings.branch_name || 'PEELAMEDU'
 
   let termsList = []
   if (Array.isArray(settings.terms_conditions)) {
@@ -1248,18 +1269,33 @@ export function generateReceiptHtml(bill, settings = {}) {
             </div>
           </div>
 
-          <!-- Customer Details -->
+          <!-- Customer Details: Two Columns (RECEIVED FROM & DELIVERY ADDRESS) -->
           <div class="customer-card">
-            <div>
-              <div class="customer-title">RECEIVED FROM</div>
-              <div class="customer-name">${bill.customer_name}</div>
-            </div>
-            ${bill.customer_address ? `<div style="color: #374151; margin-top: 4px; margin-bottom: 4px;">${bill.customer_address}</div>` : ''}
-            <div style="margin-top: 4px; color: #374151;">
-              ${bill.customer_phone ? `<div><strong>Mobile:</strong> <span style="font-family: monospace;">${bill.customer_phone}</span></div>` : ''}
-              ${bill.customer_email ? `<div><strong>Email:</strong> <span>${bill.customer_email}</span></div>` : ''}
-              <div><strong>Place of Supply:</strong> ${bill.place_of_supply || '33-Tamil Nadu'}</div>
-              ${bill.customer_gstin ? `<div><strong>Customer GSTIN:</strong> <span style="font-family: monospace; font-weight: bold;">${bill.customer_gstin}</span></div>` : ''}
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <!-- Left: RECEIVED FROM -->
+              <div style="border-right: 1px solid #e5e7eb; padding-right: 12px;">
+                <div class="customer-title">PAYMENT RECEIVED FROM</div>
+                <div class="customer-name">${bill.customer_name}</div>
+                ${bill.customer_address ? `<div style="color: #374151; margin-top: 3px; font-size: 10px; line-height: 1.3;">${bill.customer_address}</div>` : ''}
+                <div style="margin-top: 4px; color: #374151; font-size: 10px; line-height: 1.4;">
+                  ${bill.customer_phone ? `<div><strong>Mobile:</strong> <span style="font-family: monospace;">${bill.customer_phone}</span></div>` : ''}
+                  ${bill.customer_email ? `<div><strong>Email:</strong> <span>${bill.customer_email}</span></div>` : ''}
+                  ${bill.customer_gstin ? `<div><strong>Customer GSTIN:</strong> <span style="font-family: monospace; font-weight: bold;">${bill.customer_gstin}</span></div>` : ''}
+                </div>
+              </div>
+
+              <!-- Right: DELIVERY ADDRESS -->
+              <div>
+                <div class="customer-title">DELIVERY / SHIPPING ADDRESS</div>
+                <div style="color: #374151; margin-top: 3px; font-size: 10px; line-height: 1.3;">
+                  ${bill.same_as_billing || !bill.delivery_address || bill.delivery_address.trim() === ''
+                    ? (bill.customer_address ? bill.customer_address : 'Same as billing address')
+                    : bill.delivery_address}
+                </div>
+                <div style="margin-top: 4px; color: #374151; font-size: 10px; line-height: 1.4;">
+                  <div><strong>Place of Supply:</strong> ${bill.place_of_supply || '33-Tamil Nadu'}</div>
+                </div>
+              </div>
             </div>
           </div>
         ` : `
@@ -1321,11 +1357,27 @@ export function generateReceiptHtml(bill, settings = {}) {
         </div>
 
         ${page.showSummary ? `
-          <!-- Bottom Split: NO Bank Details, NO QR Code -->
+          <!-- Bottom Split: Bank Details, Payment Status & Terms -->
           <div class="bottom-grid">
             
-            <!-- Left: Terms & Conditions only -->
+            <!-- Left: Bank Details, Payment Status & Terms -->
             <div>
+              <div style="margin-bottom: 8px;">
+                <div class="bank-title">BANK DETAILS</div>
+                <div class="bank-details">
+                  <div><strong>Beneficiary:</strong> ${bankAccountName}</div>
+                  <div><strong>Bank:</strong> ${bankName}</div>
+                  <div><strong>Account No:</strong> <span style="font-family: monospace; font-weight: bold;">${bankAccountNo}</span></div>
+                  <div><strong>IFSC Code:</strong> <span style="font-family: monospace; font-weight: bold;">${bankIfsc}</span></div>
+                  <div><strong>Branch:</strong> ${bankBranch}</div>
+                </div>
+              </div>
+
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 5px 8px; font-size: 10px; color: #475569; margin-bottom: 8px;">
+                <div><strong>Payment Mode:</strong> ${bill.payment_mode || 'Cash'}</div>
+                <div style="margin-top: 2px;"><strong>Payment Status:</strong> <span style="color: #047857; font-weight: bold;">PAID</span></div>
+              </div>
+
               <div>
                 <div class="terms-title">TERMS &amp; CONDITIONS</div>
                 <ol class="terms-list">
@@ -1639,6 +1691,21 @@ export function generateReceiptHtml(bill, settings = {}) {
           grid-template-columns: 7fr 5fr;
           gap: 24px;
           margin-top: 8px;
+        }
+
+        .bank-title {
+          font-size: 11px;
+          font-weight: 900;
+          color: #292424;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 4px;
+        }
+
+        .bank-details {
+          font-size: 10px;
+          color: #374151;
+          line-height: 1.4;
         }
 
         .terms-title {
@@ -2097,25 +2164,41 @@ export function generateQuotationHtml(quotation, settings = {}) {
             </div>
           </div>
 
-          <!-- Customer Details -->
+          <!-- Customer Details: Two Columns (QUOTATION FOR & DELIVERY ADDRESS) -->
           <div class="customer-card">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <!-- Left: QUOTATION FOR -->
+              <div style="border-right: 1px solid #e5e7eb; padding-right: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                  <div>
+                    <div class="customer-title">CUSTOMER DETAILS</div>
+                    <div class="customer-name">${quotation.customer_name}</div>
+                  </div>
+                  <span style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #1e3a8a; background: #dbeafe; border: 1px solid #bfdbfe; padding: 2px 6px;">
+                    OFFICIAL ESTIMATE
+                  </span>
+                </div>
+                ${quotation.customer_address ? `<div style="color: #374151; margin-top: 3px; font-size: 10px; line-height: 1.3;">${quotation.customer_address}</div>` : ''}
+                <div style="margin-top: 4px; color: #374151; font-size: 10px; line-height: 1.4;">
+                  ${quotation.customer_phone ? `<div><strong>Mobile:</strong> <span style="font-family: monospace;">${quotation.customer_phone}</span></div>` : ''}
+                  ${quotation.customer_email ? `<div><strong>Email:</strong> <span>${quotation.customer_email}</span></div>` : ''}
+                  ${quotation.customer_gstin ? `<div><strong>Client GSTIN:</strong> <span style="font-family: monospace; font-weight: bold;">${quotation.customer_gstin}</span></div>` : ''}
+                </div>
+              </div>
+
+              <!-- Right: DELIVERY / SITE ADDRESS -->
               <div>
-                <div class="customer-title">QUOTATION FOR</div>
-                <div class="customer-name">${quotation.customer_name}</div>
+                <div class="customer-title">DELIVERY / SITE ADDRESS</div>
+                <div style="color: #374151; margin-top: 3px; font-size: 10px; line-height: 1.3;">
+                  ${quotation.same_as_billing || !quotation.delivery_address || quotation.delivery_address.trim() === ''
+                    ? (quotation.customer_address ? quotation.customer_address : 'Same as billing address')
+                    : quotation.delivery_address}
+                </div>
+                <div style="margin-top: 4px; color: #374151; font-size: 10px; line-height: 1.4;">
+                  <div><strong>Place of Supply:</strong> ${quotation.place_of_supply || '33-Tamil Nadu'}</div>
+                  ${quotation.valid_until ? `<div><strong>Valid Until:</strong> ${formatDate(quotation.valid_until)}</div>` : ''}
+                </div>
               </div>
-              <div style="text-align: right;">
-                <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #1e3a8a; background: #dbeafe; border: 1px solid #bfdbfe; padding: 3px 8px; display: inline-block;">
-                  OFFICIAL ESTIMATE
-                </span>
-              </div>
-            </div>
-            ${quotation.customer_address ? `<div style="color: #374151; margin-top: 4px; margin-bottom: 4px;">${quotation.customer_address}</div>` : ''}
-            <div style="margin-top: 4px; color: #374151;">
-              ${quotation.customer_phone ? `<div><strong>Mobile:</strong> <span style="font-family: monospace;">${quotation.customer_phone}</span></div>` : ''}
-              ${quotation.customer_email ? `<div><strong>Email:</strong> <span>${quotation.customer_email}</span></div>` : ''}
-              <div><strong>Place of Supply:</strong> ${quotation.place_of_supply || '33-Tamil Nadu'}</div>
-              ${quotation.customer_gstin ? `<div><strong>Customer GSTIN:</strong> <span style="font-family: monospace; font-weight: bold;">${quotation.customer_gstin}</span></div>` : ''}
             </div>
           </div>
         ` : `
@@ -2857,5 +2940,176 @@ export async function sendQuotationEmail(quotationId, customRecipient = null) {
     }
   }
 }
+
+/**
+ * Send Service Quotation PDF Email via configured SMTP
+ */
+export async function sendServiceQuotationEmail(serviceId, customRecipient = null) {
+  try {
+    const pool = getPool()
+
+    // 1. Fetch Email Config
+    const [configRows] = await pool.query('SELECT * FROM email_configs WHERE id = 1')
+    if (configRows.length === 0) {
+      return { success: false, message: 'Email configurations not found.' }
+    }
+    const config = configRows[0]
+
+    if (!config.smtp_user || !config.smtp_pass) {
+      return { success: false, message: 'SMTP credentials not configured in Settings.' }
+    }
+
+    // 2. Fetch Service Details & Settings
+    const [serviceRows] = await pool.query('SELECT * FROM service_bills WHERE id = ?', [serviceId])
+    if (serviceRows.length === 0) {
+      return { success: false, message: 'Service record not found.' }
+    }
+    const service = serviceRows[0]
+
+    const [itemRows] = await pool.query('SELECT * FROM service_bill_items WHERE service_bill_id = ? ORDER BY id ASC', [serviceId])
+
+    // Map items for quotation template
+    const mappedItems = itemRows.map(it => ({
+      ...it,
+      item_name: it.product_name || it.item_name || 'Service Product',
+      product_name: it.product_name || it.item_name || 'Service Product',
+      description: it.issue_description || it.brand_model || '',
+      quantity: parseFloat(it.quantity) || 1,
+      unit: it.unit || 'NOS',
+      rate: parseFloat(it.rate) || 0,
+      amount: parseFloat(it.amount) || 0,
+      tax_rate: parseFloat(it.tax_rate) || 18,
+      tax_amount: parseFloat(it.tax_amount) || 0,
+      hsn_code: it.hsn_code || '9987'
+    }))
+
+    const quotationData = {
+      ...service,
+      quotation_number: service.service_number,
+      quotation_date: service.service_date,
+      valid_until: null,
+      items: mappedItems
+    }
+
+    const [settingsRows] = await pool.query('SELECT * FROM settings WHERE id = 1')
+    const settings = settingsRows.length > 0 ? settingsRows[0] : {}
+
+    // 3. Setup Nodemailer Transporter
+    const transporter = nodemailer.createTransport({
+      host: config.smtp_host || 'smtp.gmail.com',
+      port: parseInt(config.smtp_port, 10) || 465,
+      secure: config.smtp_port === 465 || config.smtp_secure === 1 || config.smtp_secure === true,
+      auth: {
+        user: config.smtp_user.trim(),
+        pass: config.smtp_pass.trim()
+      }
+    })
+
+    const formattedDate = new Date(service.service_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    const formattedTotal = `₹ ${parseFloat(service.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+
+    const companyDisplayName = settings.company_name || config.sender_name || 'Simcha Info Solutions'
+    const companyDisplayAddress = settings.address || ''
+    const companyDisplayPhone = settings.phone || ''
+    const companyDisplayEmail = settings.email || config.sender_email || config.smtp_user || 'simchainfosolutions@gmail.com'
+
+    const getHtmlBody = (greetingName) => `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 620px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden;">
+        <div style="background-color: #043486; padding: 22px 28px; text-align: left;">
+          <h2 style="color: #ffffff; margin: 0; font-size: 20px; letter-spacing: 0.5px;">${companyDisplayName}</h2>
+          <p style="color: #93c5fd; margin: 4px 0 0 0; font-size: 12px;">Official Service Price Quotation</p>
+        </div>
+
+        <div style="padding: 26px 28px;">
+          <p style="font-size: 14px; color: #334155; margin-top: 0;">Dear <strong>${greetingName}</strong>,</p>
+          <p style="font-size: 13.5px; color: #475569; line-height: 1.6;">
+            Thank you for registering your service request. Please find attached our official service price quotation <strong>${service.service_number}</strong> for your device/product service.
+          </p>
+
+          <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 16px; margin: 20px 0;">
+            <table style="width: 100%; font-size: 13px; color: #334155; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Service / Quotation #:</td>
+                <td style="padding: 6px 0; font-weight: bold; font-family: monospace; color: #043486;">${service.service_number}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Date:</td>
+                <td style="padding: 6px 0; font-weight: 500;">${formattedDate}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Customer Name:</td>
+                <td style="padding: 6px 0; font-weight: 500;">${service.customer_name}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Estimated Total:</td>
+                <td style="padding: 6px 0; font-weight: bold; font-size: 15px; color: #043486;">${formattedTotal}</td>
+              </tr>
+            </table>
+          </div>
+
+          <p style="font-size: 13px; color: #475569; line-height: 1.5;">
+            Please review the attached quotation PDF. If you have any questions or wish to approve the service, please reply to this email or contact us.
+          </p>
+
+          ${companyDisplayPhone ? `
+          <p style="font-size: 12.5px; color: #64748b; line-height: 1.5;">
+            Phone: <strong>${companyDisplayPhone}</strong> &nbsp;|&nbsp; Email: <strong>${companyDisplayEmail}</strong>
+          </p>` : ''}
+
+          ${companyDisplayAddress ? `
+          <div style="margin-top: 28px; padding-top: 16px; border-top: 1px solid #f1f5f9; font-size: 12px; color: #94a3b8;">
+            ${companyDisplayName} • ${companyDisplayAddress}
+          </div>` : ''}
+        </div>
+      </div>
+    `
+
+    const pdfBuffer = await generateQuotationPdfBuffer(quotationData, settings)
+
+    // Send to recipient
+    const recipient = (customRecipient || service.customer_email || '').trim()
+    if (!recipient) {
+      return { success: false, message: 'No customer recipient email provided.' }
+    }
+
+    const subject = `Service Quotation - ${service.service_number} (${companyDisplayName})`
+    await transporter.sendMail({
+      from: `"${config.sender_name || companyDisplayName}" <${config.smtp_user}>`,
+      to: recipient,
+      subject: subject,
+      html: getHtmlBody(service.customer_name),
+      attachments: [
+        {
+          filename: `Service_Quotation_${service.service_number.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        }
+      ]
+    })
+
+    // Automatically update service_status to 'Quotations' from 'Received' or current
+    await pool.query(`
+      UPDATE service_bills SET 
+        quotation_email_sent = 1,
+        quotation_email_sent_at = NOW(),
+        service_status = 'Quotations',
+        updated_at = NOW()
+      WHERE id = ?
+    `, [serviceId])
+
+    return {
+      success: true,
+      message: `Service quotation PDF sent successfully to ${recipient}`,
+      newStatus: 'Quotations'
+    }
+  } catch (error) {
+    console.error('❌ Error sending service quotation email:', error)
+    return {
+      success: false,
+      message: error.message || 'Failed to dispatch service quotation email via SMTP.'
+    }
+  }
+}
+
 
 

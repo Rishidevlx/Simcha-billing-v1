@@ -1104,10 +1104,10 @@ export default function AllBillsPage({ setActiveRoute }) {
                                 : isPaid
                                 ? bill.receipt_sent
                                   ? '!text-red-500 dark:!text-red-400 hover:!bg-red-50 dark:hover:!bg-slate-800'
-                                  : '!text-indigo-600 dark:!text-indigo-400 hover:!bg-indigo-50 dark:hover:!bg-slate-800'
+                                  : '!text-emerald-600 dark:!text-emerald-400 hover:!bg-emerald-50 dark:hover:!bg-slate-800'
                                 : bill.invoice_sent
                                 ? '!text-red-500 dark:!text-red-400 hover:!bg-red-50 dark:hover:!bg-slate-800'
-                                : '!text-indigo-600 dark:!text-indigo-400 hover:!bg-indigo-50 dark:hover:!bg-slate-800'
+                                : '!text-[#043486] dark:!text-blue-400 hover:!bg-blue-50 dark:hover:!bg-slate-800'
                             }
                             title={
                               isCancelled
@@ -1143,15 +1143,7 @@ export default function AllBillsPage({ setActiveRoute }) {
                             />
                           )}
 
-                          {/* 4. View Invoice Modal / PDF */}
-                          <ActionButton
-                            type="view"
-                            onClick={() => handleViewBill(bill.id)}
-                            className="!text-[#043486] dark:!text-blue-400 hover:!bg-blue-50 dark:hover:!bg-slate-800"
-                            title="View / Download Invoice PDF"
-                          />
-
-                          {/* 5. Delete Invoice (Inactive if Paid or Cancelled) */}
+                          {/* 4. Delete Invoice (Inactive if Paid or Cancelled) */}
                           {canDelete && (
                             <ActionButton
                               type="delete"

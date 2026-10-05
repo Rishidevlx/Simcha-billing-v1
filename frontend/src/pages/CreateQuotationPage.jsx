@@ -1328,6 +1328,7 @@ export default function CreateQuotationPage({ setActiveRoute }) {
           onAddItem={handleAddItem}
           onDuplicateItem={handleDuplicateItem}
           onRemoveItem={handleRemoveItem}
+          isQuotation={true}
         />
 
       </form>

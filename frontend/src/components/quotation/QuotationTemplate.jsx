@@ -148,7 +148,7 @@ export default function QuotationTemplate({ quotation, settings, company }) {
             {/* Customer Details Box (QUOTATION FOR & SHIP TO) */}
             <TemplatePartyBox
               mode="two-column"
-              billTitle="QUOTATION FOR (PROPOSAL TO)"
+              billTitle="Customer Details"
               customerName={quotation.customer_name}
               customerAddress={quotation.customer_address}
               customerPhone={quotation.customer_phone}

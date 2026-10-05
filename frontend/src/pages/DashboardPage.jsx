@@ -42,10 +42,31 @@ import {
   CartesianGrid
 } from 'recharts'
 import InvoiceModal from '../components/invoice/InvoiceModal'
-import { ActionButton } from '../components/ui'
+import { Button, ActionButton } from '../components/ui'
+import ListKpiCard from '../components/common/ListKpiCard'
+import DashboardDateRangePicker from '../components/dashboard/DashboardDateRangePicker'
 import { API_ENDPOINTS } from '../config/api'
 
 const PIE_COLORS = ['#043486', '#0284c7', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899']
+
+// Local Date Helper to eliminate timezone UTC discrepancy (e.g. 2026-10-02T18:30:00Z -> 2026-10-03 in local IST)
+const getLocalDateString = (dateVal) => {
+  if (!dateVal) return ''
+  if (typeof dateVal === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateVal.trim())) {
+    return dateVal.trim()
+  }
+  const d = new Date(dateVal)
+  if (isNaN(d.getTime())) {
+    if (typeof dateVal === 'string') {
+      return dateVal.slice(0, 10)
+    }
+    return ''
+  }
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
   const navigate = useNavigate()
@@ -123,6 +144,8 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
         'add-material': '/materials/add',
         'inventory': '/inventory',
         'stock': '/inventory',
+        'returns': '/inventory/returns',
+        'credit-notes': '/inventory/returns?tab=credit_notes',
         'profile-settings': '/settings/profile',
         'system-settings': '/settings/system',
         'configurations-settings': '/settings/configurations'
@@ -142,6 +165,12 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
   const [selectedBillForPreview, setSelectedBillForPreview] = useState(null)
   const [chartViewTab, setChartViewTab] = useState('sales_vs_purchase') // 'sales_vs_purchase' | 'monthly_growth'
   const [pieTab, setPieTab] = useState('customer_type') // 'customer_type' | 'payment_status'
+  const [dateRange, setDateRange] = useState({
+    preset: 'ALL_TIME',
+    startDate: '',
+    endDate: '',
+    label: 'All Time'
+  })
 
   // Fetch all dashboard data
   const fetchAllData = async () => {
@@ -189,17 +218,46 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
     fetchAllData()
   }, [])
 
+  // Helper to check if a date string falls inside the chosen date range
+  const isDateInRange = (dateVal) => {
+    if (!dateRange.startDate && !dateRange.endDate) return true
+    if (!dateVal) return false
+
+    const itemDate = getLocalDateString(dateVal)
+    if (!itemDate) return false
+
+    if (dateRange.startDate && itemDate < dateRange.startDate) return false
+    if (dateRange.endDate && itemDate > dateRange.endDate) return false
+    return true
+  }
+
+  // Filtered collections based on Date Range
+  const filteredBills = useMemo(() => {
+    if (!dateRange.startDate && !dateRange.endDate) return bills
+    return bills.filter(b => isDateInRange(b.invoice_date || b.created_at))
+  }, [bills, dateRange])
+
+  const filteredInwards = useMemo(() => {
+    if (!dateRange.startDate && !dateRange.endDate) return inwards
+    return inwards.filter(i => isDateInRange(i.inward_date || i.created_at))
+  }, [inwards, dateRange])
+
+  const filteredReturns = useMemo(() => {
+    if (!dateRange.startDate && !dateRange.endDate) return returnsList
+    return returnsList.filter(r => isDateInRange(r.return_date || r.created_at))
+  }, [returnsList, dateRange])
+
   // 1. Calculated KPI Summary Metrics
   const metrics = useMemo(() => {
-    const totalOutwardRevenue = bills.reduce((acc, b) => acc + (parseFloat(b.total_amount) || 0), 0)
-    const totalInwardCost = inwards.reduce((acc, i) => acc + (parseFloat(i.total_amount) || 0), 0)
-    const paidBills = bills.filter(b => b.payment_status === 'Paid')
-    const pendingBills = bills.filter(b => b.payment_status === 'Pending')
-    const partialBills = bills.filter(b => b.payment_status === 'Partial')
+    const totalOutwardRevenue = filteredBills.reduce((acc, b) => acc + (parseFloat(b.total_amount) || 0), 0)
+    const totalInwardCost = filteredInwards.reduce((acc, i) => acc + (parseFloat(i.total_amount) || 0), 0)
+    const paidBills = filteredBills.filter(b => b.payment_status === 'Paid')
+    const pendingBills = filteredBills.filter(b => b.payment_status === 'Pending')
+    const partialBills = filteredBills.filter(b => b.payment_status === 'Partial')
 
     const paidAmount = paidBills.reduce((acc, b) => acc + (parseFloat(b.total_amount) || 0), 0)
     const pendingAmount = pendingBills.reduce((acc, b) => acc + (parseFloat(b.total_amount) || 0), 0)
-    const totalTaxCollected = bills.reduce((acc, b) => acc + (parseFloat(b.total_tax) || 0), 0)
+    const totalTaxCollected = filteredBills.reduce((acc, b) => acc + (parseFloat(b.total_tax) || 0), 0)
 
     const activeMaterialsCount = materials.filter(m => m.status === 'Active').length
     const lowStockMaterials = materials.filter(m => (parseFloat(m.stock_quantity || m.current_stock || 0) <= 5) && m.status === 'Active')
@@ -222,18 +280,18 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
       activeMaterialsCount,
       lowStockMaterials,
       todaySales,
-      totalInwardsCount: inwards.length
+      totalInwardsCount: filteredInwards.length
     }
-  }, [bills, inwards, materials])
+  }, [filteredBills, filteredInwards, materials, bills])
 
-  // 2. Monthly Trend Data for Area / Bar Charts (Last 6-12 Months)
+  // 2. Monthly Trend Data for Area / Bar Charts (Includes Outward, Inward & Returns)
   const monthlyChartData = useMemo(() => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
     // Initialize map for 12 months
     const map = {}
     months.forEach((m, idx) => {
-      map[idx] = { month: m, sales: 0, purchase: 0, billsCount: 0, inwardCount: 0 }
+      map[idx] = { month: m, sales: 0, purchase: 0, returns: 0, billsCount: 0, inwardCount: 0, returnsCount: 0 }
     })
 
     // Populate from Outward bills
@@ -264,8 +322,23 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
       }
     })
 
+    // Populate from Returns / Credit Notes
+    returnsList.forEach(ret => {
+      const dStr = ret.return_date || ret.created_at
+      if (dStr) {
+        const d = new Date(dStr)
+        if (!isNaN(d.getTime())) {
+          const mIdx = d.getMonth()
+          if (map[mIdx]) {
+            map[mIdx].returns += (parseFloat(ret.refund_amount || ret.total_amount || ret.item_amount || 0) || 0)
+            map[mIdx].returnsCount += 1
+          }
+        }
+      }
+    })
+
     return Object.values(map)
-  }, [bills, inwards])
+  }, [bills, inwards, returnsList])
 
   // 3. Customer Type Breakdown (Individual vs Company)
   const customerTypeData = useMemo(() => {
@@ -274,7 +347,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
     let companyCount = 0
     let companyRevenue = 0
 
-    bills.forEach(b => {
+    filteredBills.forEach(b => {
       const type = (b.customer_type || 'Individual').toLowerCase()
       const amt = parseFloat(b.total_amount) || 0
       if (type.includes('company') || type.includes('business')) {
@@ -286,21 +359,26 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
       }
     })
 
-    const total = bills.length || 1
+    const total = filteredBills.length || 1
     return [
       { name: 'Individual Customers', value: individualCount, revenue: individualRevenue, percentage: Math.round((individualCount / total) * 100) },
       { name: 'Company / Business', value: companyCount, revenue: companyRevenue, percentage: Math.round((companyCount / total) * 100) }
     ]
-  }, [bills])
+  }, [filteredBills])
 
   // Credit Notes filtered from returns
   const creditNotes = useMemo(() => {
-    return returnsList.filter(
+    return filteredReturns.filter(
       r => r.qc_decision === 'REFUND' ||
         (r.resolution_ref && r.resolution_ref.includes('CN')) ||
-        parseFloat(r.refund_amount || 0) > 0
+        parseFloat(r.refund_amount || 0) > 0 ||
+        r.credit_note_number
     )
-  }, [returnsList])
+  }, [filteredReturns])
+
+  const totalCreditNoteAmount = useMemo(() => {
+    return creditNotes.reduce((acc, cn) => acc + (parseFloat(cn.refund_amount || cn.total_amount || cn.item_amount || 0) || 0), 0)
+  }, [creditNotes])
 
   // 4. Payment Status Breakdown
   const paymentStatusData = useMemo(() => {
@@ -308,26 +386,26 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
     let pendingCount = 0
     let partialCount = 0
 
-    bills.forEach(b => {
+    filteredBills.forEach(b => {
       const st = b.payment_status || 'Paid'
       if (st === 'Paid') paidCount++
       else if (st === 'Pending') pendingCount++
       else if (st === 'Partial') partialCount++
     })
 
-    const total = bills.length || 1
+    const total = filteredBills.length || 1
     return [
       { name: 'Paid', value: paidCount, percentage: Math.round((paidCount / total) * 100) },
       { name: 'Pending', value: pendingCount, percentage: Math.round((pendingCount / total) * 100) },
       { name: 'Partial', value: partialCount, percentage: Math.round((partialCount / total) * 100) }
     ].filter(item => item.value > 0)
-  }, [bills])
+  }, [filteredBills])
 
   // 5. Top Selling Materials Ranking
   const topSellingMaterials = useMemo(() => {
     const itemMap = {}
 
-    bills.forEach(b => {
+    filteredBills.forEach(b => {
       if (Array.isArray(b.items)) {
         b.items.forEach(it => {
           const name = it.item_name || it.name || 'Unnamed Material'
@@ -345,17 +423,23 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
     return Object.values(itemMap)
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5)
-  }, [bills])
+  }, [filteredBills])
 
-  const handleOpenBillModal = (bill) => {
-    setSelectedBillForPreview(bill)
+  const handleRefreshDashboard = () => {
+    setDateRange({
+      preset: 'ALL_TIME',
+      startDate: '',
+      endDate: '',
+      label: 'All Time'
+    })
+    fetchAllData()
   }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 pb-12 font-['Poppins',sans-serif]">
 
       {/* 1. Executive Header & Live System Status */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm transition-colors">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200/90 dark:border-slate-800 shadow-xs transition-colors">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-[#292424] dark:text-white uppercase">
             Executive Dashboard
@@ -365,176 +449,98 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
           </p>
         </div>
 
-        {/* Action Shortcuts & Date */}
+        {/* Action Shortcuts & Date Range Filter */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 dark:text-slate-300 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800">
-            <Calendar size={14} className="text-[#043486] dark:text-blue-400" />
-            <span>{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-          </div>
+          <DashboardDateRangePicker
+            dateRange={dateRange}
+            setDateRange={setDateRange}
+          />
 
           <button
             type="button"
-            onClick={fetchAllData}
-            title="Refresh Dashboard Data"
-            className="p-2 text-gray-600 dark:text-slate-300 hover:text-[#043486] bg-gray-50 dark:bg-slate-950 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800 transition-colors cursor-pointer"
+            onClick={handleRefreshDashboard}
+            title="Refresh & Reset Dashboard"
+            className="px-2.5 py-2 text-gray-600 dark:text-slate-300 hover:text-[#043486] bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-none transition-colors cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center h-[37px]"
           >
             <RotateCcw size={15} className={isLoading ? 'animate-spin' : ''} />
           </button>
 
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            icon={Plus}
             onClick={() => setActiveRoute('inward')}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 hover:bg-teal-100 dark:hover:bg-teal-900 border border-teal-200 dark:border-teal-800 transition-all cursor-pointer shadow-xs"
+            className="text-xs font-semibold"
           >
-            <Plus size={14} />
-            <span>New Inward</span>
-          </button>
+            CREATE NEW INWARD
+          </Button>
 
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            icon={Plus}
             onClick={() => setActiveRoute('create-bill')}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] transition-all cursor-pointer shadow-xs active:scale-98"
+            className="text-xs font-semibold"
           >
-            <Plus size={14} />
-            <span>Create Outward Bill</span>
-          </button>
+            CREATE OUTWARD BILL
+          </Button>
         </div>
       </div>
 
       {/* 2. Top 5 High-Impact KPI Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-
-        {/* KPI 1: Outward Revenue */}
-        <div
+        <ListKpiCard
+          label="Outward Revenue"
+          value={`₹ ${metrics.totalOutwardRevenue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+          subtitle={`${filteredBills.length} Invoices`}
+          icon={TrendingUp}
+          variant="blue"
           onClick={() => setActiveRoute('all-bills')}
-          className="bg-white dark:bg-slate-900 p-5 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm hover:border-[#043486] transition-all cursor-pointer group flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-400 group-hover:text-[#043486] dark:group-hover:text-blue-400 transition-colors">
-              Outward Revenue
-            </span>
-            <div className="w-8 h-8 rounded-none bg-[#043486]/10 text-[#043486] dark:text-blue-400 flex items-center justify-center">
-              <TrendingUp size={16} />
-            </div>
-          </div>
-          <div className="mt-3">
-            <h3 className="text-xl font-black text-[#292424] dark:text-white font-mono tracking-tight">
-              ₹ {metrics.totalOutwardRevenue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-            </h3>
-            <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-slate-400 mt-1">
-              <span>{bills.length} Invoices</span>
-              <span className="text-emerald-600 font-semibold">{metrics.paidBillsCount} Paid</span>
-            </div>
-          </div>
-        </div>
+        />
 
-        {/* KPI 2: Inward Purchases */}
-        <div
+        <ListKpiCard
+          label="Inward Stock Cost"
+          value={`₹ ${metrics.totalInwardCost.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+          subtitle={`${metrics.totalInwardsCount} Purchases`}
+          icon={PackageCheck}
+          variant="emerald"
           onClick={() => setActiveRoute('inward-reports')}
-          className="bg-white dark:bg-slate-900 p-5 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm hover:border-teal-600 transition-all cursor-pointer group flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-400 group-hover:text-teal-600 transition-colors">
-              Inward Stock Cost
-            </span>
-            <div className="w-8 h-8 rounded-none bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center">
-              <PackageCheck size={16} />
-            </div>
-          </div>
-          <div className="mt-3">
-            <h3 className="text-xl font-black text-[#292424] dark:text-white font-mono tracking-tight">
-              ₹ {metrics.totalInwardCost.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-            </h3>
-            <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-slate-400 mt-1">
-              <span>{metrics.totalInwardsCount} Purchases</span>
-              <span className="text-teal-600 font-semibold">Warehouse In</span>
-            </div>
-          </div>
-        </div>
+        />
 
-        {/* KPI 3: GST Tax Collected */}
-        <div
+        <ListKpiCard
+          label="GST Tax Collected"
+          value={`₹ ${metrics.totalTaxCollected.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+          subtitle={`${filteredBills.length} Invoices`}
+          icon={Percent}
+          variant="purple"
           onClick={() => setActiveRoute('all-bills')}
-          className="bg-white dark:bg-slate-900 p-5 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm hover:border-purple-600 transition-all cursor-pointer group flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-400 group-hover:text-purple-600 transition-colors">
-              GST Tax Collected
-            </span>
-            <div className="w-8 h-8 rounded-none bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
-              <Percent size={16} />
-            </div>
-          </div>
-          <div className="mt-3">
-            <h3 className="text-xl font-black text-[#292424] dark:text-white font-mono tracking-tight">
-              ₹ {metrics.totalTaxCollected.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-            </h3>
-            <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-slate-400 mt-1">
-              <span>CGST / SGST / IGST</span>
-              <span className="text-purple-600 font-semibold">Ready Filing</span>
-            </div>
-          </div>
-        </div>
+        />
 
-        {/* KPI 4: Pending Receivables */}
-        <div
+        <ListKpiCard
+          label="Pending Dues"
+          value={`₹ ${metrics.pendingAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+          subtitle={`${metrics.pendingBillsCount} Invoices Due`}
+          icon={Clock}
+          variant="amber"
           onClick={() => setActiveRoute('all-bills')}
-          className="bg-white dark:bg-slate-900 p-5 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm hover:border-amber-500 transition-all cursor-pointer group flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-400 group-hover:text-amber-600 transition-colors">
-              Pending Dues
-            </span>
-            <div className="w-8 h-8 rounded-none bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-              <Clock size={16} />
-            </div>
-          </div>
-          <div className="mt-3">
-            <h3 className="text-xl font-black text-[#292424] dark:text-white font-mono tracking-tight">
-              ₹ {metrics.pendingAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-            </h3>
-            <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-slate-400 mt-1">
-              <span className="text-amber-600 font-semibold">{metrics.pendingBillsCount} Invoices Due</span>
-              <span>Receivables</span>
-            </div>
-          </div>
-        </div>
+        />
 
-        {/* KPI 5: Active Warehouse Stock */}
-        <div
-          onClick={() => setActiveRoute('inventory')}
-          className="bg-white dark:bg-slate-900 p-5 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm hover:border-blue-500 transition-all cursor-pointer group flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-400 group-hover:text-blue-600 transition-colors">
-              Active Materials
-            </span>
-            <div className="w-8 h-8 rounded-none bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-              <Boxes size={16} />
-            </div>
-          </div>
-          <div className="mt-3">
-            <h3 className="text-xl font-black text-[#292424] dark:text-white font-mono tracking-tight">
-              {metrics.activeMaterialsCount} <span className="text-xs font-normal text-gray-400">Items</span>
-            </h3>
-            <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-slate-400 mt-1">
-              <span>{categories.length} Categories</span>
-              {metrics.lowStockMaterials.length > 0 ? (
-                <span className="text-rose-500 font-bold">{metrics.lowStockMaterials.length} Low Stock</span>
-              ) : (
-                <span className="text-emerald-600 font-semibold">Stock Healthy</span>
-              )}
-            </div>
-          </div>
-        </div>
-
+        <ListKpiCard
+          label="Credit Notes"
+          value={`₹ ${totalCreditNoteAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+          subtitle={`${creditNotes.length} Credit Notes`}
+          icon={RotateCcw}
+          variant="rose"
+          onClick={() => {
+            if (setActiveRoute) setActiveRoute('returns')
+            navigate('/inventory/returns?tab=credit_notes')
+          }}
+        />
       </div>
 
       {/* 3. Visual Charts Analytics Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
         {/* Main Chart (8 Cols): Monthly Sales vs Inward Purchase Flow */}
-        <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-6 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200/90 dark:border-slate-800 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-slate-800">
             <div>
               <h2 className="text-sm font-bold text-[#043486] dark:text-blue-400 uppercase tracking-wide flex items-center gap-2">
@@ -547,11 +553,11 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
             </div>
 
             {/* Chart Type Toggle */}
-            <div className="flex items-center bg-gray-100 dark:bg-slate-800 p-1 border border-gray-200 dark:border-slate-700">
+            <div className="flex items-center bg-gray-100 dark:bg-slate-800 p-1 border border-gray-200 dark:border-slate-700 rounded-xl">
               <button
                 type="button"
                 onClick={() => setChartViewTab('sales_vs_purchase')}
-                className={`px-3 py-1 text-xs font-bold transition-all cursor-pointer ${chartViewTab === 'sales_vs_purchase'
+                className={`px-3 py-1 text-xs font-bold transition-all cursor-pointer rounded-lg ${chartViewTab === 'sales_vs_purchase'
                     ? 'bg-[#043486] text-white shadow-xs'
                     : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
                   }`}
@@ -561,7 +567,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
               <button
                 type="button"
                 onClick={() => setChartViewTab('monthly_growth')}
-                className={`px-3 py-1 text-xs font-bold transition-all cursor-pointer ${chartViewTab === 'monthly_growth'
+                className={`px-3 py-1 text-xs font-bold transition-all cursor-pointer rounded-lg ${chartViewTab === 'monthly_growth'
                     ? 'bg-[#043486] text-white shadow-xs'
                     : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
                   }`}
@@ -585,23 +591,37 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
                       <stop offset="5%" stopColor="#0d9488" stopOpacity={0.3} />
                       <stop offset="95%" stopColor="#0d9488" stopOpacity={0.0} />
                     </linearGradient>
+                    <linearGradient id="returnsGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#e11d48" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#e11d48" stopOpacity={0.0} />
+                    </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="month" stroke="#94a3b8" fontSize={11} tickLine={false} />
                   <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} tickFormatter={(val) => `₹${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '0px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '11px' }}
-                    formatter={(val, name) => [`₹ ${Number(val).toLocaleString('en-IN')}`, name === 'sales' ? 'Outward Sales' : 'Inward Cost']}
+                    contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '11px' }}
+                    formatter={(val, name) => [
+                      `₹ ${Number(val).toLocaleString('en-IN')}`,
+                      name === 'sales' ? 'Outward Sales' : name === 'purchase' ? 'Inward Cost' : 'Returns & Refunds'
+                    ]}
                   />
                   <Legend
                     verticalAlign="top"
                     height={30}
                     iconType="circle"
                     iconSize={8}
-                    formatter={(val) => val === 'sales' ? 'Outward Sales (₹)' : 'Inward Purchases (₹)'}
+                    formatter={(val) =>
+                      val === 'sales'
+                        ? 'Outward Sales (₹)'
+                        : val === 'purchase'
+                          ? 'Inward Purchases (₹)'
+                          : 'Returns & Refunds (₹)'
+                    }
                   />
                   <Area type="monotone" dataKey="sales" stroke="#043486" strokeWidth={2.5} fillOpacity={1} fill="url(#salesGrad)" name="sales" />
                   <Area type="monotone" dataKey="purchase" stroke="#0d9488" strokeWidth={2} fillOpacity={1} fill="url(#purchaseGrad)" name="purchase" />
+                  <Area type="monotone" dataKey="returns" stroke="#e11d48" strokeWidth={2} fillOpacity={1} fill="url(#returnsGrad)" name="returns" />
                 </AreaChart>
               ) : (
                 <BarChart data={monthlyChartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
@@ -609,18 +629,28 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
                   <XAxis dataKey="month" stroke="#94a3b8" fontSize={11} tickLine={false} />
                   <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} tickFormatter={(val) => `₹${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '0px', fontSize: '11px' }}
-                    formatter={(val, name) => [`₹ ${Number(val).toLocaleString('en-IN')}`, name === 'sales' ? 'Outward Sales' : 'Inward Cost']}
+                    contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '8px', fontSize: '11px' }}
+                    formatter={(val, name) => [
+                      `₹ ${Number(val).toLocaleString('en-IN')}`,
+                      name === 'sales' ? 'Outward Sales' : name === 'purchase' ? 'Inward Cost' : 'Returns & Refunds'
+                    ]}
                   />
                   <Legend
                     verticalAlign="top"
                     height={30}
                     iconType="square"
                     iconSize={8}
-                    formatter={(val) => val === 'sales' ? 'Outward Sales (₹)' : 'Inward Purchases (₹)'}
+                    formatter={(val) =>
+                      val === 'sales'
+                        ? 'Outward Sales (₹)'
+                        : val === 'purchase'
+                          ? 'Inward Purchases (₹)'
+                          : 'Returns & Refunds (₹)'
+                    }
                   />
-                  <Bar dataKey="sales" fill="#043486" name="sales" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="purchase" fill="#0d9488" name="purchase" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="sales" fill="#043486" name="sales" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="purchase" fill="#0d9488" name="purchase" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="returns" fill="#e11d48" name="returns" radius={[4, 4, 0, 0]} />
                 </BarChart>
               )}
             </ResponsiveContainer>
@@ -628,7 +658,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
         </div>
 
         {/* Donut Chart (4 Cols): Customer Type & Payment Breakdowns */}
-        <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-6 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-4">
+        <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200/90 dark:border-slate-800 shadow-xs flex flex-col justify-between space-y-4">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-slate-800">
               <h2 className="text-sm font-bold text-[#043486] dark:text-blue-400 uppercase tracking-wide flex items-center gap-2">
@@ -637,11 +667,11 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
               </h2>
 
               {/* Toggle Tab */}
-              <div className="flex items-center text-[10px] font-bold bg-gray-100 dark:bg-slate-800 p-0.5 border border-gray-200 dark:border-slate-700">
+              <div className="flex items-center text-[10px] font-bold bg-gray-100 dark:bg-slate-800 p-0.5 border border-gray-200 dark:border-slate-700 rounded-lg">
                 <button
                   type="button"
                   onClick={() => setPieTab('customer_type')}
-                  className={`px-2 py-0.5 transition-colors cursor-pointer ${pieTab === 'customer_type' ? 'bg-[#043486] text-white' : 'text-gray-600 dark:text-slate-400'
+                  className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${pieTab === 'customer_type' ? 'bg-[#043486] text-white shadow-xs' : 'text-gray-600 dark:text-slate-400'
                     }`}
                 >
                   Party Type
@@ -649,7 +679,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
                 <button
                   type="button"
                   onClick={() => setPieTab('payment_status')}
-                  className={`px-2 py-0.5 transition-colors cursor-pointer ${pieTab === 'payment_status' ? 'bg-[#043486] text-white' : 'text-gray-600 dark:text-slate-400'
+                  className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${pieTab === 'payment_status' ? 'bg-[#043486] text-white shadow-xs' : 'text-gray-600 dark:text-slate-400'
                     }`}
                 >
                   Payment
@@ -675,7 +705,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '0px', fontSize: '11px', marginTop: '120px' }}
+                    contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '8px', fontSize: '11px', marginTop: '120px' }}
                     formatter={(val, name) => [`${val} Invoices`, name]}
                   />
                 </PieChart>
@@ -698,7 +728,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
                 <div key={idx} className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
                     <span
-                      className="w-2.5 h-2.5 inline-block shrink-0"
+                      className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
                       style={{ backgroundColor: PIE_COLORS[idx % PIE_COLORS.length] }}
                     />
                     <span className="text-gray-700 dark:text-slate-300 font-medium truncate max-w-[150px]">
@@ -721,7 +751,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
         {/* Top 5 Products / Materials (6 Cols) */}
-        <div className="lg:col-span-6 bg-white dark:bg-slate-900 p-6 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="lg:col-span-6 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200/90 dark:border-slate-800 shadow-xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-slate-800">
             <div>
               <h2 className="text-sm font-bold text-[#043486] dark:text-blue-400 uppercase tracking-wide flex items-center gap-2">
@@ -752,7 +782,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
                   <div key={idx} className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 flex items-center justify-center font-bold text-[10px]">
+                        <span className="w-5 h-5 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 rounded-md flex items-center justify-center font-bold text-[10px]">
                           #{idx + 1}
                         </span>
                         <span className="font-semibold text-[#292424] dark:text-white truncate max-w-[220px]">
@@ -769,9 +799,9 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
                       </div>
                     </div>
                     {/* Progress Bar */}
-                    <div className="w-full h-1.5 bg-gray-100 dark:bg-slate-800 overflow-hidden">
+                    <div className="w-full h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-gradient-to-r from-[#043486] to-[#0284c7] transition-all duration-500"
+                        className="h-full bg-gradient-to-r from-[#043486] to-[#0284c7] rounded-full transition-all duration-500"
                         style={{ width: `${percent}%` }}
                       />
                     </div>
@@ -783,14 +813,14 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
         </div>
 
         {/* Quick Workflows & System Health (6 Cols) */}
-        <div className="lg:col-span-6 bg-white dark:bg-slate-900 p-6 rounded-none border border-gray-200 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-4">
+        <div className="lg:col-span-6 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200/90 dark:border-slate-800 shadow-xs flex flex-col justify-between space-y-4">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-slate-800">
               <h2 className="text-sm font-bold text-[#043486] dark:text-blue-400 uppercase tracking-wide flex items-center gap-2">
                 <CreditCard size={16} />
                 <span>Quick Operations &amp; Workflows</span>
               </h2>
-              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 border border-emerald-200 dark:border-emerald-800">
+              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 border border-emerald-200 dark:border-emerald-800 rounded-md">
                 System Active
               </span>
             </div>
@@ -799,7 +829,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
               <button
                 type="button"
                 onClick={() => setActiveRoute('add-material')}
-                className="p-3.5 bg-gray-50 dark:bg-slate-950 hover:bg-purple-50 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800 hover:border-purple-600 text-left transition-all group cursor-pointer"
+                className="p-3.5 bg-gray-50 dark:bg-slate-950 hover:bg-purple-50 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800 hover:border-purple-600 rounded-xl text-left transition-all group cursor-pointer shadow-2xs"
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-bold text-[#292424] dark:text-white group-hover:text-purple-600">
@@ -813,7 +843,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
               <button
                 type="button"
                 onClick={() => setActiveRoute('/services/new')}
-                className="p-3.5 bg-gray-50 dark:bg-slate-950 hover:bg-cyan-50 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800 hover:border-cyan-600 text-left transition-all group cursor-pointer"
+                className="p-3.5 bg-gray-50 dark:bg-slate-950 hover:bg-cyan-50 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800 hover:border-cyan-600 rounded-xl text-left transition-all group cursor-pointer shadow-2xs"
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-bold text-[#292424] dark:text-white group-hover:text-cyan-600">
@@ -827,7 +857,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
               <button
                 type="button"
                 onClick={() => setActiveRoute('categories')}
-                className="p-3.5 bg-gray-50 dark:bg-slate-950 hover:bg-amber-50 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800 hover:border-amber-600 text-left transition-all group cursor-pointer"
+                className="p-3.5 bg-gray-50 dark:bg-slate-950 hover:bg-amber-50 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800 hover:border-amber-600 rounded-xl text-left transition-all group cursor-pointer shadow-2xs"
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-bold text-[#292424] dark:text-white group-hover:text-amber-600">
@@ -841,7 +871,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
               <button
                 type="button"
                 onClick={() => setActiveRoute('inventory')}
-                className="p-3.5 bg-gray-50 dark:bg-slate-950 hover:bg-emerald-50 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800 hover:border-emerald-600 text-left transition-all group cursor-pointer"
+                className="p-3.5 bg-gray-50 dark:bg-slate-950 hover:bg-emerald-50 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800 hover:border-emerald-600 rounded-xl text-left transition-all group cursor-pointer shadow-2xs"
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-bold text-[#292424] dark:text-white group-hover:text-emerald-600">
@@ -856,7 +886,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
 
           {/* Low Stock Alert Strip */}
           {metrics.lowStockMaterials.length > 0 && (
-            <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 flex items-center justify-between">
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 rounded-xl flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <AlertTriangle size={16} className="text-rose-600 shrink-0" />
                 <div>
@@ -871,7 +901,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
               <button
                 type="button"
                 onClick={() => setActiveRoute('inventory')}
-                className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[10.5px] transition-colors cursor-pointer"
+                className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[10.5px] rounded-lg transition-colors cursor-pointer"
               >
                 Manage Stock
               </button>
@@ -885,11 +915,11 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Left Side: Recent Inward Purchases */}
-        <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-5 shadow-sm space-y-3 flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200/90 dark:border-slate-800 p-5 shadow-xs space-y-3 flex flex-col justify-between">
           <div className="space-y-3">
             <div className="flex items-center justify-between pb-2.5 border-b border-gray-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900">
+                <div className="p-1.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900 rounded-lg">
                   <PackageCheck size={16} />
                 </div>
                 <div>
@@ -911,7 +941,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
               </button>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-xl border border-gray-100 dark:border-slate-800">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950/60 text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px] tracking-wider">
@@ -966,11 +996,11 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
         </div>
 
         {/* Right Side: Recent Outward Invoices */}
-        <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-5 shadow-sm space-y-3 flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200/90 dark:border-slate-800 p-5 shadow-xs space-y-3 flex flex-col justify-between">
           <div className="space-y-3">
             <div className="flex items-center justify-between pb-2.5 border-b border-gray-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-blue-50 dark:bg-blue-950/60 text-[#043486] dark:text-blue-400 border border-blue-200 dark:border-blue-900">
+                <div className="p-1.5 bg-blue-50 dark:bg-blue-950/60 text-[#043486] dark:text-blue-400 border border-blue-200 dark:border-blue-900 rounded-lg">
                   <Receipt size={16} />
                 </div>
                 <div>
@@ -992,7 +1022,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
               </button>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-xl border border-gray-100 dark:border-slate-800">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950/60 text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px] tracking-wider">
@@ -1050,11 +1080,11 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Left Side: Recent Services List */}
-        <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-5 shadow-sm space-y-3 flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200/90 dark:border-slate-800 p-5 shadow-xs space-y-3 flex flex-col justify-between">
           <div className="space-y-3">
             <div className="flex items-center justify-between pb-2.5 border-b border-gray-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-900">
+                <div className="p-1.5 bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-900 rounded-lg">
                   <Wrench size={16} />
                 </div>
                 <div>
@@ -1076,7 +1106,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
               </button>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-xl border border-gray-100 dark:border-slate-800">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950/60 text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px] tracking-wider">
@@ -1131,11 +1161,11 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
         </div>
 
         {/* Right Side: Recent Credit Notes */}
-        <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-5 shadow-sm space-y-3 flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200/90 dark:border-slate-800 p-5 shadow-xs space-y-3 flex flex-col justify-between">
           <div className="space-y-3">
             <div className="flex items-center justify-between pb-2.5 border-b border-gray-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-900">
+                <div className="p-1.5 bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-900 rounded-lg">
                   <RotateCcw size={16} />
                 </div>
                 <div>
@@ -1149,7 +1179,10 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
               </div>
               <button
                 type="button"
-                onClick={() => setActiveRoute('/inventory/returns')}
+                onClick={() => {
+                  if (setActiveRoute) setActiveRoute('returns')
+                  navigate('/inventory/returns?tab=credit_notes')
+                }}
                 className="text-xs font-bold text-[#043486] dark:text-blue-400 hover:underline cursor-pointer flex items-center gap-1"
               >
                 <span>View All Credit Notes</span>
@@ -1157,7 +1190,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
               </button>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-xl border border-gray-100 dark:border-slate-800">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950/60 text-gray-600 dark:text-slate-400 font-bold uppercase text-[10px] tracking-wider">

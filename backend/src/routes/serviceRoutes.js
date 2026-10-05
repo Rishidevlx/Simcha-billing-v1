@@ -7,7 +7,8 @@ import {
   getServiceBillById,
   updateServiceStatus,
   deleteServiceBill,
-  sendServiceReceiptEmail
+  sendServiceReceiptEmail,
+  sendServiceQuotationEmailController
 } from '../controllers/serviceController.js'
 
 const router = express.Router()
@@ -20,5 +21,7 @@ router.get('/:id', getServiceBillById)
 router.patch('/:id/status', updateServiceStatus)
 router.delete('/:id', deleteServiceBill)
 router.post('/:id/send-receipt', sendServiceReceiptEmail)
+router.post('/:id/send-quotation', sendServiceQuotationEmailController)
+router.post('/:id/send-email', sendServiceQuotationEmailController)
 
 export default router
