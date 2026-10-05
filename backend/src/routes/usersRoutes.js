@@ -5,7 +5,8 @@ import {
   createUser,
   updateUser,
   deleteUser,
-  resendInviteLink
+  resendInviteLink,
+  toggleUserStatus
 } from '../controllers/usersController.js'
 
 const router = express.Router()
@@ -15,6 +16,8 @@ router.get('/:id', getUserById)
 router.post('/', createUser)
 router.post('/:id/resend-invite', resendInviteLink)
 router.put('/:id', updateUser)
+router.patch('/:id/status', toggleUserStatus)
 router.delete('/:id', deleteUser)
 
 export default router
+

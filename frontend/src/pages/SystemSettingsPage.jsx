@@ -64,6 +64,7 @@ export default function SystemSettingsPage() {
   
   // Dynamic Invoice Numbering Settings
   const [invoicePrefix, setInvoicePrefix] = useState('')
+  const [invoiceMonth, setInvoiceMonth] = useState('')
   const [invoiceFinancialYear, setInvoiceFinancialYear] = useState('')
   const [invoiceStartingNumber, setInvoiceStartingNumber] = useState('')
   const [invoicePaddingDigits, setInvoicePaddingDigits] = useState('')
@@ -71,6 +72,7 @@ export default function SystemSettingsPage() {
 
   // Dynamic Receipt Numbering Settings
   const [receiptPrefix, setReceiptPrefix] = useState('')
+  const [receiptMonth, setReceiptMonth] = useState('')
   const [receiptFinancialYear, setReceiptFinancialYear] = useState('')
   const [receiptStartingNumber, setReceiptStartingNumber] = useState('')
   const [receiptPaddingDigits, setReceiptPaddingDigits] = useState('')
@@ -78,6 +80,7 @@ export default function SystemSettingsPage() {
 
   // Dynamic Service Numbering Settings
   const [servicePrefix, setServicePrefix] = useState('')
+  const [serviceMonth, setServiceMonth] = useState('')
   const [serviceFinancialYear, setServiceFinancialYear] = useState('')
   const [serviceStartingNumber, setServiceStartingNumber] = useState('')
   const [servicePaddingDigits, setServicePaddingDigits] = useState('')
@@ -85,6 +88,7 @@ export default function SystemSettingsPage() {
 
   // Dynamic Return Numbering Settings
   const [returnPrefix, setReturnPrefix] = useState('')
+  const [returnMonth, setReturnMonth] = useState('')
   const [returnFinancialYear, setReturnFinancialYear] = useState('')
   const [returnStartingNumber, setReturnStartingNumber] = useState('')
   const [returnPaddingDigits, setReturnPaddingDigits] = useState('')
@@ -92,10 +96,20 @@ export default function SystemSettingsPage() {
 
   // Dynamic Credit Note Numbering Settings
   const [creditNotePrefix, setCreditNotePrefix] = useState('')
+  const [creditNoteMonth, setCreditNoteMonth] = useState('')
   const [creditNoteFinancialYear, setCreditNoteFinancialYear] = useState('')
   const [creditNoteStartingNumber, setCreditNoteStartingNumber] = useState('')
   const [creditNotePaddingDigits, setCreditNotePaddingDigits] = useState('')
   const [creditNoteSeparator, setCreditNoteSeparator] = useState('')
+
+  // Dynamic Quotation Numbering Settings
+  const [quotationPrefix, setQuotationPrefix] = useState('')
+  const [quotationMonth, setQuotationMonth] = useState('')
+  const [quotationFinancialYear, setQuotationFinancialYear] = useState('')
+  const [quotationStartingNumber, setQuotationStartingNumber] = useState('')
+  const [quotationPaddingDigits, setQuotationPaddingDigits] = useState('')
+  const [quotationSeparator, setQuotationSeparator] = useState('')
+  const [quotationValidityDays, setQuotationValidityDays] = useState('')
 
   // Tax Rates
   const [cgstRate, setCgstRate] = useState('')
@@ -152,6 +166,7 @@ export default function SystemSettingsPage() {
     
     // Invoice numbering
     setInvoicePrefix(s.invoice_prefix || '')
+    setInvoiceMonth(s.invoice_month || '')
     setInvoiceFinancialYear(s.invoice_financial_year || '')
     setInvoiceStartingNumber(s.invoice_starting_number !== undefined && s.invoice_starting_number !== null ? String(s.invoice_starting_number) : '')
     setInvoicePaddingDigits(s.invoice_padding_digits !== undefined && s.invoice_padding_digits !== null ? String(s.invoice_padding_digits) : '')
@@ -159,6 +174,7 @@ export default function SystemSettingsPage() {
 
     // Receipt numbering
     setReceiptPrefix(s.receipt_prefix || '')
+    setReceiptMonth(s.receipt_month || '')
     setReceiptFinancialYear(s.receipt_financial_year || '')
     setReceiptStartingNumber(s.receipt_starting_number !== undefined && s.receipt_starting_number !== null ? String(s.receipt_starting_number) : '')
     setReceiptPaddingDigits(s.receipt_padding_digits !== undefined && s.receipt_padding_digits !== null ? String(s.receipt_padding_digits) : '')
@@ -166,6 +182,7 @@ export default function SystemSettingsPage() {
 
     // Service numbering
     setServicePrefix(s.service_prefix || '')
+    setServiceMonth(s.service_month || '')
     setServiceFinancialYear(s.service_financial_year || '')
     setServiceStartingNumber(s.service_starting_number !== undefined && s.service_starting_number !== null ? String(s.service_starting_number) : '')
     setServicePaddingDigits(s.service_padding_digits !== undefined && s.service_padding_digits !== null ? String(s.service_padding_digits) : '')
@@ -173,6 +190,7 @@ export default function SystemSettingsPage() {
 
     // Return numbering
     setReturnPrefix(s.return_prefix || '')
+    setReturnMonth(s.return_month || '')
     setReturnFinancialYear(s.return_financial_year || '')
     setReturnStartingNumber(s.return_starting_number !== undefined && s.return_starting_number !== null ? String(s.return_starting_number) : '')
     setReturnPaddingDigits(s.return_padding_digits !== undefined && s.return_padding_digits !== null ? String(s.return_padding_digits) : '')
@@ -180,10 +198,20 @@ export default function SystemSettingsPage() {
 
     // Credit Note numbering
     setCreditNotePrefix(s.credit_note_prefix || '')
+    setCreditNoteMonth(s.credit_note_month || '')
     setCreditNoteFinancialYear(s.credit_note_financial_year || '')
     setCreditNoteStartingNumber(s.credit_note_starting_number !== undefined && s.credit_note_starting_number !== null ? String(s.credit_note_starting_number) : '')
     setCreditNotePaddingDigits(s.credit_note_padding_digits !== undefined && s.credit_note_padding_digits !== null ? String(s.credit_note_padding_digits) : '')
     setCreditNoteSeparator(s.credit_note_separator || '')
+
+    // Quotation numbering
+    setQuotationPrefix(s.quotation_prefix || '')
+    setQuotationMonth(s.quotation_month || '')
+    setQuotationFinancialYear(s.quotation_financial_year || '')
+    setQuotationStartingNumber(s.quotation_starting_number !== undefined && s.quotation_starting_number !== null ? String(s.quotation_starting_number) : '')
+    setQuotationPaddingDigits(s.quotation_padding_digits !== undefined && s.quotation_padding_digits !== null ? String(s.quotation_padding_digits) : '')
+    setQuotationSeparator(s.quotation_separator || '')
+    setQuotationValidityDays(s.quotation_validity_days !== undefined && s.quotation_validity_days !== null ? String(s.quotation_validity_days) : '15')
 
     setCgstRate(s.cgst_rate !== undefined && s.cgst_rate !== null ? String(s.cgst_rate) : '')
     setSgstRate(s.sgst_rate !== undefined && s.sgst_rate !== null ? String(s.sgst_rate) : '')
@@ -241,6 +269,51 @@ export default function SystemSettingsPage() {
       updated[index] = val
       return updated
     })
+  }
+
+  const handleQuickResetNumbering = async (type) => {
+    try {
+      let updateObj = {}
+      if (type === 'invoice') {
+        updateObj = { invoice_starting_number: 1, invoice_month: 'AUTO' }
+        setInvoiceStartingNumber('1')
+        setInvoiceMonth('AUTO')
+      } else if (type === 'receipt') {
+        updateObj = { receipt_starting_number: 1, receipt_month: 'AUTO' }
+        setReceiptStartingNumber('1')
+        setReceiptMonth('AUTO')
+      } else if (type === 'service') {
+        updateObj = { service_starting_number: 1, service_month: 'AUTO' }
+        setServiceStartingNumber('1')
+        setServiceMonth('AUTO')
+      } else if (type === 'return') {
+        updateObj = { return_starting_number: 1, return_month: 'AUTO' }
+        setReturnStartingNumber('1')
+        setReturnMonth('AUTO')
+      } else if (type === 'creditNote') {
+        updateObj = { credit_note_starting_number: 1, credit_note_month: 'AUTO' }
+        setCreditNoteStartingNumber('1')
+        setCreditNoteMonth('AUTO')
+      } else if (type === 'quotation') {
+        updateObj = { quotation_starting_number: 1, quotation_month: 'AUTO' }
+        setQuotationStartingNumber('1')
+        setQuotationMonth('AUTO')
+      }
+
+      const res = await fetch(API_ENDPOINTS.SETTINGS, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateObj)
+      })
+      const data = await res.json()
+      if (data.success && data.settings) {
+        setSavedSettings(data.settings)
+        populateFields(data.settings)
+        if (refreshSettings) await refreshSettings()
+      }
+    } catch (err) {
+      console.error('Error during quick reset of numbering scheme:', err)
+    }
   }
 
   // Helper function to compress image files before upload while preserving PNG transparency
@@ -615,32 +688,75 @@ export default function SystemSettingsPage() {
         return
       }
 
+      if (!quotationPrefix.trim() || quotationPrefix.trim().length > 10) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Invalid Quotation Prefix',
+          text: 'Quotation Prefix is required (maximum 10 characters).',
+          confirmButtonColor: '#043486'
+        })
+        return
+      }
+
+      if (!quotationFinancialYear.trim() || quotationFinancialYear.trim().length > 7) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Invalid Financial Year',
+          text: 'Quotation Financial Year is required (maximum 7 characters, e.g. 2026-27).',
+          confirmButtonColor: '#043486'
+        })
+        return
+      }
+
+      const qtnStart = parseInt(quotationStartingNumber, 10)
+      if (isNaN(qtnStart) || qtnStart < 1 || qtnStart > 999999) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Invalid Starting Number',
+          text: 'Quotation starting number must be between 1 and 999999.',
+          confirmButtonColor: '#043486'
+        })
+        return
+      }
+
       payload = {
         invoice_prefix: invoicePrefix.trim(),
+        invoice_month: (invoiceMonth && invoiceMonth.trim()) ? invoiceMonth.trim().toUpperCase() : 'AUTO',
         invoice_financial_year: invoiceFinancialYear.trim(),
         invoice_starting_number: parseInt(invoiceStartingNumber, 10) || 1,
         invoice_padding_digits: parseInt(invoicePaddingDigits, 10) || 4,
         invoice_separator: invoiceSeparator || '/',
         receipt_prefix: receiptPrefix.trim(),
+        receipt_month: (receiptMonth && receiptMonth.trim()) ? receiptMonth.trim().toUpperCase() : 'AUTO',
         receipt_financial_year: receiptFinancialYear.trim(),
         receipt_starting_number: parseInt(receiptStartingNumber, 10) || 1,
         receipt_padding_digits: parseInt(receiptPaddingDigits, 10) || 4,
         receipt_separator: receiptSeparator || '/',
         service_prefix: servicePrefix.trim(),
+        service_month: (serviceMonth && serviceMonth.trim()) ? serviceMonth.trim().toUpperCase() : 'AUTO',
         service_financial_year: serviceFinancialYear.trim(),
         service_starting_number: parseInt(serviceStartingNumber, 10) || 1,
         service_padding_digits: parseInt(servicePaddingDigits, 10) || 4,
         service_separator: serviceSeparator || '/',
         return_prefix: returnPrefix.trim(),
+        return_month: (returnMonth && returnMonth.trim()) ? returnMonth.trim().toUpperCase() : 'AUTO',
         return_financial_year: returnFinancialYear.trim(),
         return_starting_number: parseInt(returnStartingNumber, 10) || 1,
         return_padding_digits: parseInt(returnPaddingDigits, 10) || 4,
         return_separator: returnSeparator || '/',
         credit_note_prefix: creditNotePrefix.trim(),
+        credit_note_month: (creditNoteMonth && creditNoteMonth.trim()) ? creditNoteMonth.trim().toUpperCase() : 'AUTO',
         credit_note_financial_year: creditNoteFinancialYear.trim(),
         credit_note_starting_number: parseInt(creditNoteStartingNumber, 10) || 1,
         credit_note_padding_digits: parseInt(creditNotePaddingDigits, 10) || 4,
         credit_note_separator: creditNoteSeparator || '/',
+        quotation_prefix: quotationPrefix.trim(),
+        quotation_month: (quotationMonth && quotationMonth.trim()) ? quotationMonth.trim().toUpperCase() : 'AUTO',
+        quotation_financial_year: quotationFinancialYear.trim(),
+        quotation_starting_number: parseInt(quotationStartingNumber, 10) || 1,
+        quotation_padding_digits: parseInt(quotationPaddingDigits, 10) || 4,
+        quotation_separator: quotationSeparator || '/',
+        quotation_validity_days: quotationValidityDays !== '' && quotationValidityDays !== null ? parseInt(quotationValidityDays, 10) : 15,
         due_date_days: dueDateDays !== '' && dueDateDays !== null ? parseInt(dueDateDays, 10) : 15
       }
     } else if (sectionId === 'bank') {
@@ -803,9 +919,12 @@ export default function SystemSettingsPage() {
               onToggleEdit={(val) => toggleEditTab('numbering', val)}
               onSave={() => handleSubmit(null, 'numbering')}
               onCancel={() => handleCancelTab('numbering')}
+              onQuickReset={handleQuickResetNumbering}
               isSaving={isSaving}
               invoicePrefix={invoicePrefix}
               setInvoicePrefix={setInvoicePrefix}
+              invoiceMonth={invoiceMonth}
+              setInvoiceMonth={setInvoiceMonth}
               invoiceFinancialYear={invoiceFinancialYear}
               setInvoiceFinancialYear={setInvoiceFinancialYear}
               invoiceStartingNumber={invoiceStartingNumber}
@@ -817,6 +936,8 @@ export default function SystemSettingsPage() {
               setDueDateDays={setDueDateDays}
               receiptPrefix={receiptPrefix}
               setReceiptPrefix={setReceiptPrefix}
+              receiptMonth={receiptMonth}
+              setReceiptMonth={setReceiptMonth}
               receiptFinancialYear={receiptFinancialYear}
               setReceiptFinancialYear={setReceiptFinancialYear}
               receiptStartingNumber={receiptStartingNumber}
@@ -826,6 +947,8 @@ export default function SystemSettingsPage() {
               setReceiptSeparator={setReceiptSeparator}
               servicePrefix={servicePrefix}
               setServicePrefix={setServicePrefix}
+              serviceMonth={serviceMonth}
+              setServiceMonth={setServiceMonth}
               serviceFinancialYear={serviceFinancialYear}
               setServiceFinancialYear={setServiceFinancialYear}
               serviceStartingNumber={serviceStartingNumber}
@@ -835,6 +958,8 @@ export default function SystemSettingsPage() {
               setServiceSeparator={setServiceSeparator}
               returnPrefix={returnPrefix}
               setReturnPrefix={setReturnPrefix}
+              returnMonth={returnMonth}
+              setReturnMonth={setReturnMonth}
               returnFinancialYear={returnFinancialYear}
               setReturnFinancialYear={setReturnFinancialYear}
               returnStartingNumber={returnStartingNumber}
@@ -844,6 +969,8 @@ export default function SystemSettingsPage() {
               setReturnSeparator={setReturnSeparator}
               creditNotePrefix={creditNotePrefix}
               setCreditNotePrefix={setCreditNotePrefix}
+              creditNoteMonth={creditNoteMonth}
+              setCreditNoteMonth={setCreditNoteMonth}
               creditNoteFinancialYear={creditNoteFinancialYear}
               setCreditNoteFinancialYear={setCreditNoteFinancialYear}
               creditNoteStartingNumber={creditNoteStartingNumber}
@@ -851,6 +978,19 @@ export default function SystemSettingsPage() {
               creditNotePaddingDigits={creditNotePaddingDigits}
               creditNoteSeparator={creditNoteSeparator}
               setCreditNoteSeparator={setCreditNoteSeparator}
+              quotationPrefix={quotationPrefix}
+              setQuotationPrefix={setQuotationPrefix}
+              quotationMonth={quotationMonth}
+              setQuotationMonth={setQuotationMonth}
+              quotationFinancialYear={quotationFinancialYear}
+              setQuotationFinancialYear={setQuotationFinancialYear}
+              quotationStartingNumber={quotationStartingNumber}
+              setQuotationStartingNumber={setQuotationStartingNumber}
+              quotationPaddingDigits={quotationPaddingDigits}
+              quotationSeparator={quotationSeparator}
+              setQuotationSeparator={setQuotationSeparator}
+              quotationValidityDays={quotationValidityDays}
+              setQuotationValidityDays={setQuotationValidityDays}
             />
           </div>
         )}

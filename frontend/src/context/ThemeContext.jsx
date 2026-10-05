@@ -18,6 +18,7 @@ const ThemeContext = createContext({
   theme: DEFAULT_THEME,
   logo: defaultLogo,
   favicon: defaultFavicon,
+  companyName: '',
   updateTheme: () => {},
   fetchThemeFromBackend: () => {},
   isSyncing: false
@@ -38,7 +39,7 @@ export function ThemeProvider({ children }) {
 
   const [isSyncing, setIsSyncing] = useState(false)
 
-  // Fetch latest theme from backend on initial mount
+  // Fetch latest theme from backend on mount
   const fetchThemeFromBackend = useCallback(async () => {
     try {
       setIsSyncing(true)
@@ -54,14 +55,15 @@ export function ThemeProvider({ children }) {
           const backendTheme = { ...DEFAULT_THEME, ...data.theme }
           setTheme(prev => {
             const merged = { ...prev, ...backendTheme }
-            localStorage.setItem('simcha_custom_theme', JSON.stringify(merged))
+            try {
+              localStorage.setItem('simcha_custom_theme', JSON.stringify(merged))
+            } catch {}
             return merged
           })
         }
       }
     } catch (err) {
-      // Graceful fallback to localStorage if backend is unreachable
-      console.warn('Theme backend sync note: using cached theme settings', err?.message)
+      console.warn('Theme backend sync note:', err?.message)
     } finally {
       setIsSyncing(false)
     }
@@ -96,11 +98,13 @@ export function ThemeProvider({ children }) {
     }
   }, [theme])
 
-  // Update theme with optional backend persistence
+  // Update theme with backend DB persistence
   const updateTheme = async (newTheme, persistToBackend = true) => {
     const updated = { ...theme, ...newTheme }
     setTheme(updated)
-    localStorage.setItem('simcha_custom_theme', JSON.stringify(updated))
+    try {
+      localStorage.setItem('simcha_custom_theme', JSON.stringify(updated))
+    } catch {}
 
     if (persistToBackend) {
       try {
@@ -115,7 +119,7 @@ export function ThemeProvider({ children }) {
           body: JSON.stringify(updated)
         })
       } catch (err) {
-        console.error('Failed to persist theme to backend:', err)
+        console.error('Failed to persist theme to backend DB:', err)
       }
     }
   }
@@ -130,13 +134,6 @@ export function ThemeProvider({ children }) {
       logo: activeLogo,
       favicon: activeFavicon,
       companyName: activeCompanyName,
-      companyDetails: {
-        name: theme.companyName || '',
-        address: theme.companyAddress || '',
-        phone: theme.companyPhone || '',
-        email: theme.companyEmail || '',
-        gstin: theme.companyGstin || ''
-      },
       updateTheme,
       fetchThemeFromBackend,
       isSyncing
@@ -147,3 +144,4 @@ export function ThemeProvider({ children }) {
 }
 
 export const useTheme = () => useContext(ThemeContext)
+

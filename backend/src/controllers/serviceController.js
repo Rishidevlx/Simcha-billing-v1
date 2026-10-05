@@ -1,25 +1,111 @@
 import { getPool } from '../config/db.js'
 import { sendReceiptEmail } from '../services/emailService.js'
 
+const MONTH_NAMES = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+
+export async function getEffectiveIstDate(pool, targetDate = null) {
+  if (targetDate) {
+    const d = new Date(targetDate)
+    if (!isNaN(d.getTime())) return d
+  }
+  if (pool) {
+    try {
+      const [rows] = await pool.query('SELECT NOW() AS db_now')
+      if (rows.length > 0 && rows[0].db_now) {
+        return new Date(rows[0].db_now)
+      }
+    } catch (e) {
+      // fallback
+    }
+  }
+  const now = new Date()
+  const istOffset = 5.5 * 60 * 60 * 1000
+  return new Date(now.getTime() + (now.getTimezoneOffset() * 60 * 1000) + istOffset)
+}
+
+const MONTH_MAP = {
+  'JAN': '01', 'JANUARY': '01',
+  'FEB': '02', 'FEBRUARY': '02',
+  'MAR': '03', 'MARCH': '03',
+  'APR': '04', 'APRIL': '04',
+  'MAY': '05',
+  'JUN': '06', 'JUNE': '06',
+  'JUL': '07', 'JULY': '07',
+  'AUG': '08', 'AUGUST': '08',
+  'SEP': '09', 'SEPTEMBER': '09',
+  'OCT': '10', 'OCTOBER': '10',
+  'NOV': '11', 'NOVEMBER': '11',
+  'DEC': '12', 'DECEMBER': '12'
+}
+
+function formatMonthValue(d, monthSetting) {
+  const autoMonth = String(d.getMonth() + 1).padStart(2, '0')
+  if (!monthSetting || !monthSetting.trim() || monthSetting.trim().toUpperCase() === 'AUTO') {
+    return autoMonth
+  }
+  const clean = monthSetting.trim().toUpperCase()
+  if (MONTH_MAP[clean]) {
+    return MONTH_MAP[clean]
+  }
+  const num = parseInt(clean, 10)
+  if (!isNaN(num) && num >= 1 && num <= 12) {
+    return String(num).padStart(2, '0')
+  }
+  return clean
+}
+
+function buildDynamicNumber(prefix, sep, monthSetting, fySetting, seqNum, padding, targetDate = null, effectiveDate = null) {
+  const d = effectiveDate || (targetDate ? new Date(targetDate) : new Date())
+  const now = isNaN(d.getTime()) ? new Date() : d
+  const activeMonth = formatMonthValue(now, monthSetting)
+
+  const currentYear = now.getFullYear()
+  const autoFy = (now.getMonth() >= 3)
+    ? `${currentYear}-${String(currentYear + 1).slice(-2)}`
+    : `${currentYear - 1}-${String(currentYear).slice(-2)}`
+  const activeFy = (fySetting && fySetting.trim() && fySetting.trim().toUpperCase() !== 'AUTO')
+    ? fySetting.trim()
+    : autoFy
+
+  const cleanPrefix = (prefix || 'SIS-SR').replace(/[-/.]+$/, '')
+  return `${cleanPrefix}${sep}${activeMonth}${sep}${activeFy}${sep}${String(seqNum).padStart(padding, '0')}`
+}
+
 // Generate next formatted service number based on system settings
 export async function getNextServiceNumber(req, res) {
   try {
+    const targetDate = req.query.date || null
     const pool = getPool()
     
     // Get service settings
     const [settingRows] = await pool.query(`
-      SELECT service_prefix, service_financial_year, service_starting_number, service_padding_digits, service_separator 
+      SELECT service_prefix, service_month, service_financial_year, service_starting_number, service_padding_digits, service_separator 
       FROM settings WHERE id = 1
     `)
     const s = settingRows.length > 0 ? settingRows[0] : {}
     const prefix = (s.service_prefix !== undefined && s.service_prefix !== null && s.service_prefix.trim() !== '') ? s.service_prefix.trim() : 'SIS-SR'
-    const fy = (s.service_financial_year && s.service_financial_year.trim()) ? s.service_financial_year.trim() : '2026-27'
+    const month = s.service_month
+    const fy = s.service_financial_year
     const startNum = parseInt(s.service_starting_number, 10) || 1
     const padding = parseInt(s.service_padding_digits, 10) || 4
     const sep = (s.service_separator !== undefined && s.service_separator !== null) ? s.service_separator : '/'
 
-    // Extract sequence numbers from existing service_bills
-    const [rows] = await pool.query('SELECT service_number FROM service_bills')
+    const effectiveDate = await getEffectiveIstDate(pool, targetDate)
+    const activeMonth = formatMonthValue(effectiveDate, month)
+
+    const currentYear = effectiveDate.getFullYear()
+    const autoFy = (effectiveDate.getMonth() >= 3)
+      ? `${currentYear}-${String(currentYear + 1).slice(-2)}`
+      : `${currentYear - 1}-${String(currentYear).slice(-2)}`
+    const activeFy = (fy && fy.trim() && fy.trim().toUpperCase() !== 'AUTO')
+      ? fy.trim()
+      : autoFy
+
+    const cleanPrefix = prefix.replace(/[-/.]+$/, '')
+
+    // Extract sequence numbers from existing service_bills matching current prefix/month/fy
+    const pattern = `${cleanPrefix}${sep}${activeMonth}${sep}${activeFy}%`
+    const [rows] = await pool.query('SELECT service_number FROM service_bills WHERE service_number LIKE ?', [pattern])
     let maxSeq = 0
     for (const r of rows) {
       if (r.service_number) {
@@ -37,7 +123,7 @@ export async function getNextServiceNumber(req, res) {
     }
 
     const nextNum = maxSeq >= startNum ? maxSeq + 1 : startNum
-    const formattedNumber = `${prefix}${sep}${fy}${sep}${String(nextNum).padStart(padding, '0')}`
+    const formattedNumber = `${cleanPrefix}${sep}${activeMonth}${sep}${activeFy}${sep}${String(nextNum).padStart(padding, '0')}`
 
     return res.status(200).json({
       success: true,
@@ -138,6 +224,32 @@ export async function createServiceBill(req, res) {
 
     const sanitizedPaymentMode = (payment_mode === 'Select' || payment_mode === '' || !payment_mode) ? null : payment_mode
 
+    // Snapshot company settings at time of service bill creation (Legal Audit Immutability)
+    const [snapshotSettingRows] = await pool.query('SELECT * FROM settings WHERE id = 1')
+    const currentSettings = snapshotSettingRows.length > 0 ? snapshotSettingRows[0] : {}
+    let parsedTerms = []
+    if (typeof currentSettings.terms_conditions === 'string') {
+      try { parsedTerms = JSON.parse(currentSettings.terms_conditions) } catch { parsedTerms = [] }
+    } else if (Array.isArray(currentSettings.terms_conditions)) {
+      parsedTerms = currentSettings.terms_conditions
+    }
+
+    const companySnapshot = JSON.stringify({
+      company_name: currentSettings.company_name || 'SIMCHA INFO SOLUTIONS',
+      address: currentSettings.address || '',
+      phone: currentSettings.phone || '',
+      email: currentSettings.email || '',
+      gstin: currentSettings.gstin || '',
+      bank_name: currentSettings.bank_name || '',
+      account_name: currentSettings.account_name || currentSettings.company_name || '',
+      account_no: currentSettings.account_no || '',
+      ifsc_code: currentSettings.ifsc_code || '',
+      branch: currentSettings.branch || '',
+      bank_image_url: currentSettings.bank_image_url || '',
+      signature_url: currentSettings.signature_url || '',
+      terms_conditions: parsedTerms
+    })
+
     // Insert into service_bills table
     const [billResult] = await pool.query(`
       INSERT INTO service_bills (
@@ -146,8 +258,8 @@ export async function createServiceBill(req, res) {
         place_of_supply, taxable_amount, cgst_rate, cgst_amount,
         sgst_rate, sgst_amount, igst_rate, igst_amount,
         total_tax, round_off, total_amount, amount_in_words,
-        payment_mode, service_status, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        payment_mode, service_status, notes, company_snapshot
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       service_number.trim(),
       finalReceiptNumber,
@@ -174,7 +286,8 @@ export async function createServiceBill(req, res) {
       amount_in_words || '',
       sanitizedPaymentMode,
       service_status || 'Received',
-      notes || ''
+      notes || '',
+      companySnapshot
     ])
 
     const serviceBillId = billResult.insertId

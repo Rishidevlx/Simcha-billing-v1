@@ -69,7 +69,7 @@ export default function CompanyProfileSection({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div>
           <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
-            Company / Business Name *
+            Company / Business Name <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -89,7 +89,7 @@ export default function CompanyProfileSection({
 
         <div>
           <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
-            Company GSTIN Number *
+            Company GSTIN Number <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -109,7 +109,7 @@ export default function CompanyProfileSection({
 
         <div>
           <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
-            Official Phone / Mobile Number *
+            Official Phone / Mobile Number <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -129,7 +129,7 @@ export default function CompanyProfileSection({
 
         <div>
           <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
-            Official Email Address *
+            Official Email Address <span className="text-red-500">*</span>
           </label>
           <input
             type="email"
@@ -149,7 +149,7 @@ export default function CompanyProfileSection({
 
         <div className="md:col-span-2">
           <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
-            Company Full Address *
+            Company Full Address <span className="text-red-500">*</span>
           </label>
           <textarea
             rows={2}

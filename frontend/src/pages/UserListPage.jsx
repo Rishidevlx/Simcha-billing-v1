@@ -29,7 +29,7 @@ import ListPagePagination from '../components/common/ListPagePagination'
 import ListKpiCard from '../components/common/ListKpiCard'
 import { getUserPermissions } from '../utils/access'
 import { API_ENDPOINTS } from '../config/api'
-import { Button, ActionButton, StatusToggle, StatusPill, SearchInput, TabNav, TabButton } from '../components/ui'
+import { Button, ActionButton, StatusToggle, StatusPill, SearchInput, TabNav, TabButton, Checkbox } from '../components/ui'
 
 function SearchableCombobox({
   value,
@@ -303,14 +303,63 @@ export default function UserListPage({ setActiveRoute }) {
     const exportData = users.map((u, i) => ({
       'ID': i + 1,
       'User Name': u.name,
-      'Designation': u.designation,
-      'Role': u.role,
-      'Status': u.status
+      'Email': u.email || '',
+      'Designation': u.designation || '',
+      'Role': u.role || '',
+      'Status': u.status || 'Active'
     }))
     const ws = XLSX.utils.json_to_sheet(exportData)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Users')
     XLSX.writeFile(wb, 'System_Users.xlsx')
+  }
+
+  // Toggle Active / Inactive Status
+  const handleToggleStatus = async (user) => {
+    const isSystemAdmin = user.role === 'Administrator' || Number(user.id) === 1
+    if (isSystemAdmin) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Protected System Administrator',
+        text: 'The Administrator user account is permanently protected and cannot be deactivated.',
+        confirmButtonColor: '#043486'
+      })
+      return
+    }
+
+    const currentStatus = user.status || 'Active'
+    const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active'
+    const result = await Swal.fire({
+      title: `${newStatus === 'Active' ? 'Activate' : 'Deactivate'} User?`,
+      text: `Are you sure you want to change status of "${user.name}" to ${newStatus}? Inactive users will not be able to log in.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: newStatus === 'Active' ? '#16a34a' : '#d33',
+      cancelButtonColor: '#043486',
+      confirmButtonText: `Yes, make ${newStatus}`
+    })
+
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(API_ENDPOINTS.USER_STATUS(user.id), { method: 'PATCH' })
+        const data = await res.json()
+        if (data.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Status Updated!',
+            text: `User is now ${newStatus}.`,
+            timer: 1500,
+            showConfirmButton: false
+          })
+          fetchUsers()
+        } else {
+          Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to update user status', confirmButtonColor: '#043486' })
+        }
+      } catch (err) {
+        console.error(err)
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Network error updating user status', confirmButtonColor: '#043486' })
+      }
+    }
   }
 
   const handleDelete = async (id, userName, role) => {
@@ -624,7 +673,7 @@ export default function UserListPage({ setActiveRoute }) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 {/* Full Name */}
                 <div>
-                  <label className="block text-xs sm:text-[13px] font-bold text-[#292424] dark:text-slate-200 mb-1.5 uppercase tracking-wide">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
                     Full Name <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -643,7 +692,7 @@ export default function UserListPage({ setActiveRoute }) {
 
                 {/* Email Address */}
                 <div>
-                  <label className="block text-xs sm:text-[13px] font-bold text-[#292424] dark:text-slate-200 mb-1.5 uppercase tracking-wide">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
                     Email Address <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -662,7 +711,7 @@ export default function UserListPage({ setActiveRoute }) {
 
                 {/* Phone Number */}
                 <div>
-                  <label className="block text-xs sm:text-[13px] font-bold text-[#292424] dark:text-slate-200 mb-1.5 uppercase tracking-wide">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
                     Phone Number <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -684,7 +733,7 @@ export default function UserListPage({ setActiveRoute }) {
 
                 {/* Designation */}
                 <div>
-                  <label className="block text-xs sm:text-[13px] font-bold text-[#292424] dark:text-slate-200 mb-1.5 uppercase tracking-wide">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
                     Designation / Title <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -703,7 +752,7 @@ export default function UserListPage({ setActiveRoute }) {
 
                 {/* Assigned Department */}
                 <div>
-                  <label className="block text-xs sm:text-[13px] font-bold text-[#292424] dark:text-slate-200 mb-1.5 uppercase tracking-wide">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
                     Assigned Department <span className="text-red-500">*</span>
                   </label>
                   <SearchableCombobox
@@ -717,7 +766,7 @@ export default function UserListPage({ setActiveRoute }) {
 
                 {/* Role Selection */}
                 <div>
-                  <label className="block text-xs sm:text-[13px] font-bold text-[#292424] dark:text-slate-200 mb-1.5 uppercase tracking-wide">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
                     Assigned Role <span className="text-red-500">*</span>
                   </label>
                   <SearchableCombobox
@@ -731,7 +780,7 @@ export default function UserListPage({ setActiveRoute }) {
 
                 {/* Account Status */}
                 <div>
-                  <label className="block text-xs sm:text-[13px] font-bold text-[#292424] dark:text-slate-200 mb-1.5 uppercase tracking-wide">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
                     Account Status <span className="text-red-500">*</span>
                   </label>
                   <StatusToggle
@@ -846,15 +895,15 @@ export default function UserListPage({ setActiveRoute }) {
                   <thead>
                     <tr className="bg-[#f8fafc] dark:bg-slate-800/80 border-b border-gray-200 dark:border-slate-700 text-xs font-bold text-gray-600 dark:text-slate-300 uppercase tracking-wider">
                       <th className="p-3.5 w-12 text-center">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={selectedIds.length === paginatedUsers.length && paginatedUsers.length > 0}
+                          indeterminate={selectedIds.length > 0 && selectedIds.length < paginatedUsers.length}
                           onChange={handleSelectAll}
-                          className="w-4 h-4 rounded-none border-gray-300 text-[#043486] focus:ring-0 cursor-pointer accent-[#043486]"
                         />
                       </th>
                       <th className="p-3.5 w-14 text-center">ID</th>
                       <th className="p-3.5">User Name</th>
+                      <th className="p-3.5">Email</th>
                       <th className="p-3.5">Designation</th>
                       <th className="p-3.5">Role</th>
                       <th className="p-3.5 text-center">Status</th>
@@ -864,6 +913,7 @@ export default function UserListPage({ setActiveRoute }) {
                   <tbody className="divide-y divide-gray-100 dark:divide-slate-800/60 text-xs sm:text-[13px]">
                     {paginatedUsers.map((user, idx) => {
                       const isSystemAdmin = user.role === 'Administrator' || Number(user.id) === 1
+                      const isActive = user.status === 'Active' || !user.status
 
                       return (
                         <tr
@@ -871,11 +921,9 @@ export default function UserListPage({ setActiveRoute }) {
                           className="hover:bg-blue-50/40 dark:hover:bg-slate-800/30 transition-colors"
                         >
                           <td className="p-3.5 text-center">
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               checked={selectedIds.includes(user.id)}
                               onChange={() => handleToggleSelect(user.id)}
-                              className="w-4 h-4 rounded-none border-gray-300 text-[#043486] focus:ring-0 cursor-pointer accent-[#043486]"
                             />
                           </td>
                           <td className="p-3.5 text-center font-mono text-gray-400 dark:text-slate-500 font-medium">
@@ -893,14 +941,30 @@ export default function UserListPage({ setActiveRoute }) {
                               )}
                             </div>
                           </td>
+                          <td className="p-3.5 text-gray-600 dark:text-slate-400 font-mono text-xs max-w-[200px] truncate" title={user.email}>
+                            {user.email || '-'}
+                          </td>
                           <td className="p-3.5 text-gray-700 dark:text-slate-300 font-medium">
                             {user.designation || '-'}
                           </td>
                           <td className="p-3.5 font-semibold text-gray-800 dark:text-slate-200">
                             {user.role}
                           </td>
-                          <td className="p-3.5 text-center">
-                            <StatusPill status={user.status || 'Active'} />
+                          <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                            {isSystemAdmin ? (
+                              <div title="Protected Administrator Account (Cannot be deactivated)">
+                                <StatusPill status="Active" size="sm" />
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleStatus(user)}
+                                className="transition-transform hover:scale-105 cursor-pointer"
+                                title={`Click to ${isActive ? 'Deactivate' : 'Activate'} user`}
+                              >
+                                <StatusPill status={isActive ? 'Active' : 'Inactive'} size="sm" />
+                              </button>
+                            )}
                           </td>
                           <td className="p-3 text-center">
                             <div className="flex items-center justify-center gap-1.5">

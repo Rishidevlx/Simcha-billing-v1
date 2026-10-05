@@ -427,6 +427,15 @@ export default function OutwardLineItems({
                     <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200">
                       {item.has_discount ? 'Discounted Rate (₹)' : 'Rate (₹)'}
                     </label>
+                    {item.material_id && (
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded-none border ${
+                        item.tax_inclusive 
+                          ? 'bg-blue-50 text-[#043486] dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-900' 
+                          : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-900'
+                      }`}>
+                        {item.tax_inclusive ? 'Tax Inclusive' : 'Tax Exclusive (+18%)'}
+                      </span>
+                    )}
                     {item.has_discount && (
                       <span className="text-[10px] text-gray-400 dark:text-slate-500 font-mono font-medium">
                         (Orig:{' '}

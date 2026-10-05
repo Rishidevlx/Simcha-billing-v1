@@ -324,7 +324,7 @@ export default function ProfileSettingsPage({ user, onUpdateUser }) {
           {/* 3 Avatar Selection Options (Interactive only when isEditing is true) */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between px-1">
-              <label className="text-[11px] font-bold text-gray-600 dark:text-slate-300 uppercase tracking-wider">
+              <label className="text-xs font-semibold text-gray-700 dark:text-slate-200">
                 Choose Avatar
               </label>
               {(!isEditing || activeTab !== 'personal') && (
@@ -453,7 +453,7 @@ export default function ProfileSettingsPage({ user, onUpdateUser }) {
               
               {/* Field 1: User Name */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-gray-700 dark:text-slate-200 uppercase tracking-wide">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
                   User Name <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
@@ -476,7 +476,7 @@ export default function ProfileSettingsPage({ user, onUpdateUser }) {
 
               {/* Field 2: User Email */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-gray-700 dark:text-slate-200 uppercase tracking-wide">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
                   User Email <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
@@ -499,7 +499,7 @@ export default function ProfileSettingsPage({ user, onUpdateUser }) {
 
               {/* Field 3: Designation */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-gray-700 dark:text-slate-200 uppercase tracking-wide">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
                   Designation <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
@@ -522,7 +522,7 @@ export default function ProfileSettingsPage({ user, onUpdateUser }) {
 
               {/* Field 4: Official Phone / Mobile */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-gray-700 dark:text-slate-200 uppercase tracking-wide">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
                   Official Phone / Contact
                 </label>
                 <div className="relative">
@@ -590,7 +590,7 @@ export default function ProfileSettingsPage({ user, onUpdateUser }) {
                 
                 {/* Field 1: Old Password */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-gray-700 dark:text-slate-200 uppercase tracking-wide">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
                     Old Password <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -614,7 +614,7 @@ export default function ProfileSettingsPage({ user, onUpdateUser }) {
 
                 {/* Field 2: New Password */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-gray-700 dark:text-slate-200 uppercase tracking-wide">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
                     New Password <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -638,7 +638,7 @@ export default function ProfileSettingsPage({ user, onUpdateUser }) {
 
                 {/* Field 3: Confirm Password */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-gray-700 dark:text-slate-200 uppercase tracking-wide">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
                     Confirm Password <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">

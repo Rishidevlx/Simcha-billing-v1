@@ -144,3 +144,31 @@ export async function deleteCategory(req, res) {
     })
   }
 }
+
+// PATCH /api/categories/:id/status
+export async function toggleCategoryStatus(req, res) {
+  try {
+    const { id } = req.params
+    const pool = getPool()
+
+    const [rows] = await pool.query('SELECT id, name, status FROM categories WHERE id = ?', [id])
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Category not found' })
+    }
+
+    const currentStatus = rows[0].status || 'Active'
+    const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active'
+
+    await pool.query('UPDATE categories SET status = ? WHERE id = ?', [newStatus, id])
+
+    res.json({
+      success: true,
+      message: `Category status updated to ${newStatus}`,
+      status: newStatus
+    })
+  } catch (error) {
+    console.error('Error toggling category status:', error)
+    res.status(500).json({ success: false, message: 'Failed to update category status', error: error.message })
+  }
+}
+

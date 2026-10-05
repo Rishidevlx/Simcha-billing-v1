@@ -17,6 +17,7 @@ import aiRoutes from './routes/aiRoutes.js'
 import rolesRoutes from './routes/rolesRoutes.js'
 import usersRoutes from './routes/usersRoutes.js'
 import departmentRoutes from './routes/departmentRoutes.js'
+import quotationRoutes from './routes/quotationRoutes.js'
 
 dotenv.config()
 
@@ -65,6 +66,7 @@ app.use('/api/ai', aiRoutes)
 app.use('/api/roles', rolesRoutes)
 app.use('/api/users', usersRoutes)
 app.use('/api/departments', departmentRoutes)
+app.use('/api/quotations', quotationRoutes)
 
 
 // Global Error Handler

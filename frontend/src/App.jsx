@@ -5,6 +5,8 @@ import DashboardLayout from './components/layout/DashboardLayout'
 import DashboardPage from './pages/DashboardPage'
 import InwardBillPage from './pages/InwardBillPage'
 import InwardReportsPage from './pages/InwardReportsPage'
+import CreateQuotationPage from './pages/CreateQuotationPage'
+import AllQuotationsPage from './pages/AllQuotationsPage'
 import CreateBillPage from './pages/CreateBillPage'
 import AllBillsPage from './pages/AllBillsPage'
 import CreateServiceBillPage from './pages/CreateServiceBillPage'
@@ -26,6 +28,7 @@ import UserListPage from './pages/UserListPage'
 import DepartmentListPage from './pages/DepartmentListPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import { ThemeProvider } from './context/ThemeContext'
+import { SettingsProvider } from './context/SettingsContext'
 import { API_ENDPOINTS } from './config/api'
 
 export default function App() {
@@ -124,7 +127,8 @@ export default function App() {
 
   return (
     <ThemeProvider>
-      <BrowserRouter>
+      <SettingsProvider>
+        <BrowserRouter>
       <Routes>
         {/* Public Login Route */}
         <Route
@@ -179,6 +183,13 @@ export default function App() {
           <Route path="inward/:id" element={<InwardBillPage />} />
           <Route path="inward-list" element={<InwardReportsPage />} />
           <Route path="inward-reports" element={<Navigate to="/inward-list" replace />} />
+
+          {/* Quotations Routes */}
+          <Route path="quotations" element={<CreateQuotationPage />} />
+          <Route path="quotations/create" element={<CreateQuotationPage />} />
+          <Route path="create-quotation" element={<Navigate to="/quotations" replace />} />
+          <Route path="quotations/list" element={<AllQuotationsPage />} />
+          <Route path="quotations-list" element={<Navigate to="/quotations/list" replace />} />
 
           {/* Outward / Billing Routes */}
           <Route path="outward" element={<CreateBillPage />} />
@@ -247,6 +258,7 @@ export default function App() {
         </Route>
       </Routes>
     </BrowserRouter>
+      </SettingsProvider>
   </ThemeProvider>
   )
 }

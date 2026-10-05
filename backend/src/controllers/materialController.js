@@ -401,4 +401,32 @@ export const verifySerialNumber = async (req, res) => {
   }
 }
 
+// PATCH /api/materials/:id/status
+export const toggleMaterialStatus = async (req, res) => {
+  try {
+    const { id } = req.params
+    const pool = getPool()
+
+    const [rows] = await pool.query('SELECT id, name, status FROM materials WHERE id = ?', [id])
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Material not found' })
+    }
+
+    const currentStatus = rows[0].status || 'Active'
+    const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active'
+
+    await pool.query('UPDATE materials SET status = ? WHERE id = ?', [newStatus, id])
+
+    res.json({
+      success: true,
+      message: `Material status updated to ${newStatus}`,
+      status: newStatus
+    })
+  } catch (error) {
+    console.error('Error toggling material status:', error)
+    res.status(500).json({ success: false, message: 'Failed to update material status', error: error.message })
+  }
+}
+
+
 

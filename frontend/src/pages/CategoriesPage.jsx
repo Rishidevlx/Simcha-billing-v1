@@ -201,6 +201,46 @@ export default function CategoriesPage({ setActiveRoute }) {
     }
   }
 
+  // Toggle Category Status
+  const handleToggleStatus = async (cat) => {
+    const currentStatus = cat.status || 'Active'
+    const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active'
+    const result = await Swal.fire({
+      title: `${newStatus === 'Active' ? 'Activate' : 'Deactivate'} Category?`,
+      text: `Are you sure you want to change status of "${cat.name}" to ${newStatus}?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: newStatus === 'Active' ? '#16a34a' : '#d33',
+      cancelButtonColor: '#043486',
+      confirmButtonText: `Yes, make ${newStatus}`
+    })
+
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(API_ENDPOINTS.CATEGORY_STATUS(cat.id), { method: 'PATCH' })
+        const data = await res.json()
+        if (data.success) {
+          Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 2000,
+            timerProgressBar: true
+          }).fire({
+            icon: 'success',
+            title: `Category is now ${newStatus}`
+          })
+          fetchCategories()
+        } else {
+          Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to update category status', confirmButtonColor: '#043486' })
+        }
+      } catch (err) {
+        console.error(err)
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Network error updating category status', confirmButtonColor: '#043486' })
+      }
+    }
+  }
+
   // Filter Categories
   const filteredCategories = categories.filter(cat =>
     cat.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -392,7 +432,14 @@ export default function CategoriesPage({ setActiveRoute }) {
                       </td>
 
                       <td className="py-3.5 px-4 text-center">
-                        <StatusPill status={cat.status} />
+                        <button
+                          type="button"
+                          onClick={() => handleToggleStatus(cat)}
+                          className="transition-transform hover:scale-105 cursor-pointer"
+                          title={`Click to ${cat.status === 'Active' ? 'Deactivate' : 'Activate'} category`}
+                        >
+                          <StatusPill status={cat.status} size="sm" />
+                        </button>
                       </td>
 
                       <td className="py-3.5 px-4 text-right">

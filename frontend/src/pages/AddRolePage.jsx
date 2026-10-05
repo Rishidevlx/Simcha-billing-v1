@@ -3,6 +3,7 @@ import { Save, RefreshCw } from '../components/common/icons'
 import Swal from 'sweetalert2'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { API_ENDPOINTS } from '../config/api'
+import { ToggleSwitch } from '../components/ui'
 
 const PERMISSIONS_DATA = [
   {
@@ -276,20 +277,20 @@ export default function AddRolePage() {
                                   <td key={action} className="py-3.5 px-2 text-center">
                                     {isApplicable ? (
                                       <div className="flex justify-center">
-                                        <input
-                                          type="checkbox"
+                                        <ToggleSwitch
+                                          size="sm"
                                           checked={isChecked}
                                           onChange={() => handleToggle(sub.id, action)}
-                                          className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer dark:border-slate-600 dark:bg-slate-700 transition-all"
                                         />
                                       </div>
                                     ) : (
                                       <div className="flex justify-center">
-                                        <input
-                                          type="checkbox"
-                                          disabled
-                                          className="w-5 h-5 rounded border-slate-200 bg-slate-100 cursor-not-allowed dark:border-slate-700 dark:bg-slate-800/50"
-                                        />
+                                        <div
+                                          className="relative inline-flex h-4.5 w-8 flex-shrink-0 rounded-full bg-gray-200/70 dark:bg-slate-800/80 border border-gray-300/60 dark:border-slate-700/60 opacity-25 cursor-not-allowed select-none"
+                                          title="Action not applicable for this module"
+                                        >
+                                          <span className="inline-block h-3.5 w-3.5 transform translate-x-0 rounded-full bg-gray-400 dark:bg-slate-600 shadow-2xs" />
+                                        </div>
                                       </div>
                                     )}
                                   </td>

@@ -25,7 +25,7 @@ import ListPagePagination from '../components/common/ListPagePagination'
 import ListKpiCard from '../components/common/ListKpiCard'
 import { getUserPermissions } from '../utils/access'
 import { API_ENDPOINTS } from '../config/api'
-import { Button, ActionButton, StatusToggle, StatusPill, SearchInput, TabNav, TabButton, ToggleSwitch } from '../components/ui'
+import { Button, ActionButton, StatusToggle, StatusPill, SearchInput, TabNav, TabButton, ToggleSwitch, Checkbox } from '../components/ui'
 import maleAvatar from '../assets/avatar/Male avatar.webp'
 import femaleAvatar from '../assets/avatar/Female Avatar.webp'
 import defaultAvatar from '../assets/avatar/Deafult Pfp.webp'
@@ -45,6 +45,8 @@ const PERMISSIONS_DATA = [
         subMenus: [
           { id: 'inward', name: 'Inward', actions: ['Add', 'View', 'Edit', 'Delete'] },
           { id: 'inward_list', name: 'Inward List', actions: ['View', 'Edit', 'Delete', 'Download'] },
+          { id: 'quotations', name: 'Quotations', actions: ['Add', 'View', 'Edit', 'Delete'] },
+          { id: 'quotations_list', name: 'Quotations List', actions: ['View', 'Edit', 'Delete', 'Download'] },
           { id: 'outward', name: 'Outward', actions: ['Add', 'View', 'Edit', 'Delete'] },
           { id: 'outward_list', name: 'Outward List', actions: ['View', 'Edit', 'Delete', 'Download'] }
         ]
@@ -548,11 +550,11 @@ export default function RoleListPage({ setActiveRoute }) {
                             <table className="w-full text-left border-collapse min-w-[500px]">
                               <thead>
                                 <tr className="bg-[#f8fafc] dark:bg-slate-800/80 border-b border-gray-200 dark:border-slate-700 uppercase tracking-wider">
-                                  <th className="p-2.5 w-1/3 text-xs sm:text-[13px] font-bold text-[#043486] dark:text-blue-400 uppercase tracking-wider">
+                                  <th className="p-2.5 w-1/3 text-xs sm:text-[13px] font-semibold text-[#043486] dark:text-blue-400 uppercase tracking-wider">
                                     Type
                                   </th>
                                   {ALL_ACTIONS.map(action => (
-                                    <th key={action} className="p-2.5 text-center w-20 text-xs sm:text-[13px] font-bold text-gray-700 dark:text-slate-200 uppercase tracking-wider">
+                                    <th key={action} className="p-2.5 text-center w-20 text-xs sm:text-[13px] font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">
                                       {action}
                                     </th>
                                   ))}
@@ -563,7 +565,7 @@ export default function RoleListPage({ setActiveRoute }) {
                                   const subPerms = permissions[subMenu.id] || []
                                   return (
                                     <tr key={subMenu.id} className="hover:bg-blue-50/20 dark:hover:bg-slate-800/30">
-                                      <td className="p-2.5 font-bold text-xs sm:text-[13px] text-gray-800 dark:text-slate-200">
+                                      <td className="p-2.5 font-medium text-xs sm:text-[13px] text-gray-700 dark:text-slate-200">
                                         {subMenu.name}
                                       </td>
                                       {ALL_ACTIONS.map(action => {
@@ -582,7 +584,7 @@ export default function RoleListPage({ setActiveRoute }) {
                                               />
                                             ) : (
                                               <div
-                                                className="relative inline-flex h-4.5 w-8 flex-shrink-0 rounded-full bg-gray-200/70 dark:bg-slate-800/80 border border-gray-300/60 dark:border-slate-700/60 opacity-25 cursor-not-allowed select-none"
+                                                className="relative inline-flex h-4.5 w-8 flex-shrink-0 rounded-full bg-gray-200/70 dark:bg-slate-800/80 border-0 p-0.5 opacity-25 cursor-not-allowed select-none"
                                                 title="Action not applicable for this module"
                                               >
                                                 <span className="inline-block h-3.5 w-3.5 transform translate-x-0 rounded-full bg-gray-400 dark:bg-slate-600 shadow-2xs" />
@@ -617,7 +619,7 @@ export default function RoleListPage({ setActiveRoute }) {
                   </h2>
 
                   <div>
-                    <label className="block text-xs sm:text-[13px] font-bold text-[#292424] dark:text-slate-200 mb-1.5 uppercase tracking-wide">
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
                       Role Name <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -634,7 +636,7 @@ export default function RoleListPage({ setActiveRoute }) {
                   </div>
 
                   <div>
-                    <label className="block text-xs sm:text-[13px] font-bold text-[#292424] dark:text-slate-200 mb-1.5 uppercase tracking-wide">
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
                       Description
                     </label>
                     <textarea
@@ -648,7 +650,7 @@ export default function RoleListPage({ setActiveRoute }) {
 
                   {/* Role Status (Active / Inactive) */}
                   <div>
-                    <label className="block text-xs sm:text-[13px] font-bold text-[#292424] dark:text-slate-200 mb-1.5 uppercase tracking-wide">
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
                       Role Status <span className="text-red-500">*</span>
                     </label>
                     <StatusToggle
@@ -764,11 +766,10 @@ export default function RoleListPage({ setActiveRoute }) {
                   <thead>
                     <tr className="bg-[#f8fafc] dark:bg-slate-800/80 border-b border-gray-200 dark:border-slate-700 text-xs font-bold text-gray-600 dark:text-slate-300 uppercase tracking-wider">
                       <th className="p-3.5 w-12 text-center">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={selectedIds.length === paginatedRoles.length && paginatedRoles.length > 0}
+                          indeterminate={selectedIds.length > 0 && selectedIds.length < paginatedRoles.length}
                           onChange={handleSelectAll}
-                          className="w-4 h-4 rounded-none border-gray-300 text-[#043486] focus:ring-0 cursor-pointer accent-[#043486]"
                         />
                       </th>
                       <th className="p-3.5 w-14 text-center">ID</th>
@@ -799,11 +800,9 @@ export default function RoleListPage({ setActiveRoute }) {
                             }`}
                           >
                             <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
-                              <input
-                                type="checkbox"
+                              <Checkbox
                                 checked={selectedIds.includes(role.id)}
                                 onChange={() => handleToggleSelect(role.id)}
-                                className="w-4 h-4 rounded-none border-gray-300 text-[#043486] focus:ring-0 cursor-pointer accent-[#043486]"
                               />
                             </td>
                             <td className="p-3.5 text-center font-mono text-gray-400 dark:text-slate-500 font-medium">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import {
@@ -35,18 +35,41 @@ import {
   Hash,
   Pencil,
   RefreshCw,
-  List
+  List,
+  Receipt
 } from '../components/common/icons'
 import * as XLSX from 'xlsx'
 import Swal from 'sweetalert2'
+import html2canvas from 'html2canvas-pro'
+import jsPDF from 'jspdf'
 import ServiceInvoiceTemplate from '../components/invoice/ServiceInvoiceTemplate'
 import ServiceReceiptTemplate from '../components/receipt/ServiceReceiptTemplate'
 import ListPageHeader from '../components/common/ListPageHeader'
 import ListKpiCard from '../components/common/ListKpiCard'
 import ListDateRangeFilter from '../components/common/ListDateRangeFilter'
-import { Button, ActionButton, SearchInput, DataTable, Pagination } from '../components/ui'
+import { Button, ActionButton, SearchInput, DataTable, Pagination, TabNav, TabButton } from '../components/ui'
 import { API_ENDPOINTS } from '../config/api'
 import { getUserPermissions } from '../utils/access'
+
+
+// Local Date Helper to eliminate timezone UTC discrepancy (e.g. 2026-10-02T18:30:00Z -> 2026-10-03 in local IST)
+const getLocalDateString = (dateVal) => {
+  if (!dateVal) return ''
+  if (typeof dateVal === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateVal.trim())) {
+    return dateVal.trim()
+  }
+  const d = new Date(dateVal)
+  if (isNaN(d.getTime())) {
+    if (typeof dateVal === 'string') {
+      return dateVal.slice(0, 10)
+    }
+    return ''
+  }
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 export const SERVICE_STATUS_STAGES = [
   'Received',
@@ -55,7 +78,39 @@ export const SERVICE_STATUS_STAGES = [
   'Payment Received',
   'Repair In-Progress',
   'Ready',
-  'Delivered'
+  'Delivered',
+  'Cancelled'
+]
+
+export const SERVICE_TABS = [
+  {
+    id: 'intake',
+    label: 'Intake & Approval',
+    description: 'Received, Quotation, Customer Approval & Payment Received',
+    statuses: ['Received', 'Quotation', 'Customer Approval', 'Payment Received'],
+    allowedTransitions: ['Received', 'Quotation', 'Customer Approval', 'Payment Received', 'Cancelled']
+  },
+  {
+    id: 'repairs',
+    label: 'Repairs & Ready',
+    description: 'Repair In-Progress, Ready & Completed Repairs',
+    statuses: ['Repair In-Progress', 'Ready'],
+    allowedTransitions: ['Repair In-Progress', 'Ready', 'Delivered', 'Cancelled']
+  },
+  {
+    id: 'delivered',
+    label: 'Delivered',
+    description: 'Delivered & Handed Over Records',
+    statuses: ['Delivered'],
+    allowedTransitions: ['Delivered', 'Cancelled']
+  },
+  {
+    id: 'cancelled',
+    label: 'Cancelled',
+    description: 'Cancelled Service Tickets',
+    statuses: ['Cancelled', 'Cancel'],
+    allowedTransitions: ['Cancelled', 'Received']
+  }
 ]
 
 export default function AllServicesPage({ setActiveRoute }) {
@@ -67,6 +122,7 @@ export default function AllServicesPage({ setActiveRoute }) {
 
   const navigate = useNavigate()
   const [services, setServices] = useState([])
+  const [activeTab, setActiveTab] = useState('intake')
   const [stats, setStats] = useState({
     totalServices: 0,
     totalValue: 0,
@@ -100,10 +156,14 @@ export default function AllServicesPage({ setActiveRoute }) {
   const [directPrintReceiptService, setDirectPrintReceiptService] = useState(null)
   const [serialModalService, setSerialModalService] = useState(null)
   const [isLoadingDetails, setIsLoadingDetails] = useState(false)
+  const [isGeneratingReceiptPdf, setIsGeneratingReceiptPdf] = useState(false)
 
-  const fetchInitialData = async () => {
+  // Track in-flight status requests per serviceId to cancel stale requests and eliminate race conditions
+  const activeStatusControllers = useRef(new Map())
+
+  const fetchInitialData = async (isBackground = false) => {
     try {
-      setIsLoading(true)
+      if (!isBackground) setIsLoading(true)
 
       // 1. Fetch Services
       const res = await fetch(API_ENDPOINTS.SERVICES)
@@ -115,22 +175,29 @@ export default function AllServicesPage({ setActiveRoute }) {
         }
       }
 
-      // 2. Fetch Settings
-      const settingsRes = await fetch(API_ENDPOINTS.SETTINGS)
-      const settingsData = await settingsRes.json()
-      if (settingsData.success && settingsData.settings) {
-        setSettings(settingsData.settings)
+      // 2. Fetch Settings (only on primary mount)
+      if (!isBackground) {
+        const settingsRes = await fetch(API_ENDPOINTS.SETTINGS)
+        const settingsData = await settingsRes.json()
+        if (settingsData.success && settingsData.settings) {
+          setSettings(settingsData.settings)
+          try {
+            localStorage.setItem('simcha_settings', JSON.stringify(settingsData.settings))
+          } catch {}
+        }
       }
     } catch (err) {
       console.error('Error fetching services data:', err)
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Failed to retrieve service history from database.',
-        confirmButtonColor: '#043486'
-      })
+      if (!isBackground) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Failed to retrieve service history from database.',
+          confirmButtonColor: '#043486'
+        })
+      }
     } finally {
-      setIsLoading(false)
+      if (!isBackground) setIsLoading(false)
     }
   }
 
@@ -142,30 +209,24 @@ export default function AllServicesPage({ setActiveRoute }) {
   const handleDatePresetChange = (preset) => {
     setDatePreset(preset)
     const today = new Date()
-    const formatDateLocal = (d) => {
-      const year = d.getFullYear()
-      const month = String(d.getMonth() + 1).padStart(2, '0')
-      const day = String(d.getDate()).padStart(2, '0')
-      return `${year}-${month}-${day}`
-    }
+    const todayStr = getLocalDateString(today)
 
     if (preset === 'ALL') {
       setStartDate('')
       setEndDate('')
     } else if (preset === 'TODAY') {
-      const formatted = formatDateLocal(today)
-      setStartDate(formatted)
-      setEndDate(formatted)
+      setStartDate(todayStr)
+      setEndDate(todayStr)
     } else if (preset === 'THIS_WEEK') {
       const day = today.getDay() || 7
       const firstDay = new Date(today)
       firstDay.setDate(today.getDate() - day + 1)
-      setStartDate(formatDateLocal(firstDay))
-      setEndDate(formatDateLocal(today))
+      setStartDate(getLocalDateString(firstDay))
+      setEndDate(todayStr)
     } else if (preset === 'THIS_MONTH') {
       const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
-      setStartDate(formatDateLocal(firstDay))
-      setEndDate(formatDateLocal(today))
+      setStartDate(getLocalDateString(firstDay))
+      setEndDate(todayStr)
     }
     setCurrentPage(1)
   }
@@ -210,6 +271,82 @@ export default function AllServicesPage({ setActiveRoute }) {
     }
   }
 
+  // Download Service Receipt PDF
+  const handleDownloadReceiptPdf = async () => {
+    const element = document.getElementById('service-receipt-printable-area')
+    if (!element || !selectedReceiptService) return
+
+    setIsGeneratingReceiptPdf(true)
+    const receiptNo = selectedReceiptService.receipt_number || selectedReceiptService.service_number || 'REC'
+    const fileName = `ServiceReceipt_${receiptNo.replace(/[^a-zA-Z0-9_-]/g, '_')}_${(selectedReceiptService.customer_name || 'Customer').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`
+
+    try {
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      })
+
+      const pageElements = element.querySelectorAll('.receipt-page')
+      if (pageElements && pageElements.length > 0) {
+        for (let i = 0; i < pageElements.length; i++) {
+          const pageEl = pageElements[i]
+          const canvas = await html2canvas(pageEl, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+          })
+
+          const imgData = canvas.toDataURL('image/jpeg', 0.98)
+          const pdfWidth = pdf.internal.pageSize.getWidth()
+          const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+
+          if (i > 0) {
+            pdf.addPage('a4', 'portrait')
+          }
+          pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, Math.min(pdfHeight, 297))
+        }
+      } else {
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff'
+        })
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.98)
+        const pdfWidth = pdf.internal.pageSize.getWidth()
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, Math.min(pdfHeight, 297))
+      }
+
+      pdf.save(fileName)
+
+      Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 2500,
+        timerProgressBar: true
+      }).fire({
+        icon: 'success',
+        title: `Receipt PDF Downloaded: ${fileName}`
+      })
+    } catch (err) {
+      console.error('Error generating receipt PDF:', err)
+      Swal.fire({
+        icon: 'error',
+        title: 'PDF Generation Failed',
+        text: err.message || 'Unable to download PDF. You can also use the "Print Receipt" option to Save as PDF.',
+        confirmButtonColor: '#043486'
+      })
+    } finally {
+      setIsGeneratingReceiptPdf(false)
+    }
+  }
+
   // Direct Print Service Invoice
   const handleDirectPrintService = async (serviceId) => {
     try {
@@ -244,21 +381,35 @@ export default function AllServicesPage({ setActiveRoute }) {
     setSerialModalService(service)
   }
 
-  // Quick Status Update
+  // Quick Status Update (Smooth & Optimistic with Race-Condition Guard)
   const handleStatusChange = async (serviceId, newStatus) => {
+    // 1. Abort any previous pending status request for THIS specific service row
+    if (activeStatusControllers.current.has(serviceId)) {
+      try {
+        activeStatusControllers.current.get(serviceId).abort()
+      } catch {}
+    }
+
+    // 2. Create and store a fresh AbortController for this new request
+    const controller = new AbortController()
+    activeStatusControllers.current.set(serviceId, controller)
+
+    // 3. Instant Optimistic Local Update (0ms lag, smooth transition)
+    setServices(prev =>
+      prev.map(s => (s.id === serviceId ? { ...s, service_status: newStatus } : s))
+    )
+
     try {
       const res = await fetch(API_ENDPOINTS.SERVICE_STATUS_UPDATE(serviceId), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ service_status: newStatus })
+        body: JSON.stringify({ service_status: newStatus }),
+        signal: controller.signal
       })
       const data = await res.json()
       if (data.success) {
-        setServices(prev =>
-          prev.map(s => (s.id === serviceId ? { ...s, service_status: newStatus } : s))
-        )
-        // Refresh full list to get updated stats
-        fetchInitialData()
+        // 4. Silent background sync for KPI cards without full table skeleton/reload
+        fetchInitialData(true)
 
         Swal.mixin({
           toast: true,
@@ -274,13 +425,25 @@ export default function AllServicesPage({ setActiveRoute }) {
         throw new Error(data.message || 'Status update failed')
       }
     } catch (err) {
+      // If this request was cancelled because the user clicked a newer status, ignore silently
+      if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+        return
+      }
+
       console.error('Error updating status:', err)
+      // Rollback list state in background on actual server failure
+      fetchInitialData(true)
       Swal.fire({
         icon: 'error',
         title: 'Status Update Failed',
         text: err.message || 'Could not update service status.',
         confirmButtonColor: '#043486'
       })
+    } finally {
+      // Clean up controller reference if this was the latest one
+      if (activeStatusControllers.current.get(serviceId) === controller) {
+        activeStatusControllers.current.delete(serviceId)
+      }
     }
   }
 
@@ -441,7 +604,7 @@ export default function AllServicesPage({ setActiveRoute }) {
             icon: 'success',
             title: `Service "${serviceNumber}" deleted successfully`
           })
-          fetchInitialData()
+          fetchInitialData(true)
         } else {
           throw new Error(data.message || 'Failed to delete service')
         }
@@ -457,9 +620,33 @@ export default function AllServicesPage({ setActiveRoute }) {
     }
   }
 
-  // Filter Logic
+  // Dynamic Tab Counts for Badge Badges
+  const tabCounts = useMemo(() => {
+    const intake = services.filter(s =>
+      ['Received', 'Quotation', 'Customer Approval', 'Payment Received'].includes(s.service_status)
+    ).length
+    const repairs = services.filter(s =>
+      ['Repair In-Progress', 'Ready'].includes(s.service_status)
+    ).length
+    const delivered = services.filter(s =>
+      s.service_status === 'Delivered'
+    ).length
+    const cancelled = services.filter(s =>
+      ['Cancelled', 'Cancel'].includes(s.service_status)
+    ).length
+
+    return { intake, repairs, delivered, cancelled }
+  }, [services])
+
+  // Filter Logic based on Active Tab + Search + Sub-status + Payment Mode + Date Range
   const filteredServices = useMemo(() => {
+    const currentTabConfig = SERVICE_TABS.find(t => t.id === activeTab) || SERVICE_TABS[0]
+
     return services.filter(service => {
+      // 0. Primary Tab filter: Only services matching active tab's statuses
+      const matchesTab = currentTabConfig.statuses.includes(service.service_status)
+      if (!matchesTab) return false
+
       // 1. Search filter
       const search = searchTerm.toLowerCase().trim()
       const matchesSearch =
@@ -468,9 +655,17 @@ export default function AllServicesPage({ setActiveRoute }) {
         service.customer_name?.toLowerCase().includes(search) ||
         service.customer_phone?.toLowerCase().includes(search) ||
         service.service_title?.toLowerCase().includes(search) ||
-        service.item_details?.toLowerCase().includes(search)
+        service.item_details?.toLowerCase().includes(search) ||
+        (Array.isArray(service.items) &&
+          service.items.some(
+            it =>
+              it.product_name?.toLowerCase().includes(search) ||
+              it.item_name?.toLowerCase().includes(search) ||
+              it.brand_model?.toLowerCase().includes(search) ||
+              it.serial_number?.toLowerCase().includes(search)
+          ))
 
-      // 2. Status filter
+      // 2. Sub-status filter within current tab
       const matchesStatus =
         statusFilter === 'ALL' || service.service_status === statusFilter
 
@@ -479,29 +674,15 @@ export default function AllServicesPage({ setActiveRoute }) {
         paymentModeFilter === 'ALL' || service.payment_mode === paymentModeFilter
 
       // 4. Date Range filter
-      let matchesDate = true
-      if (service.service_date) {
-        let sDateStr = ''
-        if (typeof service.service_date === 'string') {
-          sDateStr = service.service_date.slice(0, 10)
-        } else if (service.service_date instanceof Date) {
-          const y = service.service_date.getFullYear()
-          const m = String(service.service_date.getMonth() + 1).padStart(2, '0')
-          const d = String(service.service_date.getDate()).padStart(2, '0')
-          sDateStr = `${y}-${m}-${d}`
-        }
-
-        if (startDate && sDateStr) {
-          matchesDate = matchesDate && sDateStr >= startDate
-        }
-        if (endDate && sDateStr) {
-          matchesDate = matchesDate && sDateStr <= endDate
-        }
+      if (startDate || endDate) {
+        const sDateStr = getLocalDateString(service.service_date || service.created_at)
+        if (startDate && sDateStr < startDate) return false
+        if (endDate && sDateStr > endDate) return false
       }
 
-      return matchesSearch && matchesStatus && matchesPaymentMode && matchesDate
+      return matchesSearch && matchesStatus && matchesPaymentMode
     })
-  }, [services, searchTerm, statusFilter, paymentModeFilter, startDate, endDate])
+  }, [services, activeTab, searchTerm, statusFilter, paymentModeFilter, startDate, endDate])
 
   // Pagination Logic
   const totalPages = Math.ceil(filteredServices.length / itemsPerPage) || 1
@@ -593,6 +774,9 @@ export default function AllServicesPage({ setActiveRoute }) {
         return 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/40 dark:text-cyan-300 dark:border-cyan-800'
       case 'Delivered':
         return 'bg-green-100 text-green-800 border-green-300 dark:bg-green-950/60 dark:text-green-300 dark:border-green-800'
+      case 'Cancelled':
+      case 'Cancel':
+        return 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
       default:
         return 'bg-gray-100 text-gray-700 border-gray-200'
     }
@@ -604,44 +788,111 @@ export default function AllServicesPage({ setActiveRoute }) {
       {
         header: 'Service ID',
         key: 'service_number',
-        className: 'font-semibold text-[#043486] dark:text-blue-400 font-mono whitespace-nowrap'
+        render: (val, row) => {
+          const isCancelled = ['Cancelled', 'Cancel'].includes(row.service_status)
+          return (
+            <button
+              type="button"
+              onClick={() => handleViewService(row.id)}
+              className={`font-semibold font-mono whitespace-nowrap hover:underline cursor-pointer inline-flex items-center text-left ${
+                isCancelled
+                  ? 'line-through text-slate-500 dark:text-slate-400'
+                  : 'text-[#043486] dark:text-blue-400'
+              }`}
+              title="Click to view Service Bill"
+            >
+              {val}
+            </button>
+          )
+        }
       },
       {
         header: 'Date',
         key: 'service_date',
-        className: 'text-slate-600 dark:text-slate-300 whitespace-nowrap',
-        render: (val) =>
-          val
+        className: 'whitespace-nowrap',
+        render: (val, row) => {
+          const isCancelled = ['Cancelled', 'Cancel'].includes(row.service_status)
+          const formatted = val
             ? new Date(val).toLocaleDateString('en-GB', {
                 day: '2-digit',
                 month: 'short',
                 year: 'numeric'
               })
             : '-'
+          return (
+            <span className={isCancelled ? 'line-through text-slate-500 dark:text-slate-400' : 'text-slate-600 dark:text-slate-300'}>
+              {formatted}
+            </span>
+          )
+        }
       },
       {
         header: 'Customer',
         key: 'customer_name',
-        className: 'min-w-[140px] font-semibold text-slate-800 dark:text-slate-200'
+        className: 'min-w-[140px]',
+        render: (val, row) => {
+          const isCancelled = ['Cancelled', 'Cancel'].includes(row.service_status)
+          return (
+            <span
+              className={`font-semibold ${
+                isCancelled
+                  ? 'line-through text-slate-500 dark:text-slate-400'
+                  : 'text-slate-800 dark:text-slate-200'
+              }`}
+            >
+              {val}
+            </span>
+          )
+        }
       },
       {
         header: 'Mobile Number',
         key: 'customer_phone',
-        className: 'font-mono text-slate-700 dark:text-slate-300 font-medium whitespace-nowrap',
-        render: (val) => val || <span className="text-slate-400">-</span>
+        className: 'whitespace-nowrap',
+        render: (val, row) => {
+          const isCancelled = ['Cancelled', 'Cancel'].includes(row.service_status)
+          return (
+            <span
+              className={`font-mono font-medium ${
+                isCancelled
+                  ? 'line-through text-slate-500 dark:text-slate-400'
+                  : 'text-slate-700 dark:text-slate-300'
+              }`}
+            >
+              {val || '-'}
+            </span>
+          )
+        }
       },
       {
         header: 'Product & QTY',
         key: 'items',
         className: 'min-w-[160px]',
         render: (_, row) => {
+          const isCancelled = ['Cancelled', 'Cancel'].includes(row.service_status)
           const itemsList = row.items || []
           return itemsList.length > 0 ? (
-            <div className="space-y-1">
+            <div className={`space-y-1 ${isCancelled ? 'line-through text-slate-500 dark:text-slate-400' : ''}`}>
               {itemsList.map((it, idx) => (
-                <div key={idx} className="text-xs text-slate-800 dark:text-slate-200">
-                  <span className="font-semibold">{it.product_name || it.item_name}</span>
-                  <span className="text-slate-600 dark:text-slate-400 ml-1.5 font-mono">
+                <div key={idx} className="text-xs">
+                  <span
+                    onClick={() => handleViewSerials(row)}
+                    className={`font-semibold cursor-pointer transition-colors ${
+                      isCancelled
+                        ? 'text-slate-500 dark:text-slate-400'
+                        : 'text-slate-800 dark:text-slate-200 hover:text-[#043486] dark:hover:text-blue-400 hover:underline'
+                    }`}
+                    title="Click to view registered hardware serial numbers"
+                  >
+                    {it.product_name || it.item_name}
+                  </span>
+                  <span
+                    className={`ml-1.5 font-mono ${
+                      isCancelled
+                        ? 'text-slate-500 dark:text-slate-400'
+                        : 'text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
                     - {parseFloat(it.quantity) || 1}
                   </span>
                 </div>
@@ -655,66 +906,89 @@ export default function AllServicesPage({ setActiveRoute }) {
       {
         header: 'Total',
         align: 'right',
-        className: 'font-bold text-slate-900 dark:text-slate-100 font-mono whitespace-nowrap',
-        render: (_, row) =>
-          `₹ ${Number(row.grand_total || row.total_amount || 0).toLocaleString('en-IN', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-          })}`
+        className: 'whitespace-nowrap',
+        render: (_, row) => {
+          const isCancelled = ['Cancelled', 'Cancel'].includes(row.service_status)
+          return (
+            <span
+              className={`font-bold font-mono ${
+                isCancelled
+                  ? 'line-through text-slate-500 dark:text-slate-400'
+                  : 'text-slate-900 dark:text-slate-100'
+              }`}
+            >
+              ₹ {Number(row.grand_total || row.total_amount || 0).toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              })}
+            </span>
+          )
+        }
       },
       {
         header: 'Status',
         align: 'center',
         className: 'whitespace-nowrap',
-        render: (_, row) => (
-          <select
-            value={row.service_status}
-            onChange={(e) => handleStatusChange(row.id, e.target.value)}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-none border focus:outline-none cursor-pointer transition-colors shadow-2xs ${getStatusBadgeClass(
-              row.service_status
-            )}`}
-          >
-            {SERVICE_STATUS_STAGES.map((st) => (
-              <option key={st} value={st}>
-                {st}
-              </option>
-            ))}
-          </select>
-        )
+        render: (_, row) => {
+          const currentTabConfig = SERVICE_TABS.find(t => t.id === activeTab) || SERVICE_TABS[0]
+          const options = Array.from(
+            new Set([...currentTabConfig.allowedTransitions, row.service_status])
+          )
+
+          return (
+            <select
+              value={row.service_status}
+              onChange={(e) => handleStatusChange(row.id, e.target.value)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-none border focus:outline-none cursor-pointer transition-colors shadow-2xs ${getStatusBadgeClass(
+                row.service_status
+              )}`}
+            >
+              {options.map((st) => (
+                <option key={st} value={st}>
+                  {st}
+                </option>
+              ))}
+            </select>
+          )
+        }
       },
       {
         header: 'Actions',
         align: 'center',
         className: 'whitespace-nowrap',
         render: (_, service) => {
-          const isReceiptActive = [
-            'Payment Received',
-            'Repair In-Progress',
-            'Ready',
-            'Delivered'
-          ].includes(service.service_status)
+          const isCancelled = ['Cancelled', 'Cancel'].includes(service.service_status)
+          const isReceiptActive =
+            !isCancelled &&
+            [
+              'Payment Received',
+              'Repair In-Progress',
+              'Ready',
+              'Delivered'
+            ].includes(service.service_status)
           const isEmailSent =
             service.receipt_email_sent === 1 || service.receipt_email_sent === true
 
           return (
             <div className="flex items-center justify-center gap-1.5">
-              {/* 1. View Service Invoice Modal Icon (Purple) */}
+              {/* 1. Direct Print / View Receipt Modal (Active from Payment Received onwards) - Like Outward List */}
               <ActionButton
-                type="view"
-                onClick={() => handleViewService(service.id)}
-                title="View Service Invoice"
-                className="!text-purple-600 dark:!text-purple-400 hover:!bg-purple-50 dark:hover:!bg-slate-800"
+                icon={FileCheck}
+                onClick={() => handlePrintReceipt(service.id)}
+                disabled={!isReceiptActive}
+                className={
+                  isReceiptActive
+                    ? '!text-purple-600 dark:!text-purple-400 hover:!bg-purple-50 dark:hover:!bg-slate-800'
+                    : '!text-gray-300 dark:!text-slate-700 opacity-40'
+                }
+                title={
+                  isReceiptActive
+                    ? 'Print / View Service Payment Receipt'
+                    : 'Receipt available from Payment Received stage onwards'
+                }
               />
 
-              {/* 2. Check Serial Numbers Modal Icon (FileDigit icon from Stock) */}
-              <ActionButton
-                icon={FileDigit}
-                onClick={() => handleViewSerials(service)}
-                title="Check Hardware Serial Numbers"
-                className="!text-blue-600 dark:!text-blue-400 hover:!bg-blue-50 dark:hover:!bg-slate-800"
-              />
-
-              {/* 3. Send Receipt Email Icon (Indigo / Red when sent) */}
+              {/* 2. Send Receipt Email Icon (Indigo / Red when sent) */}
               <ActionButton
                 icon={Send}
                 disabled={!isReceiptActive}
@@ -735,18 +1009,32 @@ export default function AllServicesPage({ setActiveRoute }) {
                 }
               />
 
-              {/* 4. Edit Service Record */}
+              {/* 3. Edit Service Record */}
               {canEdit && (
                 <ActionButton
                   type="edit"
+                  disabled={isCancelled}
                   onClick={() => {
+                    if (isCancelled) return
                     if (setActiveRoute) setActiveRoute('new-service')
                     navigate(`/services/new?editId=${service.id}`)
                   }}
-                  title="Edit Service Request"
-                  className="!text-amber-600 dark:!text-amber-400 hover:!bg-amber-50 dark:hover:!bg-slate-800"
+                  title={isCancelled ? 'Cannot edit cancelled service' : 'Edit Service Request'}
+                  className={
+                    isCancelled
+                      ? '!text-gray-300 dark:!text-slate-700 opacity-40 cursor-not-allowed'
+                      : '!text-amber-600 dark:!text-amber-400 hover:!bg-amber-50 dark:hover:!bg-slate-800'
+                  }
                 />
               )}
+
+              {/* 4. View Service Invoice Modal (Blue) */}
+              <ActionButton
+                type="view"
+                onClick={() => handleViewService(service.id)}
+                title="View Service Invoice"
+                className="!text-[#043486] dark:!text-blue-400 hover:!bg-blue-50 dark:hover:!bg-slate-800"
+              />
 
               {/* 5. Delete Service Record */}
               {canDelete && (
@@ -762,8 +1050,13 @@ export default function AllServicesPage({ setActiveRoute }) {
         }
       }
     ],
-    [canEdit, canDelete]
+    [activeTab, canEdit, canDelete]
   )
+
+  const currentTabStages = useMemo(() => {
+    const tabConfig = SERVICE_TABS.find(t => t.id === activeTab)
+    return tabConfig ? tabConfig.statuses : SERVICE_STATUS_STAGES
+  }, [activeTab])
 
   return (
     <div className="space-y-6 font-['Poppins',sans-serif] pb-16 animate-in fade-in duration-200">
@@ -858,7 +1151,7 @@ export default function AllServicesPage({ setActiveRoute }) {
             />
           </div>
 
-          {/* Status Filter */}
+          {/* Sub-status Filter within Active Tab */}
           <div className="md:col-span-3">
             <select
               value={statusFilter}
@@ -868,8 +1161,8 @@ export default function AllServicesPage({ setActiveRoute }) {
               }}
               className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#043486] transition-colors"
             >
-              <option value="ALL">All Service Stages (7 Stages)</option>
-              {SERVICE_STATUS_STAGES.map((st) => (
+              <option value="ALL">All Stages in Tab ({currentTabStages.length})</option>
+              {currentTabStages.map((st) => (
                 <option key={st} value={st}>
                   {st}
                 </option>
@@ -931,6 +1224,61 @@ export default function AllServicesPage({ setActiveRoute }) {
         />
       </div>
 
+      {/* 4. Tab Navigation Bar (Standard Module Chevron Arrow Nav) */}
+      <TabNav>
+        <TabButton
+          active={activeTab === 'intake'}
+          variant="blue"
+          icon={FileText}
+          label={`Intake & Approval (${tabCounts.intake})`}
+          onClick={() => {
+            setActiveTab('intake')
+            setStatusFilter('ALL')
+            setCurrentPage(1)
+            setSelectedServiceIds([])
+          }}
+        />
+
+        <TabButton
+          active={activeTab === 'repairs'}
+          variant="amber"
+          icon={Clock}
+          label={`Repairs & Ready (${tabCounts.repairs})`}
+          onClick={() => {
+            setActiveTab('repairs')
+            setStatusFilter('ALL')
+            setCurrentPage(1)
+            setSelectedServiceIds([])
+          }}
+        />
+
+        <TabButton
+          active={activeTab === 'delivered'}
+          variant="emerald"
+          icon={CheckCircle2}
+          label={`Delivered (${tabCounts.delivered})`}
+          onClick={() => {
+            setActiveTab('delivered')
+            setStatusFilter('ALL')
+            setCurrentPage(1)
+            setSelectedServiceIds([])
+          }}
+        />
+
+        <TabButton
+          active={activeTab === 'cancelled'}
+          variant="slate"
+          icon={X}
+          label={`Cancelled (${tabCounts.cancelled})`}
+          onClick={() => {
+            setActiveTab('cancelled')
+            setStatusFilter('ALL')
+            setCurrentPage(1)
+            setSelectedServiceIds([])
+          }}
+        />
+      </TabNav>
+
       {/* 4. Global Reusable Service Records DataTable & Pagination */}
       <div className="space-y-0">
         <DataTable
@@ -946,6 +1294,11 @@ export default function AllServicesPage({ setActiveRoute }) {
           selectedIds={selectedServiceIds}
           onSelectAll={handleSelectAll}
           onSelectRow={(id) => handleSelectOne(id)}
+          rowClassName={(row) =>
+            ['Cancelled', 'Cancel'].includes(row.service_status)
+              ? 'opacity-65 bg-gray-50/80 dark:bg-slate-900/60'
+              : ''
+          }
         />
 
         <Pagination
@@ -1003,6 +1356,7 @@ export default function AllServicesPage({ setActiveRoute }) {
                   <ServiceInvoiceTemplate
                     service={selectedService}
                     items={selectedService.items || []}
+                    settings={settings}
                     company={settings}
                   />
                 </div>
@@ -1012,20 +1366,33 @@ export default function AllServicesPage({ setActiveRoute }) {
           document.body
         )}
 
-      {/* 7. Printable Service Receipt Modal */}
+      {/* 7. Printable Service Receipt Modal (Matching Outward Receipt Modal Theme) */}
       {selectedReceiptService &&
         createPortal(
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto print:hidden">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-3xl my-8 max-h-[90vh] flex flex-col">
-              {/* Modal Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-                <div className="flex items-center gap-2">
-                  <FileCheck className="w-5 h-5 text-emerald-600" />
-                  <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">
-                    Official Service Payment Receipt — {selectedReceiptService.service_number}
-                  </h3>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/80 backdrop-blur-xs font-['Poppins',sans-serif] overflow-y-auto print:p-0 print:bg-white print:fixed-none">
+            {/* Modal Card Container */}
+            <div className="relative w-full max-w-5xl bg-slate-100 dark:bg-slate-900 rounded-none border border-slate-300 dark:border-slate-800 shadow-2xl flex flex-col max-h-[96vh] overflow-hidden my-auto print:border-none print:shadow-none print:max-h-none print:w-full print:bg-white">
+              {/* Modal Top Action Toolbar (Hidden in Print) */}
+              <div className="flex items-center justify-between px-6 py-4 bg-white dark:bg-slate-850 border-b border-gray-200 dark:border-slate-800 shrink-0 print:hidden">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-none bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-400 flex items-center justify-center font-bold border border-purple-200 dark:border-purple-800">
+                    <Receipt size={18} />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                      <span>PAYMENT RECEIPT PREVIEW</span>
+                      <span className="font-mono text-purple-700 dark:text-purple-400 font-black">
+                        #{selectedReceiptService.receipt_number || selectedReceiptService.service_number}
+                      </span>
+                    </h2>
+                    <p className="text-[11px] text-gray-500 dark:text-slate-400">
+                      Official payment receipt • Customer: {selectedReceiptService.customer_name}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
+
+                {/* Action Buttons */}
+                <div className="flex items-center gap-2.5">
                   <button
                     type="button"
                     onClick={() => {
@@ -1034,25 +1401,41 @@ export default function AllServicesPage({ setActiveRoute }) {
                         window.print()
                       }, 250)
                     }}
-                    className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5 cursor-pointer"
+                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] rounded-none shadow-sm transition-all cursor-pointer"
+                    title="Print Receipt"
                   >
-                    <Printer className="w-3.5 h-3.5" /> Print Receipt
+                    <Printer size={15} />
+                    <span>Print Receipt</span>
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDownloadReceiptPdf}
+                    disabled={isGeneratingReceiptPdf}
+                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-750 rounded-none shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                    title="Download High-Resolution PDF"
+                  >
+                    <Download size={15} />
+                    <span>{isGeneratingReceiptPdf ? 'Rendering PDF...' : 'Download PDF'}</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setSelectedReceiptService(null)}
-                    className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                    className="p-2 text-gray-400 hover:text-gray-700 dark:hover:text-white rounded-none hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    title="Close Preview"
                   >
-                    <X className="w-5 h-5" />
+                    <X size={18} />
                   </button>
                 </div>
               </div>
 
-              {/* Printable Receipt Template Container */}
-              <div className="p-6 overflow-y-auto flex-1 bg-slate-100 dark:bg-slate-950/50">
-                <div className="max-w-[700px] mx-auto bg-white shadow-md">
+              {/* Scrollable Receipt Preview Stage */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-200/80 dark:bg-slate-950/90 flex justify-center print:p-0 print:bg-white print:overflow-visible">
+                <div className="w-full max-w-[210mm] shadow-2xl bg-white print:shadow-none print:w-full">
                   <ServiceReceiptTemplate
                     service={selectedReceiptService}
+                    settings={settings}
                     company={settings}
                   />
                 </div>
@@ -1178,7 +1561,7 @@ export default function AllServicesPage({ setActiveRoute }) {
         typeof document !== 'undefined' &&
         createPortal(
           <div id="invoice-print-wrapper">
-            <ServiceInvoiceTemplate service={directPrintService} settings={settings} />
+            <ServiceInvoiceTemplate service={directPrintService} settings={settings} company={settings} />
           </div>,
           document.body
         )}
@@ -1188,7 +1571,7 @@ export default function AllServicesPage({ setActiveRoute }) {
         typeof document !== 'undefined' &&
         createPortal(
           <div id="receipt-print-wrapper">
-            <ServiceReceiptTemplate service={directPrintReceiptService} company={settings} />
+            <ServiceReceiptTemplate service={directPrintReceiptService} settings={settings} company={settings} />
           </div>,
           document.body
         )}

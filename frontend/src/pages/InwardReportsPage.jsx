@@ -32,7 +32,7 @@ import ListPageHeader from '../components/common/ListPageHeader'
 import ListKpiCard from '../components/common/ListKpiCard'
 import ListDateRangeFilter from '../components/common/ListDateRangeFilter'
 import ListPagePagination from '../components/common/ListPagePagination'
-import { Button, ActionButton, SearchInput } from '../components/ui'
+import { Button, ActionButton, SearchInput, Checkbox } from '../components/ui'
 import { API_ENDPOINTS } from '../config/api'
 
 // Local Date Helper to eliminate timezone UTC discrepancy (e.g. 2026-09-18T18:30:00Z -> 2026-09-19 in IST)
@@ -567,12 +567,11 @@ export default function InwardReportsPage() {
                 <tr>
                   {/* Select All Checkbox */}
                   <th className="py-3 px-3.5 w-10 text-center">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={isAllPaginatedSelected}
+                      indeterminate={selectedIds.length > 0 && !isAllPaginatedSelected}
                       onChange={handleToggleSelectAll}
                       disabled={isLoading || paginatedInwards.length === 0}
-                      className="w-4 h-4 text-[#043486] rounded-none border-gray-300 dark:border-slate-600 focus:ring-0 cursor-pointer accent-[#043486]"
                     />
                   </th>
                   <th className="py-3 px-3 w-12 text-center">ID</th>
@@ -606,11 +605,9 @@ export default function InwardReportsPage() {
                     >
                       {/* Checkbox */}
                       <td className="py-3.5 px-3.5 text-center">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={isSelected}
                           onChange={() => handleToggleSelectRow(inv.id)}
-                          className="w-4 h-4 text-[#043486] rounded-none border-gray-300 dark:border-slate-600 focus:ring-0 cursor-pointer accent-[#043486]"
                         />
                       </td>
 

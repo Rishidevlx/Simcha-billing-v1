@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTheme } from '../../context/ThemeContext'
+import { useSettings } from '../../context/SettingsContext'
 import {
   TemplatePageShell,
   TemplateHeader,
@@ -36,30 +37,32 @@ function numberToWords(num) {
   return result + ' Only'
 }
 
-export default function ReturnVoucherTemplate({ returnItem, settings }) {
+export default function ReturnVoucherTemplate({ returnItem, settings, company }) {
   if (!returnItem) return null
 
-  const { companyName: themeCompanyName, companyDetails } = useTheme()
-
-  // Resolve settings with localStorage fallback
-  let effectiveSettings = settings || {}
-  if (!effectiveSettings.signature_url || !effectiveSettings.company_name) {
-    try {
-      const stored = localStorage.getItem('simcha_settings')
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        effectiveSettings = { ...parsed, ...effectiveSettings }
-      }
-    } catch {}
+  // 1. Snapshot Pattern for Past Return Vouchers Immutability (Legal Audit Rule)
+  let snapshot = returnItem?.company_snapshot || null
+  if (typeof snapshot === 'string') {
+    try { snapshot = JSON.parse(snapshot) } catch { snapshot = null }
   }
 
+  // 2. Live DB Context fallback for New Returns & UI Rendering
+  const {
+    settings: liveSettings,
+    companyDetails: liveCompany,
+    signatureUrl: liveSignUrl
+  } = useSettings()
+
+  const effectiveSettings = snapshot || settings || company || liveSettings || {}
+  const effectiveCompany = snapshot || company || liveCompany || {}
+
   // Dynamic Company Settings with fallbacks from Theme/System Settings
-  const companyName = effectiveSettings?.company_name || themeCompanyName || companyDetails?.name || ''
-  const companyGstin = effectiveSettings?.gstin || companyDetails?.gstin || ''
-  const companyPhone = effectiveSettings?.phone || companyDetails?.phone || ''
-  const companyEmail = effectiveSettings?.email || companyDetails?.email || ''
-  const companyAddress = effectiveSettings?.address || companyDetails?.address || ''
-  const signatureUrl = effectiveSettings?.signature_url || returnItem?.signature_url || null
+  const companyName = effectiveCompany?.company_name || effectiveCompany?.name || ''
+  const companyGstin = effectiveCompany?.gstin || ''
+  const companyPhone = effectiveCompany?.phone || ''
+  const companyEmail = effectiveCompany?.email || ''
+  const companyAddress = effectiveCompany?.address || ''
+  const signatureUrl = effectiveSettings?.signature_url || effectiveSettings?.signatureUrl || returnItem?.signature_url || liveSignUrl || null
 
   const isCreditNote = returnItem.qc_decision === 'REFUND' || (returnItem.resolution_ref && returnItem.resolution_ref.includes('CN'))
   const isReplacement = returnItem.qc_decision === 'REPLACE'

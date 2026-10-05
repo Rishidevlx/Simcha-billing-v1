@@ -1,25 +1,111 @@
 import { getPool } from '../config/db.js'
 import { sendInvoiceEmail, sendReceiptEmail } from '../services/emailService.js'
 
+const MONTH_NAMES = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+
+export async function getEffectiveIstDate(pool, targetDate = null) {
+  if (targetDate) {
+    const d = new Date(targetDate)
+    if (!isNaN(d.getTime())) return d
+  }
+  if (pool) {
+    try {
+      const [rows] = await pool.query('SELECT NOW() AS db_now')
+      if (rows.length > 0 && rows[0].db_now) {
+        return new Date(rows[0].db_now)
+      }
+    } catch (e) {
+      // fallback to IST calculation
+    }
+  }
+  const now = new Date()
+  const istOffset = 5.5 * 60 * 60 * 1000
+  return new Date(now.getTime() + (now.getTimezoneOffset() * 60 * 1000) + istOffset)
+}
+
+const MONTH_MAP = {
+  'JAN': '01', 'JANUARY': '01',
+  'FEB': '02', 'FEBRUARY': '02',
+  'MAR': '03', 'MARCH': '03',
+  'APR': '04', 'APRIL': '04',
+  'MAY': '05',
+  'JUN': '06', 'JUNE': '06',
+  'JUL': '07', 'JULY': '07',
+  'AUG': '08', 'AUGUST': '08',
+  'SEP': '09', 'SEPTEMBER': '09',
+  'OCT': '10', 'OCTOBER': '10',
+  'NOV': '11', 'NOVEMBER': '11',
+  'DEC': '12', 'DECEMBER': '12'
+}
+
+function formatMonthValue(d, monthSetting) {
+  const autoMonth = String(d.getMonth() + 1).padStart(2, '0')
+  if (!monthSetting || !monthSetting.trim() || monthSetting.trim().toUpperCase() === 'AUTO') {
+    return autoMonth
+  }
+  const clean = monthSetting.trim().toUpperCase()
+  if (MONTH_MAP[clean]) {
+    return MONTH_MAP[clean]
+  }
+  const num = parseInt(clean, 10)
+  if (!isNaN(num) && num >= 1 && num <= 12) {
+    return String(num).padStart(2, '0')
+  }
+  return clean
+}
+
+function buildDynamicNumber(prefix, sep, monthSetting, fySetting, seqNum, padding, targetDate = null, effectiveDate = null) {
+  const d = effectiveDate || (targetDate ? new Date(targetDate) : new Date())
+  const now = isNaN(d.getTime()) ? new Date() : d
+  const activeMonth = formatMonthValue(now, monthSetting)
+
+  const currentYear = now.getFullYear()
+  const autoFy = (now.getMonth() >= 3)
+    ? `${currentYear}-${String(currentYear + 1).slice(-2)}`
+    : `${currentYear - 1}-${String(currentYear).slice(-2)}`
+  const activeFy = (fySetting && fySetting.trim() && fySetting.trim().toUpperCase() !== 'AUTO')
+    ? fySetting.trim()
+    : autoFy
+
+  const cleanPrefix = (prefix || 'SIS').replace(/[-/.]+$/, '')
+  return `${cleanPrefix}${sep}${activeMonth}${sep}${activeFy}${sep}${String(seqNum).padStart(padding, '0')}`
+}
+
 // Generate next formatted invoice number based on system settings
 export async function getNextInvoiceNumber(req, res) {
   try {
+    const targetDate = req.query.date || null
     const pool = getPool()
     
     // Get invoice settings
     const [settingRows] = await pool.query(`
-      SELECT invoice_prefix, invoice_financial_year, invoice_starting_number, invoice_padding_digits, invoice_separator 
+      SELECT invoice_prefix, invoice_month, invoice_financial_year, invoice_starting_number, invoice_padding_digits, invoice_separator 
       FROM settings WHERE id = 1
     `)
     const s = settingRows.length > 0 ? settingRows[0] : {}
     const prefix = (s.invoice_prefix !== undefined && s.invoice_prefix !== null && s.invoice_prefix.trim() !== '') ? s.invoice_prefix.trim() : 'SIS'
-    const fy = (s.invoice_financial_year && s.invoice_financial_year.trim()) ? s.invoice_financial_year.trim() : '2026-27'
+    const month = s.invoice_month
+    const fy = s.invoice_financial_year
     const startNum = parseInt(s.invoice_starting_number, 10) || 1
     const padding = parseInt(s.invoice_padding_digits, 10) || 4
     const sep = (s.invoice_separator !== undefined && s.invoice_separator !== null) ? s.invoice_separator : '/'
 
-    // Extract sequence numbers from existing bills
-    const [rows] = await pool.query('SELECT invoice_number FROM bills')
+    const effectiveDate = await getEffectiveIstDate(pool, targetDate)
+    const activeMonth = formatMonthValue(effectiveDate, month)
+
+    const currentYear = effectiveDate.getFullYear()
+    const autoFy = (effectiveDate.getMonth() >= 3)
+      ? `${currentYear}-${String(currentYear + 1).slice(-2)}`
+      : `${currentYear - 1}-${String(currentYear).slice(-2)}`
+    const activeFy = (fy && fy.trim() && fy.trim().toUpperCase() !== 'AUTO')
+      ? fy.trim()
+      : autoFy
+
+    const cleanPrefix = prefix.replace(/[-/.]+$/, '')
+
+    // Extract sequence numbers from existing bills matching current prefix/month/fy
+    const pattern = `${cleanPrefix}${sep}${activeMonth}${sep}${activeFy}%`
+    const [rows] = await pool.query('SELECT invoice_number FROM bills WHERE invoice_number LIKE ?', [pattern])
     let maxSeq = 0
     for (const r of rows) {
       if (r.invoice_number) {
@@ -37,7 +123,7 @@ export async function getNextInvoiceNumber(req, res) {
     }
 
     const nextNum = maxSeq >= startNum ? maxSeq + 1 : startNum
-    const formattedNumber = `${prefix}${sep}${fy}${sep}${String(nextNum).padStart(padding, '0')}`
+    const formattedNumber = `${cleanPrefix}${sep}${activeMonth}${sep}${activeFy}${sep}${String(nextNum).padStart(padding, '0')}`
 
     return res.status(200).json({
       success: true,
@@ -55,22 +141,38 @@ export async function getNextInvoiceNumber(req, res) {
 // Generate next formatted receipt number based on system settings
 export async function getNextReceiptNumber(req, res) {
   try {
+    const targetDate = req.query.date || null
     const pool = getPool()
     
     // Get receipt settings
     const [settingRows] = await pool.query(`
-      SELECT receipt_prefix, receipt_financial_year, receipt_starting_number, receipt_padding_digits, receipt_separator 
+      SELECT receipt_prefix, receipt_month, receipt_financial_year, receipt_starting_number, receipt_padding_digits, receipt_separator 
       FROM settings WHERE id = 1
     `)
     const s = settingRows.length > 0 ? settingRows[0] : {}
     const prefix = (s.receipt_prefix !== undefined && s.receipt_prefix !== null && s.receipt_prefix.trim() !== '') ? s.receipt_prefix.trim() : 'SIS-REC'
-    const fy = (s.receipt_financial_year && s.receipt_financial_year.trim()) ? s.receipt_financial_year.trim() : '2026-27'
+    const month = s.receipt_month
+    const fy = s.receipt_financial_year
     const startNum = parseInt(s.receipt_starting_number, 10) || 1
     const padding = parseInt(s.receipt_padding_digits, 10) || 4
     const sep = (s.receipt_separator !== undefined && s.receipt_separator !== null) ? s.receipt_separator : '/'
 
-    // Extract sequence numbers from existing bills' receipt_number
-    const [rows] = await pool.query('SELECT receipt_number, invoice_number FROM bills')
+    const effectiveDate = await getEffectiveIstDate(pool, targetDate)
+    const activeMonth = formatMonthValue(effectiveDate, month)
+
+    const currentYear = effectiveDate.getFullYear()
+    const autoFy = (effectiveDate.getMonth() >= 3)
+      ? `${currentYear}-${String(currentYear + 1).slice(-2)}`
+      : `${currentYear - 1}-${String(currentYear).slice(-2)}`
+    const activeFy = (fy && fy.trim() && fy.trim().toUpperCase() !== 'AUTO')
+      ? fy.trim()
+      : autoFy
+
+    const cleanPrefix = prefix.replace(/[-/.]+$/, '')
+
+    // Extract sequence numbers from existing bills' receipt_number matching current prefix/month/fy
+    const pattern = `${cleanPrefix}${sep}${activeMonth}${sep}${activeFy}%`
+    const [rows] = await pool.query('SELECT receipt_number FROM bills WHERE receipt_number LIKE ?', [pattern])
     let maxSeq = 0
     for (const r of rows) {
       const recStr = (r.receipt_number || '').trim()
@@ -88,7 +190,7 @@ export async function getNextReceiptNumber(req, res) {
     }
 
     const nextNum = maxSeq >= startNum ? maxSeq + 1 : startNum
-    const formattedNumber = `${prefix}${sep}${fy}${sep}${String(nextNum).padStart(padding, '0')}`
+    const formattedNumber = `${cleanPrefix}${sep}${activeMonth}${sep}${activeFy}${sep}${String(nextNum).padStart(padding, '0')}`
 
     return res.status(200).json({
       success: true,
@@ -194,8 +296,33 @@ export async function createBill(req, res) {
 
     // Clean payment mode (null if Select or empty)
     const sanitizedPaymentMode = (payment_mode === 'Select' || payment_mode === '' || !payment_mode) ? null : payment_mode
-
     const finalDeliveryAddress = same_as_billing ? (customer_address ? customer_address.trim() : null) : (delivery_address ? delivery_address.trim() : null)
+
+    // Snapshot company settings at time of bill creation (Legal Audit Immutability)
+    const [snapshotSettingRows] = await pool.query('SELECT * FROM settings WHERE id = 1')
+    const currentSettings = snapshotSettingRows.length > 0 ? snapshotSettingRows[0] : {}
+    let parsedTerms = []
+    if (typeof currentSettings.terms_conditions === 'string') {
+      try { parsedTerms = JSON.parse(currentSettings.terms_conditions) } catch { parsedTerms = [] }
+    } else if (Array.isArray(currentSettings.terms_conditions)) {
+      parsedTerms = currentSettings.terms_conditions
+    }
+
+    const companySnapshot = JSON.stringify({
+      company_name: currentSettings.company_name || 'SIMCHA INFO SOLUTIONS',
+      address: currentSettings.address || '',
+      phone: currentSettings.phone || '',
+      email: currentSettings.email || '',
+      gstin: currentSettings.gstin || '',
+      bank_name: currentSettings.bank_name || '',
+      account_name: currentSettings.account_name || currentSettings.company_name || '',
+      account_no: currentSettings.account_no || '',
+      ifsc_code: currentSettings.ifsc_code || '',
+      branch: currentSettings.branch || '',
+      bank_image_url: currentSettings.bank_image_url || '',
+      signature_url: currentSettings.signature_url || '',
+      terms_conditions: parsedTerms
+    })
 
     // Insert into bills table
     const [billResult] = await pool.query(`
@@ -205,8 +332,8 @@ export async function createBill(req, res) {
         place_of_supply, taxable_amount, cgst_rate, cgst_amount,
         sgst_rate, sgst_amount, igst_rate, igst_amount,
         total_tax, round_off, total_amount, amount_in_words,
-        payment_mode, payment_status, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        payment_mode, payment_status, notes, company_snapshot
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       invoice_number.trim(),
       finalReceiptNumber,
@@ -237,7 +364,8 @@ export async function createBill(req, res) {
       amount_in_words || '',
       sanitizedPaymentMode,
       payment_status || 'Pending',
-      notes || ''
+      notes || '',
+      companySnapshot
     ])
 
 
@@ -332,7 +460,8 @@ export async function createBill(req, res) {
       }
     }
 
-    // Trigger Automated Email Dispatch in Background if configured
+    // Trigger Automated Email Dispatch in Background if configured (TEMPORARILY DISABLED AS REQUESTED)
+    /*
     (async () => {
       try {
         const [configRows] = await pool.query('SELECT auto_email_on_create, smtp_user, smtp_pass FROM email_configs WHERE id = 1')
@@ -344,6 +473,7 @@ export async function createBill(req, res) {
         console.error('Auto-email background dispatch error:', e)
       }
     })()
+    */
 
     return res.status(201).json({
       success: true,
@@ -740,8 +870,8 @@ export async function updateBill(req, res) {
         updated_at = NOW()
       WHERE id = ?
     `, [
-      (invoice_number || existing[0].invoice_number).trim(),
-      receipt_number || existing[0].receipt_number,
+      (existing[0].invoice_number || invoice_number || '').trim(),
+      (existing[0].receipt_number || receipt_number || null),
       invoice_date || existing[0].invoice_date,
       has_due_date ? (due_date || null) : null,
       has_due_date ? 1 : 0,

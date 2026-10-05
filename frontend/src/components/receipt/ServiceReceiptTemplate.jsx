@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTheme } from '../../context/ThemeContext'
+import { useSettings } from '../../context/SettingsContext'
 import {
   TemplatePageShell,
   TemplateHeader,
@@ -43,21 +44,40 @@ function paginateReceiptItems(items) {
   return pages
 }
 
-export default function ServiceReceiptTemplate({ service, bill, settings }) {
+export default function ServiceReceiptTemplate({ service, bill, settings, company }) {
   const data = service || bill
   if (!data) return null
 
-  const { companyName: themeCompanyName, companyDetails } = useTheme()
+  // 1. Snapshot Pattern for Past Service Receipts Immutability (Legal Audit Rule)
+  let snapshot = data?.company_snapshot || null
+  if (typeof snapshot === 'string') {
+    try { snapshot = JSON.parse(snapshot) } catch { snapshot = null }
+  }
 
-  // Resolve dynamic settings with fallbacks from Theme/System Settings
-  const companyName = settings?.company_name || themeCompanyName || companyDetails?.name || ''
-  const companyGstin = settings?.gstin || companyDetails?.gstin || ''
-  const companyPhone = settings?.phone || companyDetails?.phone || ''
-  const companyEmail = settings?.email || companyDetails?.email || ''
-  const companyAddress = settings?.address || companyDetails?.address || ''
+  // 2. Live DB Context fallback for New Services & UI Rendering
+  const {
+    settings: liveSettings,
+    companyDetails: liveCompany,
+    signatureUrl: liveSignUrl,
+    termsList: liveTerms
+  } = useSettings()
 
-  const defaultTermsList = Array.isArray(settings?.terms_conditions) && settings.terms_conditions.length > 0
-    ? settings.terms_conditions
+  const effectiveSettings = snapshot || settings || company || liveSettings || {}
+  const effectiveCompany = snapshot || company || liveCompany || {}
+
+  const companyName = effectiveCompany?.company_name || effectiveCompany?.name || ''
+  const companyGstin = effectiveCompany?.gstin || ''
+  const companyPhone = effectiveCompany?.phone || ''
+  const companyEmail = effectiveCompany?.email || ''
+  const companyAddress = effectiveCompany?.address || ''
+  const signatureUrl = effectiveSettings?.signature_url || effectiveSettings?.signatureUrl || data.signature_url || liveSignUrl || null
+
+  const defaultTermsList = (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
+    ? effectiveSettings.terms_conditions
+    : (Array.isArray(snapshot?.terms_conditions) && snapshot.terms_conditions.length > 0)
+    ? snapshot.terms_conditions
+    : (liveTerms && liveTerms.length > 0)
+    ? liveTerms
     : [
       'Warranty as per manufacturer’s norms & should be claimed directly.',
       'Service warranty 30 days applicable on reported issues only.',
@@ -318,10 +338,10 @@ export default function ServiceReceiptTemplate({ service, bill, settings }) {
 
                   {/* Authorized Signatory */}
                   <div className="pt-4 text-right pr-2">
-                    {(settings?.signature_url || data.signature_url) && (
+                    {signatureUrl && (
                       <div className="flex justify-end items-center h-10 mb-1">
                         <img
-                          src={settings?.signature_url || data.signature_url}
+                          src={signatureUrl}
                           alt="Authorized Signature"
                           className="max-h-10 max-w-[140px] object-contain"
                         />

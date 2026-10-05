@@ -109,3 +109,31 @@ export const deleteDepartment = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to delete department', error: error.message })
   }
 }
+
+// PATCH /api/departments/:id/status
+export const toggleDepartmentStatus = async (req, res) => {
+  try {
+    const deptId = req.params.id
+    const pool = getPool()
+
+    const [rows] = await pool.query('SELECT id, name, status FROM departments WHERE id = ?', [deptId])
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Department not found' })
+    }
+
+    const currentStatus = rows[0].status || 'Active'
+    const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active'
+
+    await pool.query('UPDATE departments SET status = ? WHERE id = ?', [newStatus, deptId])
+
+    res.json({
+      success: true,
+      message: `Department status updated to ${newStatus}`,
+      status: newStatus
+    })
+  } catch (error) {
+    console.error('Error toggling department status:', error)
+    res.status(500).json({ success: false, message: 'Failed to update department status', error: error.message })
+  }
+}
+

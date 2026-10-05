@@ -1,21 +1,107 @@
 import { getPool } from '../config/db.js'
 
+const MONTH_NAMES = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+
+export async function getEffectiveIstDate(pool, targetDate = null) {
+  if (targetDate) {
+    const d = new Date(targetDate)
+    if (!isNaN(d.getTime())) return d
+  }
+  if (pool) {
+    try {
+      const [rows] = await pool.query('SELECT NOW() AS db_now')
+      if (rows.length > 0 && rows[0].db_now) {
+        return new Date(rows[0].db_now)
+      }
+    } catch (e) {
+      // fallback
+    }
+  }
+  const now = new Date()
+  const istOffset = 5.5 * 60 * 60 * 1000
+  return new Date(now.getTime() + (now.getTimezoneOffset() * 60 * 1000) + istOffset)
+}
+
+const MONTH_MAP = {
+  'JAN': '01', 'JANUARY': '01',
+  'FEB': '02', 'FEBRUARY': '02',
+  'MAR': '03', 'MARCH': '03',
+  'APR': '04', 'APRIL': '04',
+  'MAY': '05',
+  'JUN': '06', 'JUNE': '06',
+  'JUL': '07', 'JULY': '07',
+  'AUG': '08', 'AUGUST': '08',
+  'SEP': '09', 'SEPTEMBER': '09',
+  'OCT': '10', 'OCTOBER': '10',
+  'NOV': '11', 'NOVEMBER': '11',
+  'DEC': '12', 'DECEMBER': '12'
+}
+
+function formatMonthValue(d, monthSetting) {
+  const autoMonth = String(d.getMonth() + 1).padStart(2, '0')
+  if (!monthSetting || !monthSetting.trim() || monthSetting.trim().toUpperCase() === 'AUTO') {
+    return autoMonth
+  }
+  const clean = monthSetting.trim().toUpperCase()
+  if (MONTH_MAP[clean]) {
+    return MONTH_MAP[clean]
+  }
+  const num = parseInt(clean, 10)
+  if (!isNaN(num) && num >= 1 && num <= 12) {
+    return String(num).padStart(2, '0')
+  }
+  return clean
+}
+
+function buildDynamicNumber(prefix, sep, monthSetting, fySetting, seqNum, padding, targetDate = null, effectiveDate = null) {
+  const d = effectiveDate || (targetDate ? new Date(targetDate) : new Date())
+  const now = isNaN(d.getTime()) ? new Date() : d
+  const activeMonth = formatMonthValue(now, monthSetting)
+
+  const currentYear = now.getFullYear()
+  const autoFy = (now.getMonth() >= 3)
+    ? `${currentYear}-${String(currentYear + 1).slice(-2)}`
+    : `${currentYear - 1}-${String(currentYear).slice(-2)}`
+  const activeFy = (fySetting && fySetting.trim() && fySetting.trim().toUpperCase() !== 'AUTO')
+    ? fySetting.trim()
+    : autoFy
+
+  const cleanPrefix = (prefix || 'SIS-RET').replace(/[-/.]+$/, '')
+  return `${cleanPrefix}${sep}${activeMonth}${sep}${activeFy}${sep}${String(seqNum).padStart(padding, '0')}`
+}
+
 // Generate next formatted Return Number based on system settings
 export async function getNextReturnNumber(req, res) {
   try {
+    const targetDate = req.query.date || null
     const pool = getPool()
 
     // 1. Get numbering settings
     const [settingRows] = await pool.query('SELECT * FROM settings WHERE id = 1')
     const s = settingRows.length > 0 ? settingRows[0] : {}
     const prefix = (s.return_prefix !== undefined && s.return_prefix !== null && s.return_prefix.trim() !== '') ? s.return_prefix.trim() : 'SIS-RET'
-    const fy = (s.return_financial_year && s.return_financial_year.trim()) ? s.return_financial_year.trim() : '2026-27'
+    const month = s.return_month
+    const fy = s.return_financial_year
     const startNum = parseInt(s.return_starting_number, 10) || 1
     const padding = parseInt(s.return_padding_digits, 10) || 4
     const sep = (s.return_separator !== undefined && s.return_separator !== null) ? s.return_separator : '/'
 
-    // 2. Extract sequence numbers from existing returns_registry
-    const [rows] = await pool.query('SELECT return_number FROM returns_registry')
+    const effectiveDate = await getEffectiveIstDate(pool, targetDate)
+    const activeMonth = formatMonthValue(effectiveDate, month)
+
+    const currentYear = effectiveDate.getFullYear()
+    const autoFy = (effectiveDate.getMonth() >= 3)
+      ? `${currentYear}-${String(currentYear + 1).slice(-2)}`
+      : `${currentYear - 1}-${String(currentYear).slice(-2)}`
+    const activeFy = (fy && fy.trim() && fy.trim().toUpperCase() !== 'AUTO')
+      ? fy.trim()
+      : autoFy
+
+    const cleanPrefix = prefix.replace(/[-/.]+$/, '')
+
+    // 2. Extract sequence numbers from existing returns_registry matching current prefix/month/fy
+    const pattern = `${cleanPrefix}${sep}${activeMonth}${sep}${activeFy}%`
+    const [rows] = await pool.query('SELECT return_number FROM returns_registry WHERE return_number LIKE ?', [pattern])
     let maxSeq = 0
     for (const r of rows) {
       if (r.return_number) {
@@ -33,7 +119,7 @@ export async function getNextReturnNumber(req, res) {
     }
 
     const nextNum = maxSeq >= startNum ? maxSeq + 1 : startNum
-    const formattedNumber = `${prefix}${sep}${fy}${sep}${String(nextNum).padStart(padding, '0')}`
+    const formattedNumber = `${cleanPrefix}${sep}${activeMonth}${sep}${activeFy}${sep}${String(nextNum).padStart(padding, '0')}`
 
     return res.status(200).json({
       success: true,
@@ -221,7 +307,7 @@ export async function createReturn(req, res) {
 
       const returnNumber = item.return_number && item.return_number.trim()
         ? item.return_number.trim()
-        : `${prefix}${sep}${fy}${sep}${String(nextSequence++).padStart(padding, '0')}`
+        : buildDynamicNumber(prefix, sep, fy, nextSequence++, padding)
 
       const returnDate = item.return_date || new Date().toISOString().split('T')[0]
       const billId = item.bill_id ? parseInt(item.bill_id, 10) : null
@@ -344,7 +430,7 @@ export async function processQcDecision(req, res) {
           }
         }
         const nextCnNum = maxCnSeq >= cnStart ? maxCnSeq + 1 : cnStart
-        finalResolutionRef = `${cnPrefix}${cnSep}${cnFy}${cnSep}${String(nextCnNum).padStart(cnPad, '0')}`
+        finalResolutionRef = buildDynamicNumber(cnPrefix, cnSep, s.credit_note_month, cnFy, nextCnNum, cnPad)
       } else if (qc_decision === 'REJECT') {
         finalResolutionRef = `REJ-${stamp}`
       }

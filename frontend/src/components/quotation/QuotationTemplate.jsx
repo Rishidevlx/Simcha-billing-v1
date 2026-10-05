@@ -1,5 +1,4 @@
 import React from 'react'
-import { useTheme } from '../../context/ThemeContext'
 import { useSettings } from '../../context/SettingsContext'
 import {
   TemplatePageShell,
@@ -8,10 +7,10 @@ import {
   TemplatePartyBox,
   TemplateSummaryGrid,
   TemplateFooterRibbon
-} from './shared'
+} from '../invoice/shared'
 
-// Helper function to paginate invoice items into strictly 5 items per A4 page
-function paginateInvoiceItems(items) {
+// Helper function to paginate quotation items into 5 items per A4 page
+function paginateQuotationItems(items) {
   if (!items || items.length === 0) {
     return [{
       pageIndex: 1,
@@ -45,16 +44,16 @@ function paginateInvoiceItems(items) {
   return pages
 }
 
-export default function InvoiceTemplate({ bill, settings, company }) {
-  if (!bill) return null
+export default function QuotationTemplate({ quotation, settings, company }) {
+  if (!quotation) return null
 
-  // 1. Snapshot Pattern for Past Bills Immutability (Legal Audit Rule)
-  let snapshot = bill?.company_snapshot || null
+  // 1. Snapshot Pattern for Past Quotations Immutability
+  let snapshot = quotation?.company_snapshot || null
   if (typeof snapshot === 'string') {
     try { snapshot = JSON.parse(snapshot) } catch { snapshot = null }
   }
 
-  // 2. Live DB Context fallback for New Bills & UI Rendering
+  // 2. Live DB Context fallback
   const {
     settings: liveSettings,
     companyDetails: liveCompany,
@@ -68,7 +67,7 @@ export default function InvoiceTemplate({ bill, settings, company }) {
   const effectiveCompany = snapshot || company || liveCompany || {}
   const effectiveBank = snapshot || liveBank || {}
 
-  const companyName = effectiveCompany?.company_name || effectiveCompany?.name || ''
+  const companyName = effectiveCompany?.company_name || effectiveCompany?.name || 'SIMCHA INFO SOLUTIONS'
   const companyGstin = effectiveCompany?.gstin || ''
   const companyPhone = effectiveCompany?.phone || ''
   const companyEmail = effectiveCompany?.email || ''
@@ -79,8 +78,8 @@ export default function InvoiceTemplate({ bill, settings, company }) {
   const bankAccountName = effectiveBank?.account_name || effectiveBank?.accountName || companyName || ''
   const bankAccountNo = effectiveBank?.account_no || effectiveBank?.accountNo || ''
   const bankIfsc = effectiveBank?.ifsc_code || effectiveBank?.ifscCode || ''
-  const bankImageUrl = effectiveBank?.bank_image_url || effectiveBank?.bankImageUrl || bill.bank_image_url || liveBankImg || ''
-  const signatureUrl = effectiveSettings?.signature_url || effectiveSettings?.signatureUrl || bill.signature_url || liveSignUrl || ''
+  const bankImageUrl = effectiveBank?.bank_image_url || effectiveBank?.bankImageUrl || quotation.bank_image_url || liveBankImg || ''
+  const signatureUrl = effectiveSettings?.signature_url || effectiveSettings?.signatureUrl || quotation.signature_url || liveSignUrl || ''
   
   const defaultTermsList = (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
     ? effectiveSettings.terms_conditions
@@ -89,55 +88,45 @@ export default function InvoiceTemplate({ bill, settings, company }) {
     : (liveTerms && liveTerms.length > 0)
     ? liveTerms
     : [
-      'Warranty as per manufacturer’s norms & should be claimed directly.',
-      'Warranty claim takes 1 to 8 weeks.',
-      'Please carry invoice copy for warranty.',
-      'Goods Once Sold will not be taken back or exchanged.'
+      'Quotation valid for 15 days from the date of issue unless specified otherwise.',
+      'Prices are inclusive of standard applicable taxes where mentioned.',
+      'Warranty as per manufacturer norms & directly claimable with authorized service centers.',
+      'Delivery timeline subject to stock availability upon confirmation.'
     ]
 
-  const items = Array.isArray(bill.items) ? bill.items : []
-  const hasReturnableItems = items.some(it => it.return_policy === true || it.return_policy === 1 || it.return_policy === '1')
-  const returnDays = settings?.return_days || 7
-  const returnClause = settings?.return_policy_clause
-    ? settings.return_policy_clause.replace('{days}', `${returnDays} days`)
-    : `Products eligible for return must be returned within ${returnDays} days of purchase with original invoice copy.`
-
-  const termsList = hasReturnableItems
-    ? [returnClause, ...defaultTermsList.filter(t => !t.toLowerCase().includes('will not be taken back'))]
-    : defaultTermsList
-  const isGstInvoice = bill.invoice_type === 'GST' || (!bill.invoice_type && parseFloat(bill.total_tax || 0) > 0)
-  const isIntraState = !bill.place_of_supply || bill.place_of_supply.includes('33') || bill.place_of_supply.toLowerCase().includes('tamil nadu')
+  const items = Array.isArray(quotation.items) ? quotation.items : []
+  const isGstQuotation = quotation.quotation_type === 'GST' || (!quotation.quotation_type && parseFloat(quotation.total_tax || 0) > 0)
+  const isIntraState = !quotation.place_of_supply || quotation.place_of_supply.includes('33') || quotation.place_of_supply.toLowerCase().includes('tamil nadu')
 
   const totalQty = items.reduce((sum, it) => sum + (parseFloat(it.quantity) || 0), 0)
-  const totalTaxAmt = isGstInvoice ? items.reduce((sum, it) => sum + (parseFloat(it.tax_amount) || 0), 0) : 0
+  const totalTaxAmt = isGstQuotation ? items.reduce((sum, it) => sum + (parseFloat(it.tax_amount) || 0), 0) : 0
   const totalGrossAmt = items.reduce((sum, it) => sum + (parseFloat(it.amount) || (parseFloat(it.quantity || 0) * parseFloat(it.rate || 0))), 0)
   const totalDiscountSavings = items.reduce((sum, it) => sum + ((parseFloat(it.discount_amount) || 0) * (parseFloat(it.quantity) || 1)), 0)
   const totalGrossOrigAmt = items.reduce((sum, it) => sum + (((parseFloat(it.original_rate) || parseFloat(it.rate) || 0)) * (parseFloat(it.quantity) || 1)), 0)
 
-  // Format date helper (e.g. 15 Sept 2026)
+  // Format date helper
   const formatDate = (dateStr) => {
     if (!dateStr) return new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
     const d = new Date(dateStr)
     return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
   }
 
-  // Format clean integer/decimal quantity (e.g. 1, 11, 2.5)
   const formatQty = (qty) => {
     const num = parseFloat(qty) || 0
     return num % 1 === 0 ? parseInt(num, 10) : num
   }
 
-  const paginatedPages = paginateInvoiceItems(items)
+  const paginatedPages = paginateQuotationItems(items)
 
   return (
-    <div id="invoice-printable-area" className="w-full">
+    <div id="quotation-printable-area" className="w-full">
       {paginatedPages.map((page) => (
         <TemplatePageShell
           key={page.pageIndex}
           pageIndex={page.pageIndex}
           totalPages={page.totalPages}
         >
-          {/* Main Content Area: Sequential flow so summary sits directly under table */}
+          {/* Main Content Area */}
           <div className="relative z-10 px-7 pt-6 pb-2 space-y-3 flex-1">
             {/* Header with branding */}
             <TemplateHeader
@@ -148,33 +137,31 @@ export default function InvoiceTemplate({ bill, settings, company }) {
               companyAddress={companyAddress}
             />
 
-            {/* Invoice Meta Bar */}
+            {/* Quotation Meta Bar */}
             <TemplateMetaBar
-              docNumberLabel="SALES INVOICE NUMBER:"
-              docNumber={bill.invoice_number}
-              dateLabel="SALES DATE:"
-              dateValue={formatDate(bill.invoice_date)}
-              dueDateLabel="DUE DATE:"
-              dueDateValue={bill.due_date ? formatDate(bill.due_date) : null}
+              docNumberLabel="QUOTATION NUMBER:"
+              docNumber={quotation.quotation_number}
+              dateLabel="QUOTATION DATE:"
+              dateValue={formatDate(quotation.quotation_date)}
             />
 
-            {/* Customer Details Box (BILL TO & SHIP TO) */}
+            {/* Customer Details Box (QUOTATION FOR & SHIP TO) */}
             <TemplatePartyBox
               mode="two-column"
-              billTitle="BILL TO (BUYER)"
-              customerName={bill.customer_name}
-              customerAddress={bill.customer_address}
-              customerPhone={bill.customer_phone}
-              customerEmail={bill.customer_email}
-              placeOfSupply={bill.place_of_supply}
-              customerGstin={bill.customer_gstin}
-              copyType={bill.copy_type}
-              shipTitle="SHIP TO / DELIVERY ADDRESS"
-              deliveryAddress={bill.delivery_address}
-              sameAsBilling={bill.same_as_billing}
+              billTitle="QUOTATION FOR (PROPOSAL TO)"
+              customerName={quotation.customer_name}
+              customerAddress={quotation.customer_address}
+              customerPhone={quotation.customer_phone}
+              customerEmail={quotation.customer_email}
+              placeOfSupply={quotation.place_of_supply}
+              customerGstin={quotation.customer_gstin}
+              copyType="OFFICIAL ESTIMATE"
+              shipTitle="DELIVERY / SITE ADDRESS"
+              deliveryAddress={quotation.delivery_address}
+              sameAsBilling={quotation.same_as_billing}
             />
 
-            {/* --- DYNAMIC LINE ITEMS TABLE (WITH DEDICATED DISC % COLUMN) --- */}
+            {/* --- LINE ITEMS TABLE --- */}
             <div className="border border-gray-300 overflow-hidden text-[#292424]">
               <table className="w-full text-left border-collapse text-[10.5px]">
                 <thead>
@@ -211,7 +198,7 @@ export default function InvoiceTemplate({ bill, settings, company }) {
                         )}
                         {item.serial_number && (
                           <div className="text-[9.5px] font-mono font-semibold text-gray-800 mt-0.5">
-                            Serial No.: {item.serial_number}
+                            Ref: {item.serial_number}
                           </div>
                         )}
                       </td>
@@ -239,7 +226,7 @@ export default function InvoiceTemplate({ bill, settings, company }) {
                         )}
                       </td>
                       <td className="py-2 px-2 border-r border-gray-300 text-right font-mono align-top text-gray-700 text-[9.5px]">
-                        {isGstInvoice && parseFloat(item.tax_amount || 0) > 0 ? (
+                        {isGstQuotation && parseFloat(item.tax_amount || 0) > 0 ? (
                           <>
                             ₹ {parseFloat(item.tax_amount || 0).toFixed(2)}
                             {item.tax_rate ? ` (${item.tax_rate}%)` : ''}
@@ -276,31 +263,27 @@ export default function InvoiceTemplate({ bill, settings, company }) {
               </table>
             </div>
 
-            {/* --- 3-COLUMN SUMMARY (DIRECTLY UNDER TABLE) --- */}
+            {/* --- SUMMARY (DIRECTLY UNDER TABLE) --- */}
             {page.showSummary && (
               <TemplateSummaryGrid
-                bankAccountName={bankAccountName}
-                bankName={bankName}
-                bankAccountNo={bankAccountNo}
-                bankIfsc={bankIfsc}
-                bankBranch={bankBranch}
-                bankImageUrl={bankImageUrl}
-                termsList={termsList}
+                hideBankDetails={true}
+                hideQrCode={true}
+                termsList={defaultTermsList}
                 totalDiscountSavings={totalDiscountSavings}
                 totalGrossOrigAmt={totalGrossOrigAmt}
-                taxableAmount={bill.taxable_amount}
-                isGstInvoice={isGstInvoice}
+                taxableAmount={quotation.taxable_amount}
+                isGstInvoice={isGstQuotation}
                 isIntraState={isIntraState}
-                cgstRate={bill.cgst_rate || effectiveSettings?.cgst_rate || 9}
-                cgstAmount={bill.cgst_amount}
-                sgstRate={bill.sgst_rate || effectiveSettings?.sgst_rate || 9}
-                sgstAmount={bill.sgst_amount}
-                igstRate={bill.igst_rate || effectiveSettings?.igst_rate || 18}
-                igstAmount={bill.igst_amount}
-                roundOff={bill.round_off}
-                totalAmount={bill.total_amount}
-                amountInWords={bill.amount_in_words}
-                totalLabel="Invoice Total"
+                cgstRate={quotation.cgst_rate || effectiveSettings?.cgst_rate || 9}
+                cgstAmount={quotation.cgst_amount}
+                sgstRate={quotation.sgst_rate || effectiveSettings?.sgst_rate || 9}
+                sgstAmount={quotation.sgst_amount}
+                igstRate={quotation.igst_rate || effectiveSettings?.igst_rate || 18}
+                igstAmount={quotation.igst_amount}
+                roundOff={quotation.round_off}
+                totalAmount={quotation.total_amount}
+                amountInWords={quotation.amount_in_words}
+                totalLabel="Quotation Total"
                 signatureUrl={signatureUrl}
                 companyName={companyName}
               />

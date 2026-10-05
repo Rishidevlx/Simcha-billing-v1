@@ -327,8 +327,6 @@ export const deleteUser = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' })
     }
 
-    const targetUser = userRows[0]
-
     // Prevent deleting default Administrator user (role Administrator or ID 1)
     if (targetUser.role === 'Administrator' || Number(targetUser.id) === 1) {
       return res.status(400).json({
@@ -344,5 +342,41 @@ export const deleteUser = async (req, res) => {
   } catch (error) {
     console.error('Error deleting user:', error)
     res.status(500).json({ success: false, message: 'Failed to delete user', error: error.message })
+  }
+}
+
+// PATCH /api/users/:id/status
+export const toggleUserStatus = async (req, res) => {
+  try {
+    const userId = req.params.id
+    const pool = getPool()
+
+    const [rows] = await pool.query('SELECT id, name, role, status FROM users WHERE id = ?', [userId])
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'User not found' })
+    }
+
+    const user = rows[0]
+
+    // Protect Administrator user
+    if (user.role === 'Administrator' || Number(user.id) === 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'System Administrator account is permanently protected and cannot be deactivated.'
+      })
+    }
+
+    const newStatus = user.status === 'Active' ? 'Inactive' : 'Active'
+
+    await pool.query('UPDATE users SET status = ? WHERE id = ?', [newStatus, userId])
+
+    res.json({
+      success: true,
+      message: `User status changed to ${newStatus}`,
+      status: newStatus
+    })
+  } catch (error) {
+    console.error('Error toggling user status:', error)
+    res.status(500).json({ success: false, message: 'Failed to update user status', error: error.message })
   }
 }

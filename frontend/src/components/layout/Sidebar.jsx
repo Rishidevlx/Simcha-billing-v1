@@ -101,6 +101,8 @@ export default function Sidebar({
       subItems: [
         { id: 'inward', title: 'Inward', path: '/inward' },
         { id: 'inward-reports', title: 'Inward List', path: '/inward-list' },
+        { id: 'quotations', title: 'Quotations', path: '/quotations' },
+        { id: 'quotations-list', title: 'Quotations List', path: '/quotations/list' },
         { id: 'create-bill', title: 'Outward', path: '/outward' },
         { id: 'all-bills', title: 'Outward List', path: '/outward-list' }
       ]
@@ -175,6 +177,8 @@ export default function Sidebar({
     if (currentPath === sub.path) return true
     if (sub.id === activeRoute) return true
     if (sub.id === 'inward-reports' && (currentPath === '/inward-reports' || currentPath === '/inward-list')) return true
+    if (sub.id === 'quotations' && (currentPath === '/quotations' || currentPath === '/create-quotation')) return true
+    if (sub.id === 'quotations-list' && (currentPath === '/quotations/list' || currentPath === '/quotations-list')) return true
     if (sub.id === 'create-bill' && (currentPath === '/create-bill' || currentPath === '/outward')) return true
     if (sub.id === 'all-bills' && (currentPath === '/all-bills' || currentPath === '/outward-list' || currentPath === '/bills')) return true
     if (sub.id === 'new-service' && (currentPath === '/new-service' || currentPath === '/services/new' || currentPath === '/service/new')) return true

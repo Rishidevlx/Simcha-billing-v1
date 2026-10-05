@@ -36,6 +36,18 @@ const VARIANT_STYLES = {
     arrowColor: 'text-[#f3e8ff] dark:text-[#3b0764]',
     iconActive: 'text-[#7c3aed] dark:text-purple-400',
     badgeActive: 'bg-[#7c3aed] text-white'
+  },
+  slate: {
+    activeBg: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200 font-bold',
+    arrowColor: 'text-slate-100 dark:text-slate-800',
+    iconActive: 'text-slate-600 dark:text-slate-400',
+    badgeActive: 'bg-slate-600 text-white'
+  },
+  gray: {
+    activeBg: 'bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-200 font-bold',
+    arrowColor: 'text-gray-100 dark:text-slate-800',
+    iconActive: 'text-gray-600 dark:text-slate-400',
+    badgeActive: 'bg-gray-600 text-white'
   }
 }
 

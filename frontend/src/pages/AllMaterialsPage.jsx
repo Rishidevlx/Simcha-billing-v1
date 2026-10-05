@@ -26,7 +26,7 @@ import Swal from 'sweetalert2'
 import { API_ENDPOINTS } from '../config/api'
 import { getUserPermissions } from '../utils/access'
 import ListKpiCard from '../components/common/ListKpiCard'
-import { Button, ActionButton, StatusPill, SearchInput } from '../components/ui'
+import { Button, ActionButton, StatusPill, SearchInput, Checkbox } from '../components/ui'
 
 export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, onEditMaterial }) {
   const { can, hasAny } = getUserPermissions()
@@ -288,6 +288,46 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
     scheduleDeleteWithUndo([...selectedIds], `${count} items`)
   }
 
+  // Toggle Material Status
+  const handleToggleStatus = async (mat) => {
+    const currentStatus = mat.status || 'Active'
+    const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active'
+    const result = await Swal.fire({
+      title: `${newStatus === 'Active' ? 'Activate' : 'Deactivate'} Material?`,
+      text: `Are you sure you want to change status of "${mat.name}" to ${newStatus}?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: newStatus === 'Active' ? '#16a34a' : '#d33',
+      cancelButtonColor: '#043486',
+      confirmButtonText: `Yes, make ${newStatus}`
+    })
+
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(API_ENDPOINTS.MATERIAL_STATUS(mat.id), { method: 'PATCH' })
+        const data = await res.json()
+        if (data.success) {
+          Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 2000,
+            timerProgressBar: true
+          }).fire({
+            icon: 'success',
+            title: `Material is now ${newStatus}`
+          })
+          fetchMaterials()
+        } else {
+          Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to update material status', confirmButtonColor: '#043486' })
+        }
+      } catch (err) {
+        console.error(err)
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Network error updating material status', confirmButtonColor: '#043486' })
+      }
+    }
+  }
+
   // Page Numbers Generator with Ellipsis
   const getPageNumbers = () => {
     const pages = []
@@ -458,15 +498,11 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
                 {/* Select All Checkbox (Only if canDelete) */}
                 {canDelete && (
                   <th className="py-3 px-3.5 w-10 text-center">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={isAllSelected}
-                      ref={input => {
-                        if (input) input.indeterminate = isPartiallySelected
-                      }}
+                      indeterminate={isPartiallySelected}
                       onChange={handleSelectAll}
                       disabled={isLoading || filteredMaterials.length === 0}
-                      className="w-4 h-4 text-[#043486] rounded-xs border-gray-300 dark:border-slate-600 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-[#043486]"
                     />
                   </th>
                 )}
@@ -551,11 +587,9 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
                       {/* Checkbox (Only if canDelete) */}
                       {canDelete && (
                         <td className="py-3.5 px-3.5 text-center">
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             checked={isSelected}
                             onChange={() => handleToggleSelect(mat.id)}
-                            className="w-4 h-4 text-[#043486] rounded-xs border-gray-300 dark:border-slate-600 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-[#043486]"
                           />
                         </td>
                       )}
@@ -631,7 +665,14 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
 
                       {/* Status */}
                       <td className="py-3.5 px-3.5 text-center">
-                        <StatusPill status={mat.status} />
+                        <button
+                          type="button"
+                          onClick={() => handleToggleStatus(mat)}
+                          className="transition-transform hover:scale-105 cursor-pointer"
+                          title={`Click to ${mat.status === 'Active' ? 'Deactivate' : 'Activate'} material`}
+                        >
+                          <StatusPill status={mat.status} size="sm" />
+                        </button>
                       </td>
 
                       {/* Actions */}

@@ -1135,13 +1135,12 @@ export default function ConfigurationsSettingsPage() {
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-bold text-[#292424] dark:text-white">Cloudinary Cloud Media Storage</h3>
                   {cloudinaryFormData.cloud_name ? (
-                    <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
-                      Active: {cloudinaryFormData.cloud_name}
-                    </span>
+                    <StatusPill
+                      status={cloudinaryFormData.is_enabled ? 'Active' : 'Inactive'}
+                      size="sm"
+                    />
                   ) : (
-                    <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800">
-                      Not Configured
-                    </span>
+                    <StatusPill status="Pending" size="sm" />
                   )}
                 </div>
                 <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">

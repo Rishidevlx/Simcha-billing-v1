@@ -9,8 +9,10 @@ export const API_ENDPOINTS = {
   CHANGE_PASSWORD: `${API_BASE_URL}/api/auth/change-password`,
   CATEGORIES: `${API_BASE_URL}/api/categories`,
   CATEGORY_BY_ID: (id) => `${API_BASE_URL}/api/categories/${id}`,
+  CATEGORY_STATUS: (id) => `${API_BASE_URL}/api/categories/${id}/status`,
   MATERIALS: `${API_BASE_URL}/api/materials`,
   MATERIAL_BY_ID: (id) => `${API_BASE_URL}/api/materials/${id}`,
+  MATERIAL_STATUS: (id) => `${API_BASE_URL}/api/materials/${id}/status`,
   MATERIAL_BULK_DELETE: `${API_BASE_URL}/api/materials/bulk-delete`,
   SETTINGS: `${API_BASE_URL}/api/settings`,
   THEME_SETTINGS: `${API_BASE_URL}/api/settings/theme`,
@@ -23,6 +25,13 @@ export const API_ENDPOINTS = {
   BILL_SEND_RECEIPT: (id) => `${API_BASE_URL}/api/bills/${id}/send-receipt`,
   NEXT_INVOICE_NUMBER: `${API_BASE_URL}/api/bills/meta/next-number`,
   NEXT_RECEIPT_NUMBER: `${API_BASE_URL}/api/bills/meta/next-receipt-number`,
+
+  QUOTATIONS: `${API_BASE_URL}/api/quotations`,
+  QUOTATION_BY_ID: (id) => `${API_BASE_URL}/api/quotations/${id}`,
+  QUOTATION_STATUS: (id) => `${API_BASE_URL}/api/quotations/${id}/status`,
+  QUOTATION_SEND_EMAIL: (id) => `${API_BASE_URL}/api/quotations/${id}/send-email`,
+  QUOTATION_CONVERT: (id) => `${API_BASE_URL}/api/quotations/${id}/convert-to-invoice`,
+  NEXT_QUOTATION_NUMBER: `${API_BASE_URL}/api/quotations/meta/next-number`,
 
   INWARDS: `${API_BASE_URL}/api/inwards`,
   INWARD_BY_ID: (id) => `${API_BASE_URL}/api/inwards/${id}`,
@@ -56,10 +65,12 @@ export const API_ENDPOINTS = {
 
   USERS: `${API_BASE_URL}/api/users`,
   USER_BY_ID: (id) => `${API_BASE_URL}/api/users/${id}`,
+  USER_STATUS: (id) => `${API_BASE_URL}/api/users/${id}/status`,
   USER_RESEND_INVITE: (userId) => `${API_BASE_URL}/api/users/${userId}/resend-invite`,
 
   DEPARTMENTS: `${API_BASE_URL}/api/departments`,
   DEPARTMENT_BY_ID: (id) => `${API_BASE_URL}/api/departments/${id}`,
+  DEPARTMENT_STATUS: (id) => `${API_BASE_URL}/api/departments/${id}/status`,
 
   AUTH_FORGOT_PASSWORD_SEND_OTP: `${API_BASE_URL}/api/auth/forgot-password/send-otp`,
   AUTH_FORGOT_PASSWORD_VERIFY_OTP: `${API_BASE_URL}/api/auth/forgot-password/verify-otp`,

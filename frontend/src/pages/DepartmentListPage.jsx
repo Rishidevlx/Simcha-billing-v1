@@ -29,7 +29,7 @@ import ListPagePagination from '../components/common/ListPagePagination'
 import ListKpiCard from '../components/common/ListKpiCard'
 import { getUserPermissions } from '../utils/access'
 import { API_ENDPOINTS } from '../config/api'
-import { Button, ActionButton, StatusToggle, StatusPill, SearchInput, TabNav, TabButton } from '../components/ui'
+import { Button, ActionButton, StatusToggle, StatusPill, SearchInput, TabNav, TabButton, Checkbox } from '../components/ui'
 import maleAvatar from '../assets/avatar/Male avatar.webp'
 import femaleAvatar from '../assets/avatar/Female Avatar.webp'
 import defaultAvatar from '../assets/avatar/Deafult Pfp.webp'
@@ -235,6 +235,43 @@ export default function DepartmentListPage({ setActiveRoute }) {
     }
   }
 
+  // Toggle Active / Inactive Status
+  const handleToggleStatus = async (dept) => {
+    const currentStatus = dept.status || 'Active'
+    const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active'
+    const result = await Swal.fire({
+      title: `${newStatus === 'Active' ? 'Activate' : 'Deactivate'} Department?`,
+      text: `Are you sure you want to change status of "${dept.name}" to ${newStatus}?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: newStatus === 'Active' ? '#16a34a' : '#d33',
+      cancelButtonColor: '#043486',
+      confirmButtonText: `Yes, make ${newStatus}`
+    })
+
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(API_ENDPOINTS.DEPARTMENT_STATUS(dept.id), { method: 'PATCH' })
+        const data = await res.json()
+        if (data.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Status Updated!',
+            text: `Department is now ${newStatus}.`,
+            timer: 1500,
+            showConfirmButton: false
+          })
+          fetchDepartments()
+        } else {
+          Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to update department status', confirmButtonColor: '#043486' })
+        }
+      } catch (err) {
+        console.error(err)
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Network error updating department status', confirmButtonColor: '#043486' })
+      }
+    }
+  }
+
   const handleToggleSelect = (id) => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
@@ -419,7 +456,7 @@ export default function DepartmentListPage({ setActiveRoute }) {
               <div className="space-y-5">
                 {/* Department Name */}
                 <div>
-                  <label className="block text-xs sm:text-[13px] font-bold text-[#292424] dark:text-slate-200 mb-1.5 uppercase tracking-wide">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
                     Department Name <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -438,7 +475,7 @@ export default function DepartmentListPage({ setActiveRoute }) {
 
                 {/* Description */}
                 <div>
-                  <label className="block text-xs sm:text-[13px] font-bold text-[#292424] dark:text-slate-200 mb-1.5 uppercase tracking-wide">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
                     Description / Scope
                   </label>
                   <textarea
@@ -453,7 +490,7 @@ export default function DepartmentListPage({ setActiveRoute }) {
 
                 {/* Status Toggle */}
                 <div>
-                  <label className="block text-xs sm:text-[13px] font-bold text-[#292424] dark:text-slate-200 mb-1.5 uppercase tracking-wide">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
                     Status <span className="text-red-500">*</span>
                   </label>
                   <StatusToggle
@@ -560,11 +597,10 @@ export default function DepartmentListPage({ setActiveRoute }) {
                   <thead>
                     <tr className="bg-[#f8fafc] dark:bg-slate-800/80 border-b border-gray-200 dark:border-slate-700 text-xs font-bold text-gray-600 dark:text-slate-300 uppercase tracking-wider">
                       <th className="p-3.5 w-12 text-center">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={selectedIds.length === paginatedDepts.length && paginatedDepts.length > 0}
+                          indeterminate={selectedIds.length > 0 && selectedIds.length < paginatedDepts.length}
                           onChange={handleSelectAll}
-                          className="w-4 h-4 rounded-none border-gray-300 text-[#043486] focus:ring-0 cursor-pointer accent-[#043486]"
                         />
                       </th>
                       <th className="p-3.5 w-14 text-center">ID</th>
@@ -593,11 +629,9 @@ export default function DepartmentListPage({ setActiveRoute }) {
                             }`}
                           >
                             <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
-                              <input
-                                type="checkbox"
+                              <Checkbox
                                 checked={selectedIds.includes(dept.id)}
                                 onChange={() => handleToggleSelect(dept.id)}
-                                className="w-4 h-4 rounded-none border-gray-300 text-[#043486] focus:ring-0 cursor-pointer accent-[#043486]"
                               />
                             </td>
                             <td className="p-3.5 text-center font-mono text-gray-400 dark:text-slate-500 font-medium">
@@ -616,8 +650,15 @@ export default function DepartmentListPage({ setActiveRoute }) {
                                 {deptUsers.length}
                               </span>
                             </td>
-                            <td className="p-3.5 text-center">
-                              <StatusPill status={dept.status || 'Active'} />
+                            <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleStatus(dept)}
+                                className="transition-transform hover:scale-105 cursor-pointer"
+                                title={`Click to ${dept.status === 'Active' ? 'Deactivate' : 'Activate'} department`}
+                              >
+                                <StatusPill status={dept.status || 'Active'} size="sm" />
+                              </button>
                             </td>
                             <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-center gap-1.5">

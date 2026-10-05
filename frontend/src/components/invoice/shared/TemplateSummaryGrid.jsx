@@ -8,6 +8,8 @@ export default function TemplateSummaryGrid({
   bankIfsc = '',
   bankBranch = '',
   bankImageUrl = '',
+  hideBankDetails = false,
+  hideQrCode = false,
   // Terms & Conditions
   termsList = [],
   // Calculation / Tax Breakdown
@@ -34,29 +36,33 @@ export default function TemplateSummaryGrid({
   customCenterContent = null,
   customTaxRows = null
 }) {
+  const isCompactNoBankQr = hideBankDetails && hideQrCode
+
   return (
     <div className="grid grid-cols-12 gap-4 pt-2 text-[#292424]">
-      {/* Left Column (5/12): Bank Details & Terms & Conditions */}
-      <div className="col-span-5 space-y-2.5">
+      {/* Left Column (5/12 or 7/12): Bank Details & Terms & Conditions */}
+      <div className={`${isCompactNoBankQr ? 'col-span-7' : 'col-span-5'} space-y-2.5`}>
         {customLeftContent || (
           <>
             {/* Bank Details */}
-            <div className="space-y-0.5 text-[10.5px]">
-              <span className="font-black text-[#292424] uppercase tracking-wider block text-[10.5px] mb-0.5">
-                BANK DETAILS
-              </span>
-              <div className="space-y-0.5 text-gray-800 font-medium text-[10.5px]">
-                <div><strong>Beneficiary:</strong> {bankAccountName}</div>
-                <div><strong>Bank:</strong> {bankName}</div>
-                <div><strong>Account No:</strong> <span className="font-mono font-bold text-[#292424]">{bankAccountNo}</span></div>
-                <div><strong>IFSC Code:</strong> <span className="font-mono font-bold text-[#292424]">{bankIfsc}</span></div>
-                <div><strong>Branch:</strong> {bankBranch}</div>
+            {!hideBankDetails && (
+              <div className="space-y-0.5 text-[10.5px]">
+                <span className="font-black text-[#292424] uppercase tracking-wider block text-[10.5px] mb-0.5">
+                  BANK DETAILS
+                </span>
+                <div className="space-y-0.5 text-gray-800 font-medium text-[10.5px]">
+                  <div><strong>Beneficiary:</strong> {bankAccountName}</div>
+                  <div><strong>Bank:</strong> {bankName}</div>
+                  <div><strong>Account No:</strong> <span className="font-mono font-bold text-[#292424]">{bankAccountNo}</span></div>
+                  <div><strong>IFSC Code:</strong> <span className="font-mono font-bold text-[#292424]">{bankIfsc}</span></div>
+                  <div><strong>Branch:</strong> {bankBranch}</div>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Terms & Conditions */}
             {termsList && termsList.length > 0 && (
-              <div className="space-y-0.5 text-[9.5px] pt-1">
+              <div className="space-y-0.5 text-[9.5px] pt-0.5">
                 <span className="font-black text-[#292424] uppercase tracking-wider block text-[10px] mb-0.5">
                   TERMS &amp; CONDITIONS
                 </span>
@@ -72,31 +78,33 @@ export default function TemplateSummaryGrid({
       </div>
 
       {/* Center Column (3/12): Scan to Pay & Large QR */}
-      <div className="col-span-3 flex flex-col items-center justify-start text-center pt-1">
-        {customCenterContent || (
-          <>
-            <span className="text-[10px] font-black uppercase text-[#292424] tracking-wider mb-2">
-              SCAN TO PAY
-            </span>
-            {bankImageUrl ? (
-              <div className="flex items-center justify-center">
-                <img
-                  src={bankImageUrl}
-                  alt="Scan to Pay QR"
-                  className="h-32 w-32 max-h-36 max-w-full object-contain mx-auto"
-                />
-              </div>
-            ) : (
-              <div className="h-28 w-28 flex items-center justify-center text-[10px] text-gray-400 italic">
-                No QR Image
-              </div>
-            )}
-          </>
-        )}
-      </div>
+      {!hideQrCode && (
+        <div className="col-span-3 flex flex-col items-center justify-start text-center pt-1">
+          {customCenterContent || (
+            <>
+              <span className="text-[10px] font-black uppercase text-[#292424] tracking-wider mb-2">
+                SCAN TO PAY
+              </span>
+              {bankImageUrl ? (
+                <div className="flex items-center justify-center">
+                  <img
+                    src={bankImageUrl}
+                    alt="Scan to Pay QR"
+                    className="h-32 w-32 max-h-36 max-w-full object-contain mx-auto"
+                  />
+                </div>
+              ) : (
+                <div className="h-28 w-28 flex items-center justify-center text-[10px] text-gray-400 italic">
+                  No QR Image
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
-      {/* Right Column (4/12): Tax Breakdown, Discount Savings & Totals */}
-      <div className="col-span-4 flex flex-col justify-between text-[#292424] pl-1">
+      {/* Right Column: Tax Breakdown, Discount Savings & Totals */}
+      <div className={`${isCompactNoBankQr ? 'col-span-5' : 'col-span-4'} flex flex-col justify-between text-[#292424] pl-1`}>
         {/* Tax Computation Table */}
         <div className="space-y-0.5 text-[10.5px]">
           {customTaxRows || (

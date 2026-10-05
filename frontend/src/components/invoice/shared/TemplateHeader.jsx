@@ -11,31 +11,31 @@ export default function TemplateHeader({
   companyAddress,
   badgeText = null
 }) {
-  const { logo: themeLogo, companyName: themeCompanyName, companyDetails } = useTheme()
+  const { logo: themeLogo, companyName: themeCompanyName } = useTheme()
   const activeLogo = logoUrl || themeLogo || defaultLogo
 
-  const effectiveCompanyName = companyName || themeCompanyName || companyDetails?.name || ''
-  const effectiveGstin = companyGstin || companyDetails?.gstin || ''
-  const effectivePhone = companyPhone || companyDetails?.phone || ''
-  const effectiveEmail = companyEmail || companyDetails?.email || ''
-  const effectiveAddress = companyAddress || companyDetails?.address || ''
+  const effectiveCompanyName = companyName || themeCompanyName || ''
+  const effectiveGstin = companyGstin || ''
+  const effectivePhone = companyPhone || ''
+  const effectiveEmail = companyEmail || ''
+  const effectiveAddress = companyAddress || ''
 
   return (
     <div className="space-y-1">
       <div className="flex items-start justify-between gap-4 pt-0.5">
         {/* Left Compact Logo + Branding */}
-        <div className="flex items-center gap-3.5">
+        <div className="flex items-center gap-3.5 flex-1 min-w-0">
           <img
             src={activeLogo}
             alt={effectiveCompanyName || "Company Logo"}
-            className="h-12 sm:h-14 max-h-14 max-w-[160px] w-auto object-contain shrink-0"
+            className="h-12 sm:h-14 max-h-14 max-w-[150px] w-auto object-contain shrink-0"
           />
-          <div className="space-y-0.5">
+          <div className="space-y-0.5 flex-1 min-w-0">
             <h1 className="text-lg font-black text-[#043486] tracking-tight leading-none uppercase">
               {effectiveCompanyName}
             </h1>
             {effectiveAddress && (
-              <p className="text-[10px] text-gray-600 leading-normal truncate max-w-lg">
+              <p className="text-[10px] text-gray-600 leading-normal break-words max-w-lg">
                 {effectiveAddress}
               </p>
             )}
@@ -50,11 +50,11 @@ export default function TemplateHeader({
         </div>
 
         {/* Top Right: GSTIN Header & Optional Document Badge */}
-        <div className="text-right shrink-0 pt-0.5 pr-4 mr-2">
+        <div className="text-right shrink-0 pt-0.5 pl-3 whitespace-nowrap">
           {effectiveGstin && (
-            <div className="text-[11.5px] font-bold text-[#292424] font-mono tracking-normal">
-              <span className="text-gray-500 font-bold font-sans text-[11px]">GSTIN: </span>
-              {effectiveGstin}
+            <div className="text-[11px] font-bold text-[#292424] font-mono tracking-normal inline-block text-right">
+              <span className="text-gray-500 font-bold font-sans text-[10.5px]">GSTIN: </span>
+              <span className="font-mono">{effectiveGstin}</span>
             </div>
           )}
           {badgeText && (

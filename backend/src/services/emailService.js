@@ -128,6 +128,8 @@ export function generateInvoiceHtml(bill, settings = {}) {
   const bankAccountName = settings.account_name || 'Simcha Info Solutions'
   const bankAccountNo = settings.account_no || '120041754011'
   const bankIfsc = settings.ifsc_code || 'CNRB0002732'
+  const bankImageUrl = settings.bank_image_url || settings.bankImageUrl || bill.bank_image_url || ''
+  const signatureUrl = settings.signature_url || settings.signatureUrl || bill.signature_url || ''
 
   let termsList = []
   if (Array.isArray(settings.terms_conditions)) {
@@ -338,11 +340,11 @@ export function generateInvoiceHtml(bill, settings = {}) {
 
         ${page.showSummary ? `
           <!-- Bottom Split -->
-          <div class="bottom-grid">
+          <div class="bottom-grid" style="display: grid; grid-template-columns: ${bankImageUrl ? '5fr 3fr 4fr' : '7fr 5fr'}; gap: ${bankImageUrl ? '14px' : '24px'}; margin-top: 8px;">
             
             <!-- Left: Bank Details & Terms -->
             <div>
-              <div style="margin-bottom: 12px;">
+              <div style="margin-bottom: 10px;">
                 <div class="bank-title">BANK DETAILS</div>
                 <div class="bank-details">
                   <div><strong>Beneficiary:</strong> ${bankAccountName}</div>
@@ -360,6 +362,16 @@ export function generateInvoiceHtml(bill, settings = {}) {
                 </ol>
               </div>
             </div>
+
+            <!-- Center: Scan to Pay QR Code (Only if available) -->
+            ${bankImageUrl ? `
+              <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-start; text-align: center; padding-top: 2px;">
+                <div class="bank-title" style="margin-bottom: 4px;">SCAN TO PAY</div>
+                <div style="display: flex; align-items: center; justify-content: center; background: #ffffff; padding: 4px; border: 1px solid #e5e7eb; border-radius: 4px;">
+                  <img src="${bankImageUrl}" alt="Scan to Pay QR" style="height: 110px; width: 110px; max-height: 120px; max-width: 120px; object-fit: contain; display: block;" />
+                </div>
+              </div>
+            ` : ''}
 
             <!-- Right: Totals & Signatory -->
             <div class="totals-section">
@@ -408,10 +420,15 @@ export function generateInvoiceHtml(bill, settings = {}) {
               </div>
 
               <!-- Signatory -->
-              <div class="signatory-box">
-                <div class="signatory-line">
-                  <p style="font-size: 10px; color: #4b5563;">Authorized signatory for</p>
-                  <p style="font-size: 11px; font-weight: 900; color: #292424; text-transform: uppercase; letter-spacing: 0.5px;">${companyName}</p>
+              <div class="signatory-box" style="margin-top: ${signatureUrl ? '10px' : '30px'}; text-align: center;">
+                ${signatureUrl ? `
+                  <div style="display: flex; justify-content: center; align-items: center; height: 38px; margin-bottom: 3px;">
+                    <img src="${signatureUrl}" alt="Authorized Signature" style="max-height: 38px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto;" />
+                  </div>
+                ` : ''}
+                <div class="signatory-line" style="width: 100%; max-width: 200px; margin: 0 auto; border-top: 1px solid #9ca3af; padding-top: 3px;">
+                  <p style="font-size: 9.5px; color: #4b5563;">Authorized signatory for</p>
+                  <p style="font-size: 10.5px; font-weight: 900; color: #043486; text-transform: uppercase; letter-spacing: 0.5px;">${companyName}</p>
                 </div>
               </div>
 
@@ -442,9 +459,6 @@ export function generateInvoiceHtml(bill, settings = {}) {
             <div class="icon-circle" style="flex-shrink: 0;">&#9906;</div>
             <span style="line-height: 1.2;">${companyAddress}</span>
           </div>
-          <span style="font-size: 10px; font-weight: bold; background: rgba(0, 0, 0, 0.3); padding: 3px 8px; white-space: nowrap; margin-left: 8px;">
-            Page ${page.pageIndex} of ${page.totalPages}
-          </span>
         </div>
       </div>
 
@@ -919,10 +933,6 @@ export async function sendInvoiceEmail(billId, customRecipient = null) {
                 <td style="padding: 6px 0; color: #64748b;">Total Amount:</td>
                 <td style="padding: 6px 0; font-weight: bold; font-size: 15px; color: #043486;">${formattedTotal}</td>
               </tr>
-              <tr>
-                <td style="padding: 6px 0; color: #64748b;">Payment Status:</td>
-                <td style="padding: 6px 0;"><span style="background-color: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: bold;">${bill.payment_status} (${bill.payment_mode})</span></td>
-              </tr>
             </table>
           </div>
 
@@ -962,6 +972,13 @@ export async function sendInvoiceEmail(billId, customRecipient = null) {
           }
         ]
       })
+
+      // Update database record: mark invoice_sent = 1, invoice_sent_at = NOW()
+      try {
+        await pool.query('UPDATE bills SET invoice_sent = 1, invoice_sent_at = NOW() WHERE id = ?', [billId])
+      } catch (dbErr) {
+        console.warn('Could not update invoice_sent in bills table:', dbErr.message)
+      }
 
       return {
         success: true,
@@ -1017,6 +1034,14 @@ export async function sendInvoiceEmail(billId, customRecipient = null) {
         ]
       })
       dispatchedTo.push(`Customer (${customerEmail} - Original)`)
+    }
+
+    if (dispatchedTo.length > 0) {
+      try {
+        await pool.query('UPDATE bills SET invoice_sent = 1, invoice_sent_at = NOW() WHERE id = ?', [billId])
+      } catch (dbErr) {
+        console.warn('Could not update invoice_sent in bills table:', dbErr.message)
+      }
     }
 
     console.log(`📧 Invoice emails successfully dispatched for #${bill.invoice_number}: ${dispatchedTo.join(', ')}`)
@@ -1106,6 +1131,7 @@ export function generateReceiptHtml(bill, settings = {}) {
   const companyPhone = settings.phone || '8122022060'
   const companyEmail = settings.email || 'simchainfosolutions@gmail.com'
   const companyAddress = settings.address || '7A3, Thulasi Ammal Layout 2nd Street, Lakshmipuram, Peelamedu Post, Coimbatore - 641 004.'
+  const signatureUrl = settings.signature_url || settings.signatureUrl || bill.signature_url || ''
 
   let termsList = []
   if (Array.isArray(settings.terms_conditions)) {
@@ -1355,10 +1381,15 @@ export function generateReceiptHtml(bill, settings = {}) {
               </div>
 
               <!-- Signatory -->
-              <div class="signatory-box">
-                <div class="signatory-line">
-                  <p style="font-size: 10px; color: #4b5563;">Authorized signatory for</p>
-                  <p style="font-size: 11px; font-weight: 900; color: #292424; text-transform: uppercase; letter-spacing: 0.5px;">${companyName}</p>
+              <div class="signatory-box" style="margin-top: ${signatureUrl ? '10px' : '30px'}; text-align: center;">
+                ${signatureUrl ? `
+                  <div style="display: flex; justify-content: center; align-items: center; height: 38px; margin-bottom: 3px;">
+                    <img src="${signatureUrl}" alt="Authorized Signature" style="max-height: 38px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto;" />
+                  </div>
+                ` : ''}
+                <div class="signatory-line" style="width: 100%; max-width: 200px; margin: 0 auto; border-top: 1px solid #9ca3af; padding-top: 3px;">
+                  <p style="font-size: 9.5px; color: #4b5563;">Authorized signatory for</p>
+                  <p style="font-size: 10.5px; font-weight: 900; color: #043486; text-transform: uppercase; letter-spacing: 0.5px;">${companyName}</p>
                 </div>
               </div>
 
@@ -1925,4 +1956,906 @@ export async function sendReceiptEmail(billId, customRecipient = null) {
     }
   }
 }
+
+/**
+ * Generate 100% Exact Pixel-Perfect Multi-Page Quotation HTML Template
+ */
+export function generateQuotationHtml(quotation, settings = {}) {
+  const companyName = settings.company_name || 'SIMCHA INFO SOLUTIONS'
+  const companyGstin = settings.gstin || '33GEZPM1178G1ZY'
+  const companyPhone = settings.phone || '8122022060'
+  const companyEmail = settings.email || 'simchainfosolutions@gmail.com'
+  const companyAddress = settings.address || '7A3, Thulasi Ammal Layout 2nd Street, Lakshmipuram, Peelamedu Post, Coimbatore - 641 004.'
+  const signatureUrl = settings.signature_url || settings.signatureUrl || quotation.signature_url || ''
+  const bankName = settings.bank_name || 'Canara Bank'
+  const bankBranch = settings.branch || 'Peelamedu'
+  const bankAccountName = settings.account_name || 'Simcha Info Solutions'
+  const bankAccountNo = settings.account_no || '120041754011'
+  const bankIfsc = settings.ifsc_code || 'CNRB0002732'
+
+  let termsList = []
+  if (Array.isArray(settings.terms_conditions)) {
+    termsList = settings.terms_conditions
+  } else if (typeof settings.terms_conditions === 'string') {
+    try {
+      termsList = JSON.parse(settings.terms_conditions)
+    } catch {
+      termsList = [settings.terms_conditions]
+    }
+  }
+  if (!termsList || termsList.length === 0) {
+    termsList = [
+      'Quotation valid for 15 days from the date of issue unless specified otherwise.',
+      'Prices are inclusive of standard applicable taxes where mentioned.',
+      'Warranty as per manufacturer norms & directly claimable with authorized service centers.',
+      'Delivery timeline subject to stock availability upon confirmation.'
+    ]
+  }
+
+  const items = Array.isArray(quotation.items) ? quotation.items : []
+  const isGstQuotation = quotation.quotation_type === 'GST' || (!quotation.quotation_type && parseFloat(quotation.total_tax || 0) > 0)
+  const isIntraState = !quotation.place_of_supply || quotation.place_of_supply.includes('33') || quotation.place_of_supply.toLowerCase().includes('tamil nadu')
+
+  const totalQty = items.reduce((sum, it) => sum + (parseFloat(it.quantity) || 0), 0)
+  const totalTaxAmt = isGstQuotation ? items.reduce((sum, it) => sum + (parseFloat(it.tax_amount) || 0), 0) : 0
+  const totalGrossAmt = items.reduce((sum, it) => sum + (parseFloat(it.amount) || (parseFloat(it.quantity || 0) * parseFloat(it.rate || 0))), 0)
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    const d = new Date(dateStr)
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+  }
+
+  const formatQty = (qty) => {
+    const num = parseFloat(qty) || 0
+    return num % 1 === 0 ? parseInt(num, 10) : num
+  }
+
+  // Assets
+  const logoDataUri = getBase64Image('../../../frontend/src/assets/Logo/Logo-bg-remove.png')
+  const watermarkDataUri = getBase64Image('../../../frontend/src/assets/Logo/Favicon.jpeg')
+
+  const paginatedPages = paginateInvoiceItems(items)
+
+  const renderItemRow = (item, index, page) => `
+    <tr>
+      <td style="padding: 7px 6px; border-right: 1px solid #d1d5db; border-bottom: 1px solid #e5e7eb; text-align: center; font-weight: bold; color: #292424; vertical-align: top;">
+        ${(page?.startIndex || 0) + index + 1}
+      </td>
+      <td style="padding: 7px 12px; border-right: 1px solid #d1d5db; border-bottom: 1px solid #e5e7eb; vertical-align: top;">
+        <div style="font-weight: 700; color: #292424;">
+          ${item.item_name || item.name}
+          ${item.unit ? `<span style="font-size: 10px; font-weight: 600; color: #4b5563; margin-left: 4px;">(${item.unit})</span>` : ''}
+        </div>
+        ${item.category_name ? `<div style="font-size: 10px; color: #6b7280; font-weight: 500;">[${item.category_name}]</div>` : ''}
+        ${item.serial_number ? `<div style="font-size: 10px; font-family: monospace; font-weight: 600; color: #1f2937; margin-top: 2px;">Ref: ${item.serial_number}</div>` : ''}
+      </td>
+      <td style="padding: 7px 8px; border-right: 1px solid #d1d5db; border-bottom: 1px solid #e5e7eb; text-align: center; font-family: monospace; color: #374151; vertical-align: top;">
+        ${item.hsn_code || '-'}
+      </td>
+      <td style="padding: 7px 8px; border-right: 1px solid #d1d5db; border-bottom: 1px solid #e5e7eb; text-align: center; font-weight: 600; color: #292424; vertical-align: top;">
+        ${formatQty(item.quantity)} Unit
+      </td>
+      <td style="padding: 7px 8px; border-right: 1px solid #d1d5db; border-bottom: 1px solid #e5e7eb; text-align: right; font-family: monospace; color: #292424; vertical-align: top;">
+        ₹ ${parseFloat(item.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      </td>
+      <td style="padding: 7px 8px; border-right: 1px solid #d1d5db; border-bottom: 1px solid #e5e7eb; text-align: right; font-family: monospace; color: #374151; font-size: 10px; vertical-align: top;">
+        ${isGstQuotation && parseFloat(item.tax_amount || 0) > 0 ? `₹ ${parseFloat(item.tax_amount || 0).toFixed(2)}${item.tax_rate ? ` (${item.tax_rate}%)` : ''}` : '₹ 0.00'}
+      </td>
+      <td style="padding: 7px 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-family: monospace; font-weight: 700; color: #292424; vertical-align: top;">
+        ₹ ${parseFloat(item.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      </td>
+    </tr>
+  `
+
+  const pagesHtml = paginatedPages.map((page) => `
+    <div class="page-container" style="page-break-after: ${page.pageIndex < page.totalPages ? 'always' : 'avoid'}; break-after: ${page.pageIndex < page.totalPages ? 'page' : 'avoid'};">
+      
+      <!-- Watermark -->
+      <div class="watermark">
+        ${watermarkDataUri ? `<img src="${watermarkDataUri}" alt="Watermark" />` : ''}
+      </div>
+
+      <div class="content">
+        
+        ${page.isFirstPage ? `
+          <!-- PAGE 1: Full Official Quotation Letterhead Header -->
+          ${page.totalPages > 1 ? `
+            <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 4px;">
+              <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af;">
+                Page ${page.pageIndex} of ${page.totalPages}
+              </span>
+            </div>
+          ` : ''}
+
+          <div class="header-top">
+            <div class="logo-branding">
+              ${logoDataUri ? `<img src="${logoDataUri}" class="logo-img" alt="Logo" />` : ''}
+              <div>
+                <h1 class="company-title">${companyName}</h1>
+                <p class="company-tagline">IT CONSULTING | HARDWARE &amp; SOFTWARE SOLUTIONS | SALES &amp; SERVICE</p>
+                <p class="company-address">${companyAddress}</p>
+                <p class="company-contact"><strong>Mobile:</strong> ${companyPhone} &nbsp;|&nbsp; <strong>Email:</strong> ${companyEmail}</p>
+              </div>
+            </div>
+            <div class="gstin-box">
+              <span style="color: #6b7280; font-family: 'Poppins', sans-serif; font-size: 11px;">GSTIN: </span>${companyGstin}
+            </div>
+          </div>
+
+          <div class="divider-blue"></div>
+
+          <!-- Meta Ribbon -->
+          <div class="meta-ribbon">
+            <div>
+              <span class="meta-label">QUOTATION NUMBER:</span>
+              <span style="font-family: monospace; font-size: 13px; font-weight: 900; color: #043486;">${quotation.quotation_number}</span>
+            </div>
+            <div>
+              <span class="meta-label">DATE:</span>
+              <span>${formatDate(quotation.quotation_date)}</span>
+            </div>
+          </div>
+
+          <!-- Customer Details -->
+          <div class="customer-card">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <div>
+                <div class="customer-title">QUOTATION FOR</div>
+                <div class="customer-name">${quotation.customer_name}</div>
+              </div>
+              <div style="text-align: right;">
+                <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #1e3a8a; background: #dbeafe; border: 1px solid #bfdbfe; padding: 3px 8px; display: inline-block;">
+                  OFFICIAL ESTIMATE
+                </span>
+              </div>
+            </div>
+            ${quotation.customer_address ? `<div style="color: #374151; margin-top: 4px; margin-bottom: 4px;">${quotation.customer_address}</div>` : ''}
+            <div style="margin-top: 4px; color: #374151;">
+              ${quotation.customer_phone ? `<div><strong>Mobile:</strong> <span style="font-family: monospace;">${quotation.customer_phone}</span></div>` : ''}
+              ${quotation.customer_email ? `<div><strong>Email:</strong> <span>${quotation.customer_email}</span></div>` : ''}
+              <div><strong>Place of Supply:</strong> ${quotation.place_of_supply || '33-Tamil Nadu'}</div>
+              ${quotation.customer_gstin ? `<div><strong>Customer GSTIN:</strong> <span style="font-family: monospace; font-weight: bold;">${quotation.customer_gstin}</span></div>` : ''}
+            </div>
+          </div>
+        ` : `
+          <!-- PAGE 2+: Compact Mini Letterhead Header -->
+          <div style="border-bottom: 2px solid #043486; padding-bottom: 8px; margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #6b7280;">
+                OFFICIAL QUOTATION
+              </span>
+              <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #043486; letter-spacing: 0.5px;">
+                Quotation #${quotation.quotation_number} • Page ${page.pageIndex} of ${page.totalPages}
+              </span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                ${logoDataUri ? `<img src="${logoDataUri}" style="height: 38px; width: auto; object-fit: contain;" alt="Logo" />` : ''}
+                <div>
+                  <div style="font-size: 16px; font-weight: 900; color: #043486; line-height: 1;">${companyName}</div>
+                  <div style="font-size: 9px; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-top: 2px;">
+                    PRICE ESTIMATE &amp; QUOTATION
+                  </div>
+                </div>
+              </div>
+              <div style="text-align: right; font-size: 11px; font-weight: 700;">
+                <div><span style="color: #6b7280; font-weight: 500;">Date: </span>${formatDate(quotation.quotation_date)}</div>
+                <div style="font-size: 10px; font-family: monospace; color: #4b5563;">GSTIN: ${companyGstin}</div>
+              </div>
+            </div>
+          </div>
+        `}
+
+        <!-- Line Items Table -->
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th style="padding: 8px 6px; border-right: 1px solid #d1d5db; width: 6%; text-align: center;">S.NO</th>
+                <th style="padding: 8px 12px; border-right: 1px solid #d1d5db; width: 38%; text-align: left;">ITEMS</th>
+                <th style="padding: 8px 8px; border-right: 1px solid #d1d5db; width: 12%; text-align: center;">HSN/SAC</th>
+                <th style="padding: 8px 8px; border-right: 1px solid #d1d5db; width: 10%; text-align: center;">QTY</th>
+                <th style="padding: 8px 8px; border-right: 1px solid #d1d5db; width: 11%; text-align: right;">RATE (₹)</th>
+                <th style="padding: 8px 8px; border-right: 1px solid #d1d5db; width: 11%; text-align: right;">TAX</th>
+                <th style="padding: 8px 12px; width: 12%; text-align: right;">AMOUNT (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${page.items.map((item, idx) => renderItemRow(item, idx, page)).join('')}
+            </tbody>
+            ${page.showSummary ? `
+              <tfoot>
+                <tr>
+                  <td colspan="2" style="padding: 8px 12px; border-right: 1px solid #d1d5db; text-transform: uppercase;">SUB TOTAL</td>
+                  <td style="border-right: 1px solid #d1d5db;"></td>
+                  <td style="padding: 8px 8px; border-right: 1px solid #d1d5db; text-align: center; font-family: monospace;">${formatQty(totalQty)} Unit</td>
+                  <td style="border-right: 1px solid #d1d5db;"></td>
+                  <td style="padding: 8px 8px; border-right: 1px solid #d1d5db; text-align: right; font-family: monospace;">₹ ${totalTaxAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td style="padding: 8px 12px; text-align: right; font-family: monospace; font-weight: 900;">₹ ${totalGrossAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                </tr>
+              </tfoot>
+            ` : ''}
+          </table>
+        </div>
+
+        ${page.showSummary ? `
+          <!-- Bottom Split -->
+          <div class="bottom-grid">
+            
+            <!-- Left: Terms & Conditions -->
+            <div>
+              <div>
+                <div class="terms-title">TERMS &amp; CONDITIONS</div>
+                <ol class="terms-list">
+                  ${termsList.map(t => `<li>${t}</li>`).join('')}
+                </ol>
+              </div>
+            </div>
+
+            <!-- Right: Totals & Signatory -->
+            <div class="totals-section">
+              <div>
+                <div class="totals-row">
+                  <span>Taxable Amount</span>
+                  <span style="font-family: monospace; font-weight: 600;">₹ ${parseFloat(quotation.taxable_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+
+                ${isGstQuotation && parseFloat(quotation.total_tax || 0) > 0 ? (
+                  isIntraState ? `
+                    <div class="totals-row" style="font-size: 10.5px;">
+                      <span>CGST (${quotation.cgst_rate || settings.cgst_rate || 9}%)</span>
+                      <span style="font-family: monospace;">₹ ${parseFloat(quotation.cgst_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                    <div class="totals-row" style="font-size: 10.5px;">
+                      <span>SGST (${quotation.sgst_rate || settings.sgst_rate || 9}%)</span>
+                      <span style="font-family: monospace;">₹ ${parseFloat(quotation.sgst_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                  ` : `
+                    <div class="totals-row" style="font-size: 10.5px;">
+                      <span>IGST (${quotation.igst_rate || settings.igst_rate || 18}%)</span>
+                      <span style="font-family: monospace;">₹ ${parseFloat(quotation.igst_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                  `
+                ) : ''}
+
+                ${quotation.round_off && parseFloat(quotation.round_off) !== 0 ? `
+                  <div class="totals-row" style="font-size: 10.5px; color: #6b7280;">
+                    <span>Round Off</span>
+                    <span style="font-family: monospace;">${quotation.round_off > 0 ? `+₹${quotation.round_off}` : `-₹${Math.abs(quotation.round_off)}`}</span>
+                  </div>
+                ` : ''}
+
+                <div class="grand-total-row">
+                  <span>Quotation Total</span>
+                  <span style="font-size: 16px; font-family: monospace;">₹ ${parseFloat(quotation.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+
+                ${quotation.amount_in_words ? `
+                  <div class="amount-words">
+                    <strong>Estimated Amount (in words):</strong>
+                    <div style="font-style: italic; color: #292424; font-weight: 500; margin-top: 2px;">${quotation.amount_in_words}</div>
+                  </div>
+                ` : ''}
+              </div>
+
+              <!-- Signatory -->
+              <div class="signatory-box" style="margin-top: ${signatureUrl ? '10px' : '30px'}; text-align: center;">
+                ${signatureUrl ? `
+                  <div style="display: flex; justify-content: center; align-items: center; height: 38px; margin-bottom: 3px;">
+                    <img src="${signatureUrl}" alt="Authorized Signature" style="max-height: 38px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto;" />
+                  </div>
+                ` : ''}
+                <div class="signatory-line" style="width: 100%; max-width: 200px; margin: 0 auto; border-top: 1px solid #9ca3af; padding-top: 3px;">
+                  <p style="font-size: 9.5px; color: #4b5563;">Authorized signatory for</p>
+                  <p style="font-size: 10.5px; font-weight: 900; color: #043486; text-transform: uppercase; letter-spacing: 0.5px;">${companyName}</p>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        ` : ''}
+
+      </div>
+
+      <!-- Footer Ribbon -->
+      <div class="footer-ribbon">
+        <div class="footer-left">
+          <div class="footer-pill">
+            <div class="icon-circle">&#9742;</div>
+            <span style="font-weight: 600; letter-spacing: 0.5px;">+91 ${companyPhone}</span>
+          </div>
+          <div class="footer-pill">
+            <div class="icon-circle">&#9993;</div>
+            <span style="letter-spacing: 0.3px;">${companyEmail}</span>
+          </div>
+        </div>
+
+        <div class="slanted-divider"></div>
+
+        <div class="footer-right">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <div class="icon-circle" style="flex-shrink: 0;">&#9906;</div>
+            <span style="line-height: 1.2;">${companyAddress}</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  `).join('')
+
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>Quotation - ${quotation.quotation_number}</title>
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap');
+        
+        * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+
+        body {
+          font-family: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          color: #292424;
+          background-color: #ffffff;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        .page-container {
+          position: relative;
+          width: 210mm;
+          height: 297mm;
+          min-height: 297mm;
+          max-height: 297mm;
+          margin: 0 auto;
+          padding: 30px 32px 0 32px;
+          background: #ffffff;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          box-sizing: border-box;
+        }
+
+        @media print {
+          .page-container {
+            page-break-after: always;
+            break-after: page;
+          }
+          .page-container:last-child {
+            page-break-after: avoid;
+            break-after: avoid;
+          }
+        }
+
+        .watermark {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          pointer-events: none;
+          z-index: 0;
+          opacity: 0.06;
+        }
+
+        .watermark img {
+          width: 320px;
+          max-width: 100%;
+          filter: grayscale(100%);
+        }
+
+        .content {
+          position: relative;
+          z-index: 10;
+        }
+
+        .header-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 16px;
+        }
+
+        .logo-branding {
+          display: flex;
+          align-items: flex-start;
+          gap: 16px;
+        }
+
+        .logo-img {
+          height: 85px;
+          width: auto;
+          object-fit: contain;
+        }
+
+        .company-title {
+          font-size: 23px;
+          font-weight: 900;
+          color: #043486;
+          line-height: 1.1;
+          letter-spacing: -0.5px;
+        }
+
+        .company-tagline {
+          font-size: 9px;
+          font-weight: 700;
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-top: 3px;
+        }
+
+        .company-address {
+          font-size: 10.5px;
+          color: #4b5563;
+          margin-top: 2px;
+          max-width: 480px;
+        }
+
+        .company-contact {
+          font-size: 10.5px;
+          color: #374151;
+          margin-top: 2px;
+        }
+
+        .gstin-box {
+          font-size: 13px;
+          font-weight: 700;
+          font-family: monospace;
+          color: #292424;
+          text-align: right;
+          white-space: nowrap;
+        }
+
+        .divider-blue {
+          width: 100%;
+          height: 2px;
+          background-color: #043486;
+          margin-top: 8px;
+          margin-bottom: 12px;
+        }
+
+        .meta-ribbon {
+          background-color: #f3f4f6;
+          border: 1px solid #d1d5db;
+          padding: 8px 16px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 11.5px;
+          font-weight: 700;
+          color: #292424;
+          margin-bottom: 12px;
+        }
+
+        .meta-label {
+          color: #4b5563;
+          font-weight: 600;
+          text-transform: uppercase;
+          margin-right: 6px;
+        }
+
+        .customer-card {
+          border: 1px solid #d1d5db;
+          padding: 10px 14px;
+          background-color: rgba(255, 255, 255, 0.9);
+          margin-bottom: 12px;
+          font-size: 11px;
+        }
+
+        .customer-title {
+          font-size: 10px;
+          font-weight: 900;
+          color: #292424;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 4px;
+        }
+
+        .customer-name {
+          font-size: 13.5px;
+          font-weight: 700;
+          color: #292424;
+          margin-bottom: 2px;
+        }
+
+        .table-container {
+          border: 1px solid #d1d5db;
+          margin-bottom: 10px;
+        }
+
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 11px;
+        }
+
+        thead tr {
+          background-color: #f3f4f6;
+          border-bottom: 1px solid #d1d5db;
+          font-size: 10px;
+          font-weight: 900;
+          text-transform: uppercase;
+        }
+
+        tfoot tr {
+          background-color: #f3f4f6;
+          border-top: 1px solid #d1d5db;
+          font-weight: 700;
+          font-size: 11px;
+        }
+
+        .bottom-grid {
+          display: grid;
+          grid-template-columns: 7fr 5fr;
+          gap: 24px;
+          margin-top: 8px;
+        }
+
+        .bank-title, .terms-title {
+          font-size: 11px;
+          font-weight: 900;
+          color: #292424;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 4px;
+        }
+
+        .bank-details {
+          font-size: 10.5px;
+          color: #1f2937;
+          line-height: 1.5;
+        }
+
+        .terms-list {
+          font-size: 9.5px;
+          color: #374151;
+          padding-left: 14px;
+          line-height: 1.4;
+        }
+
+        .totals-section {
+          padding-left: 8px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+        }
+
+        .totals-row {
+          display: flex;
+          justify-content: space-between;
+          font-size: 11px;
+          color: #374151;
+          padding: 1.5px 0;
+        }
+
+        .grand-total-row {
+          border-top: 1px solid #9ca3af;
+          border-bottom: 1px solid #9ca3af;
+          padding: 5px 0;
+          margin: 5px 0;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 13.5px;
+          font-weight: 900;
+          color: #292424;
+        }
+
+        .amount-words {
+          font-size: 9px;
+          color: #4b5563;
+          margin-top: 2px;
+          text-transform: capitalize;
+        }
+
+        .signatory-box {
+          margin-top: 40px;
+          text-align: center;
+        }
+
+        .signatory-line {
+          width: 200px;
+          margin-left: auto;
+          border-top: 1px solid #9ca3af;
+          padding-top: 4px;
+        }
+
+        .footer-ribbon {
+          background-color: #043486;
+          color: #ffffff;
+          padding: 10px 24px;
+          margin: 14px -32px 0 -32px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 10px;
+          font-weight: 500;
+        }
+
+        .footer-left {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .footer-pill {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .icon-circle {
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background-color: #ffffff;
+          color: #043486;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 9px;
+          font-weight: 900;
+        }
+
+        .slanted-divider {
+          height: 28px;
+          width: 1.5px;
+          background-color: rgba(255, 255, 255, 0.4);
+          transform: rotate(25deg);
+          margin: 0 12px;
+        }
+
+        .footer-right {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          max-width: 340px;
+          line-height: 1.2;
+          font-size: 9.5px;
+        }
+      </style>
+    </head>
+    <body>
+      ${pagesHtml}
+    </body>
+    </html>
+  `
+}
+
+/**
+ * Generate 100% Vector Quotation PDF Buffer via Headless Chrome / Puppeteer
+ */
+export async function generateQuotationPdfBuffer(quotation, settings = {}) {
+  const chromePath = getChromeExecutablePath()
+  if (!chromePath) {
+    throw new Error('Chrome/Edge executable not found on server to render PDF.')
+  }
+
+  const htmlContent = generateQuotationHtml(quotation, settings)
+
+  const browser = await puppeteer.launch({
+    executablePath: chromePath,
+    headless: 'new',
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--font-render-hinting=none'
+    ]
+  })
+
+  try {
+    const page = await browser.newPage()
+    await page.setViewport({ width: 794, height: 1123, deviceScaleFactor: 2 })
+    await page.setContent(htmlContent, { waitUntil: 'networkidle0' })
+
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      preferCSSPageSize: true,
+      margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' }
+    })
+
+    return Buffer.from(pdfBuffer)
+  } finally {
+    await browser.close()
+  }
+}
+
+/**
+ * Send Quotation PDF Email via configured SMTP
+ */
+export async function sendQuotationEmail(quotationId, customRecipient = null) {
+  try {
+    const pool = getPool()
+
+    // 1. Fetch Email Config
+    const [configRows] = await pool.query('SELECT * FROM email_configs WHERE id = 1')
+    if (configRows.length === 0) {
+      return { success: false, message: 'Email configurations not found.' }
+    }
+    const config = configRows[0]
+
+    if (!config.smtp_user || !config.smtp_pass) {
+      return { success: false, message: 'SMTP credentials not configured in Settings.' }
+    }
+
+    // 2. Fetch Quotation Details & Settings
+    const [quotationRows] = await pool.query('SELECT * FROM quotations WHERE id = ?', [quotationId])
+    if (quotationRows.length === 0) {
+      return { success: false, message: 'Quotation record not found.' }
+    }
+    const quotation = quotationRows[0]
+
+    const [itemRows] = await pool.query('SELECT * FROM quotation_items WHERE quotation_id = ? ORDER BY id ASC', [quotationId])
+    quotation.items = itemRows
+
+    const [settingsRows] = await pool.query('SELECT * FROM settings WHERE id = 1')
+    const settings = settingsRows.length > 0 ? settingsRows[0] : {}
+
+    // 3. Setup Nodemailer Transporter
+    const transporter = nodemailer.createTransport({
+      host: config.smtp_host || 'smtp.gmail.com',
+      port: parseInt(config.smtp_port, 10) || 465,
+      secure: config.smtp_port === 465 || config.smtp_secure === 1 || config.smtp_secure === true,
+      auth: {
+        user: config.smtp_user.trim(),
+        pass: config.smtp_pass.trim()
+      }
+    })
+
+    const formattedDate = new Date(quotation.quotation_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    const formattedValidUntil = quotation.valid_until ? new Date(quotation.valid_until).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '15 Days'
+    const formattedTotal = `₹ ${parseFloat(quotation.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+
+    const companyDisplayName = settings.company_name || config.sender_name || 'Simcha Info Solutions'
+    const companyDisplayAddress = settings.address || ''
+    const companyDisplayPhone = settings.phone || ''
+    const companyDisplayEmail = settings.email || config.sender_email || config.smtp_user || 'simchainfosolutions@gmail.com'
+
+    const getHtmlBody = (greetingName) => `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 620px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden;">
+        <div style="background-color: #043486; padding: 22px 28px; text-align: left;">
+          <h2 style="color: #ffffff; margin: 0; font-size: 20px; letter-spacing: 0.5px;">${companyDisplayName}</h2>
+          <p style="color: #93c5fd; margin: 4px 0 0 0; font-size: 12px;">Official Price Estimate &amp; Quotation</p>
+        </div>
+
+        <div style="padding: 26px 28px;">
+          <p style="font-size: 14px; color: #334155; margin-top: 0;">Dear <strong>${greetingName}</strong>,</p>
+          <p style="font-size: 13.5px; color: #475569; line-height: 1.6;">
+            Thank you for your inquiry. Please find attached our official price quotation <strong>${quotation.quotation_number}</strong> for your requested products/services.
+          </p>
+
+          <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 16px; margin: 20px 0;">
+            <table style="width: 100%; font-size: 13px; color: #334155; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Quotation #:</td>
+                <td style="padding: 6px 0; font-weight: bold; font-family: monospace; color: #043486;">${quotation.quotation_number}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Date:</td>
+                <td style="padding: 6px 0; font-weight: 500;">${formattedDate}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Customer Name:</td>
+                <td style="padding: 6px 0; font-weight: 500;">${quotation.customer_name}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Quotation Total:</td>
+                <td style="padding: 6px 0; font-weight: bold; font-size: 15px; color: #043486;">${formattedTotal}</td>
+              </tr>
+            </table>
+          </div>
+
+          <p style="font-size: 13px; color: #475569; line-height: 1.5;">
+            To confirm this quotation or if you require any modifications, please feel free to reach out to our team.
+          </p>
+
+          ${companyDisplayPhone ? `
+          <p style="font-size: 12.5px; color: #64748b; line-height: 1.5;">
+            Phone: <strong>${companyDisplayPhone}</strong> &nbsp;|&nbsp; Email: <strong>${companyDisplayEmail}</strong>
+          </p>` : ''}
+
+          ${companyDisplayAddress ? `
+          <div style="margin-top: 28px; padding-top: 16px; border-top: 1px solid #f1f5f9; font-size: 12px; color: #94a3b8;">
+            ${companyDisplayName} • ${companyDisplayAddress}
+          </div>` : ''}
+        </div>
+      </div>
+    `
+
+    const pdfBuffer = await generateQuotationPdfBuffer(quotation, settings)
+
+    // Case A: Custom single recipient
+    if (customRecipient) {
+      const subject = `Price Quotation - ${quotation.quotation_number} (${companyDisplayName})`
+      await transporter.sendMail({
+        from: `"${config.sender_name || companyDisplayName}" <${config.smtp_user}>`,
+        to: customRecipient.trim(),
+        subject: subject,
+        html: getHtmlBody(quotation.customer_name),
+        attachments: [
+          {
+            filename: `Quotation_${quotation.quotation_number.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf'
+          }
+        ]
+      })
+
+      await pool.query('UPDATE quotations SET email_sent = 1, email_sent_at = NOW(), quotation_status = CASE WHEN quotation_status = "Draft" THEN "Sent" ELSE quotation_status END WHERE id = ?', [quotationId])
+
+      return {
+        success: true,
+        message: `Quotation PDF email sent successfully to ${customRecipient}`
+      }
+    }
+
+    // Case B: Auto-dispatch to Customer and Admin
+    const dispatchedTo = []
+    const customerEmail = (quotation.customer_email || '').trim()
+
+    if (customerEmail) {
+      const customerSubject = `Price Quotation - ${quotation.quotation_number} (${companyDisplayName})`
+      await transporter.sendMail({
+        from: `"${config.sender_name || companyDisplayName}" <${config.smtp_user}>`,
+        to: customerEmail,
+        subject: customerSubject,
+        html: getHtmlBody(quotation.customer_name),
+        attachments: [
+          {
+            filename: `Quotation_${quotation.quotation_number.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf'
+          }
+        ]
+      })
+      dispatchedTo.push(`Customer (${customerEmail})`)
+    }
+
+    const adminEmail = (config.recipient_email || config.smtp_user || '').trim()
+    if (adminEmail && adminEmail.toLowerCase() !== customerEmail.toLowerCase()) {
+      const adminSubject = `New Quotation Created - ${quotation.quotation_number} (${quotation.customer_name})`
+      await transporter.sendMail({
+        from: `"${config.sender_name || companyDisplayName}" <${config.smtp_user}>`,
+        to: adminEmail,
+        subject: adminSubject,
+        html: getHtmlBody('Admin / Sales Team'),
+        attachments: [
+          {
+            filename: `Quotation_${quotation.quotation_number.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf'
+          }
+        ]
+      })
+      dispatchedTo.push(`Admin (${adminEmail})`)
+    }
+
+    await pool.query('UPDATE quotations SET email_sent = 1, email_sent_at = NOW(), quotation_status = CASE WHEN quotation_status = "Draft" THEN "Sent" ELSE quotation_status END WHERE id = ?', [quotationId])
+
+    return {
+      success: true,
+      message: `Quotation emailed to: ${dispatchedTo.length > 0 ? dispatchedTo.join(', ') : 'No recipient email found'}`
+    }
+  } catch (error) {
+    console.error('❌ Error sending quotation email:', error)
+    return {
+      success: false,
+      message: error.message || 'Failed to dispatch quotation email via SMTP.'
+    }
+  }
+}
+
 

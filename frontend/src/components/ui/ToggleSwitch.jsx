@@ -16,7 +16,7 @@ export default function ToggleSwitch({
       case 'emerald':
         return 'bg-emerald-600 dark:bg-emerald-500'
       case 'yellow':
-        return 'bg-[#FFFF61] border border-amber-300 text-amber-900'
+        return 'bg-[#FFFF61] text-amber-900'
       case 'brand':
       default:
         return 'bg-[#043486] dark:bg-blue-600'
@@ -24,10 +24,11 @@ export default function ToggleSwitch({
   }
 
   const getInactiveBg = () => {
-    if (variant === 'yellow') {
-      return 'bg-gray-200/80 dark:bg-slate-700'
+    if (disabled) {
+      return 'bg-gray-200 dark:bg-slate-800'
     }
-    return 'bg-gray-300 dark:bg-slate-700'
+    // Light yellow theme for OFF state as requested (#FEF08A)
+    return 'bg-[#FEF08A] hover:bg-[#FDE047] dark:bg-amber-900/60'
   }
 
   return (
@@ -38,16 +39,16 @@ export default function ToggleSwitch({
       disabled={disabled}
       title={title}
       onClick={() => !disabled && onChange && onChange(!checked)}
-      className={`relative inline-flex flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+      className={`relative inline-flex flex-shrink-0 cursor-pointer rounded-full p-0.5 transition-all duration-200 ease-in-out focus:outline-none border-0 ${
         isSm ? 'h-4.5 w-8' : 'h-5.5 w-10'
       } ${
         checked ? getActiveBg() : getInactiveBg()
       } ${
-        disabled ? 'opacity-50 cursor-not-allowed' : ''
+        disabled ? 'opacity-40 cursor-not-allowed select-none' : ''
       } ${className}`}
     >
       <span
-        className={`inline-block transform rounded-full bg-white shadow-xs transition duration-200 ease-in-out pointer-events-none ${
+        className={`inline-block transform rounded-full bg-white shadow-xs transition-transform duration-200 ease-in-out pointer-events-none ${
           isSm ? 'h-3.5 w-3.5' : 'h-4.5 w-4.5'
         } ${
           checked

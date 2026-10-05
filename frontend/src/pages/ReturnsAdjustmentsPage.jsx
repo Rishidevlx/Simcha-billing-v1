@@ -44,7 +44,7 @@ import ListKpiCard from '../components/common/ListKpiCard'
 import ListPagePagination from '../components/common/ListPagePagination'
 import ReturnVoucherTemplate from '../components/invoice/ReturnVoucherTemplate'
 import InvoiceModal from '../components/invoice/InvoiceModal'
-import { Button, ActionButton, StatusPill, SearchInput, TabNav, TabButton } from '../components/ui'
+import { Button, ActionButton, StatusPill, SearchInput, TabNav, TabButton, Checkbox } from '../components/ui'
 
 // Initial default empty data for Returns & Adjustments
 const DEFAULT_RETURNS = []
@@ -1361,16 +1361,10 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                               >
                                 {/* Checkbox (Enabled ONLY if return_policy is enabled and items remain) */}
                                 <td className="p-3 text-center align-top pt-3.5">
-                                  <input
-                                    type="checkbox"
+                                  <Checkbox
                                     checked={isChecked}
                                     disabled={!isReturnable}
                                     onChange={() => handleToggleItemCheckbox(it)}
-                                    className={`w-4 h-4 rounded-none focus:ring-0 cursor-pointer ${
-                                      isReturnable
-                                        ? 'accent-[#043486] text-[#043486]'
-                                        : 'opacity-40 cursor-not-allowed'
-                                    }`}
                                   />
                                 </td>
 
@@ -1406,12 +1400,10 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                                                   : 'bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:border-gray-400 cursor-pointer'
                                               }`}
                                             >
-                                              <input
-                                                type="checkbox"
+                                              <Checkbox
                                                 checked={isSnChecked}
                                                 disabled={!baseReturnable || isSnAlreadyReturned}
                                                 onChange={() => handleToggleItemSerial(it, sn)}
-                                                className="w-3.5 h-3.5 accent-[#043486] rounded-none cursor-pointer"
                                               />
                                               <span>{sn}</span>
                                               {isSnAlreadyReturned && (
@@ -1642,12 +1634,11 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
               <thead>
                 <tr className="bg-[#f8fafc] dark:bg-slate-800/80 border-b border-gray-200 dark:border-slate-800 text-[11px] font-bold text-gray-600 dark:text-slate-300 uppercase tracking-wider">
                   <th className="py-3 px-3.5 w-10 text-center">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={isAllPaginatedSelected}
+                      indeterminate={selectedIds.length > 0 && !isAllPaginatedSelected}
                       onChange={handleToggleSelectAll}
                       disabled={loading || paginatedReturns.length === 0}
-                      className="w-4 h-4 text-[#043486] rounded-none border-gray-300 dark:border-slate-600 focus:ring-0 cursor-pointer accent-[#043486]"
                     />
                   </th>
                   <th className="py-3 px-3 w-12 text-center">S.NO</th>
@@ -1684,21 +1675,97 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                       <th className="py-3 px-4 text-center">QC Status</th>
                     </>
                   )}
-                  {(activeTab === 'pending' || activeTab === 'credit_notes') && (
-                    <th className="py-3 px-4 text-center">Actions</th>
-                  )}
+                  <th className="py-3 px-4 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-slate-800 text-xs text-gray-700 dark:text-slate-300">
                 {loading ? (
-                  <tr>
-                    <td colSpan={10} className="py-12 text-center text-gray-400 dark:text-slate-500">
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <Loader2 size={24} className="animate-spin text-[#043486] dark:text-blue-400" />
-                        <span className="text-xs font-semibold">Loading Return Records...</span>
-                      </div>
-                    </td>
-                  </tr>
+                  Array.from({ length: 6 }).map((_, rIdx) => (
+                    <tr key={rIdx} className="animate-pulse">
+                      <td className="py-3.5 px-3.5 text-center">
+                        <div className="w-4 h-4 bg-slate-200 dark:bg-slate-700 rounded-xs mx-auto" />
+                      </td>
+                      <td className="py-3.5 px-3 text-center">
+                        <div className="w-6 h-3 bg-slate-200 dark:bg-slate-700 rounded-xs mx-auto" />
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="w-32 h-3.5 bg-slate-200 dark:bg-slate-700 rounded-xs mb-1.5" />
+                        <div className="w-20 h-2.5 bg-slate-100 dark:bg-slate-800 rounded-xs" />
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="w-28 h-3.5 bg-slate-200 dark:bg-slate-700 rounded-xs mb-1.5" />
+                        <div className="w-24 h-2.5 bg-slate-100 dark:bg-slate-800 rounded-xs" />
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="w-28 h-6 bg-slate-100 dark:bg-slate-800 rounded-xs" />
+                      </td>
+                      {activeTab === 'defective' && (
+                        <>
+                          <td className="py-3.5 px-4">
+                            <div className="w-32 h-3.5 bg-slate-200 dark:bg-slate-700 rounded-xs mb-1" />
+                            <div className="w-16 h-2.5 bg-slate-100 dark:bg-slate-800 rounded-xs" />
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="w-48 h-3.5 bg-slate-200 dark:bg-slate-700 rounded-xs" />
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <div className="w-20 h-5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto" />
+                          </td>
+                        </>
+                      )}
+                      {activeTab === 'completed' && (
+                        <>
+                          <td className="py-3.5 px-4">
+                            <div className="w-32 h-3.5 bg-slate-200 dark:bg-slate-700 rounded-xs mb-1" />
+                            <div className="w-16 h-2.5 bg-slate-100 dark:bg-slate-800 rounded-xs" />
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="w-20 h-5 bg-slate-200 dark:bg-slate-700 rounded-xs" />
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <div className="w-20 h-5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto" />
+                          </td>
+                        </>
+                      )}
+                      {activeTab === 'credit_notes' && (
+                        <>
+                          <td className="py-3.5 px-4">
+                            <div className="w-28 h-5 bg-purple-100/70 dark:bg-purple-950/50 rounded-xs" />
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="w-32 h-3.5 bg-slate-200 dark:bg-slate-700 rounded-xs mb-1" />
+                            <div className="w-16 h-2.5 bg-slate-100 dark:bg-slate-800 rounded-xs" />
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="w-20 h-3.5 bg-slate-200 dark:bg-slate-700 rounded-xs" />
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <div className="w-16 h-3.5 bg-slate-200 dark:bg-slate-700 rounded-xs ml-auto" />
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <div className="w-28 h-5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto" />
+                          </td>
+                        </>
+                      )}
+                      {activeTab === 'pending' && (
+                        <>
+                          <td className="py-3.5 px-4">
+                            <div className="w-32 h-3.5 bg-slate-200 dark:bg-slate-700 rounded-xs mb-1" />
+                            <div className="w-16 h-2.5 bg-slate-100 dark:bg-slate-800 rounded-xs" />
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="w-36 h-3.5 bg-slate-200 dark:bg-slate-700 rounded-xs" />
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <div className="w-20 h-5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto" />
+                          </td>
+                        </>
+                      )}
+                      <td className="py-3.5 px-4 text-center">
+                        <div className="w-7 h-7 bg-slate-200 dark:bg-slate-700 rounded-xs mx-auto" />
+                      </td>
+                    </tr>
+                  ))
                 ) : paginatedReturns.length === 0 ? (
                   <tr>
                     <td colSpan={10} className="py-12 text-center text-gray-400 dark:text-slate-500">
@@ -1738,20 +1805,26 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                         }`}
                       >
                         <td className="py-3 px-3.5 text-center">
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             checked={isSelected}
                             onChange={() => handleToggleSelectRow(item.id)}
-                            className="w-4 h-4 text-[#043486] rounded-none border-gray-300 dark:border-slate-600 focus:ring-0 cursor-pointer accent-[#043486]"
                           />
                         </td>
                         <td className="py-3 px-3 text-center font-mono text-gray-400 dark:text-slate-500">
                           {rowNumber}
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
-                          <div className="font-mono font-bold text-[#043486] dark:text-blue-400">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedReturnView(item)
+                              setViewModalOpen(true)
+                            }}
+                            className="font-mono font-bold text-[#043486] dark:text-blue-400 hover:underline cursor-pointer inline-flex items-center text-left"
+                            title="Click to view Return Voucher Slip"
+                          >
                             {item.return_number}
-                          </div>
+                          </button>
                           <div className="text-[11px] text-gray-500 dark:text-slate-400">
                             {item.return_date
                               ? new Date(item.return_date).toLocaleDateString('en-GB', {
@@ -1845,9 +1918,17 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                         {activeTab === 'credit_notes' && (
                           <>
                             <td className="py-3 px-4 whitespace-nowrap font-mono">
-                              <span className="px-2 py-0.5 bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-xs font-bold">
-                                {item.resolution_ref || 'CN-PENDING'}
-                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedReturnView(item)
+                                  setViewModalOpen(true)
+                                }}
+                                className="px-2 py-0.5 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-xs font-bold hover:underline cursor-pointer inline-flex items-center gap-1"
+                                title="Click to view Credit Note / Return Voucher Slip"
+                              >
+                                <span>{item.resolution_ref || 'CN-PENDING'}</span>
+                              </button>
                             </td>
                             <td className="py-3 px-4">
                               <div className="font-semibold text-gray-800 dark:text-slate-200">
@@ -1894,47 +1975,33 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                             </td>
                           </>
                         )}
-                        {(activeTab === 'pending' || activeTab === 'credit_notes') && (
-                          <td className="py-3 px-4 text-center">
-                            <div className="flex items-center justify-center gap-1.5">
-                              {activeTab === 'pending' && (
-                                <>
-                                  {canEdit && (
-                                    <button
-                                      onClick={() => handleOpenQcModal(item)}
-                                      className="p-1.5 text-white bg-[#043486] hover:bg-[#0248BC] dark:bg-blue-600 dark:hover:bg-blue-500 rounded-none transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center"
-                                      title="Perform Quality Inspection (QC)"
-                                    >
-                                      <HelpCircle size={16} />
-                                    </button>
-                                  )}
-                                  <button
-                                    onClick={() => {
-                                      setSelectedReturnView(item)
-                                      setViewModalOpen(true)
-                                    }}
-                                    className="p-1.5 text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-700 rounded-none transition-all cursor-pointer shadow-2xs flex items-center justify-center"
-                                    title="View Return Voucher Slip"
-                                  >
-                                    <FileText size={15} />
-                                  </button>
-                                </>
-                              )}
-                              {activeTab === 'credit_notes' && (
-                                <button
-                                  onClick={() => {
-                                    setSelectedReturnView(item)
-                                    setViewModalOpen(true)
-                                  }}
-                                  className="p-1.5 text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-700 rounded-none transition-all cursor-pointer shadow-2xs"
-                                  title="View Return Voucher / Credit Note Slip"
-                                >
-                                  <FileText size={15} />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        )}
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            {activeTab === 'pending' && canEdit && (
+                              <button
+                                onClick={() => handleOpenQcModal(item)}
+                                className="p-1.5 text-white bg-[#043486] hover:bg-[#0248BC] dark:bg-blue-600 dark:hover:bg-blue-500 rounded-none transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center"
+                                title="Perform Quality Inspection (QC)"
+                              >
+                                <HelpCircle size={16} />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => {
+                                setSelectedReturnView(item)
+                                setViewModalOpen(true)
+                              }}
+                              className="p-1.5 text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-700 rounded-none transition-all cursor-pointer shadow-2xs flex items-center justify-center"
+                              title={
+                                activeTab === 'credit_notes'
+                                  ? 'View Return Voucher / Credit Note Slip'
+                                  : 'View Return Voucher Slip'
+                              }
+                            >
+                              <FileText size={15} />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     )
                   })

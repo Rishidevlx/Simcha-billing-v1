@@ -1,5 +1,6 @@
 import React from 'react'
 import { Inbox } from '../common/icons'
+import Checkbox from './Checkbox'
 
 export default function DataTable({
   columns = [],
@@ -22,6 +23,9 @@ export default function DataTable({
   const isAllSelected =
     data.length > 0 &&
     data.every((row) => selectedIds.includes(row[keyField]))
+
+  const isPartiallySelected =
+    selectedIds.length > 0 && !isAllSelected
 
   const getAlignClass = (align) => {
     switch (align) {
@@ -75,11 +79,10 @@ export default function DataTable({
               <tr>
                 {selectable && (
                   <th className="py-3 px-3.5 w-10 text-center">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={isAllSelected}
+                      indeterminate={isPartiallySelected}
                       onChange={onSelectAll}
-                      className="w-4 h-4 rounded-none accent-[#043486] cursor-pointer"
                       title="Select / Deselect all on this page"
                     />
                   </th>
@@ -112,11 +115,9 @@ export default function DataTable({
                     >
                       {selectable && (
                         <td className="py-3.5 px-3.5 text-center">
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             checked={isSelected}
                             onChange={() => onSelectRow && onSelectRow(rowId, row)}
-                            className="w-4 h-4 rounded-none accent-[#043486] cursor-pointer"
                           />
                         </td>
                       )}

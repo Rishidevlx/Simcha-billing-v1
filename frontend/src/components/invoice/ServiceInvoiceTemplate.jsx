@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTheme } from '../../context/ThemeContext'
+import { useSettings } from '../../context/SettingsContext'
 import {
   TemplatePageShell,
   TemplateHeader,
@@ -44,28 +45,50 @@ function paginateInvoiceItems(items) {
   return pages
 }
 
-export default function ServiceInvoiceTemplate({ service, bill, settings }) {
+export default function ServiceInvoiceTemplate({ service, bill, settings, company }) {
   const data = service || bill
   if (!data) return null
 
-  const { companyName: themeCompanyName, companyDetails } = useTheme()
+  // 1. Snapshot Pattern for Past Service Invoices Immutability (Legal Audit Rule)
+  let snapshot = data?.company_snapshot || null
+  if (typeof snapshot === 'string') {
+    try { snapshot = JSON.parse(snapshot) } catch { snapshot = null }
+  }
 
-  // Resolve dynamic settings with fallbacks from Theme/System Settings
-  const companyName = settings?.company_name || themeCompanyName || companyDetails?.name || ''
-  const companyGstin = settings?.gstin || companyDetails?.gstin || ''
-  const companyPhone = settings?.phone || companyDetails?.phone || ''
-  const companyEmail = settings?.email || companyDetails?.email || ''
-  const companyAddress = settings?.address || companyDetails?.address || ''
+  // 2. Live DB Context fallback for New Services & UI Rendering
+  const {
+    settings: liveSettings,
+    companyDetails: liveCompany,
+    bankDetails: liveBank,
+    signatureUrl: liveSignUrl,
+    bankImageUrl: liveBankImg,
+    termsList: liveTerms
+  } = useSettings()
 
-  const bankName = settings?.bank_name || ''
-  const bankBranch = settings?.branch || ''
-  const bankAccountName = settings?.account_name || companyName || ''
-  const bankAccountNo = settings?.account_no || ''
-  const bankIfsc = settings?.ifsc_code || ''
-  const bankImageUrl = settings?.bank_image_url || ''
+  const effectiveSettings = snapshot || settings || company || liveSettings || {}
+  const effectiveCompany = snapshot || company || liveCompany || {}
+  const effectiveBank = snapshot || liveBank || {}
+
+  const companyName = effectiveCompany?.company_name || effectiveCompany?.name || ''
+  const companyGstin = effectiveCompany?.gstin || ''
+  const companyPhone = effectiveCompany?.phone || ''
+  const companyEmail = effectiveCompany?.email || ''
+  const companyAddress = effectiveCompany?.address || ''
+
+  const bankName = effectiveBank?.bank_name || effectiveBank?.bankName || ''
+  const bankBranch = effectiveBank?.branch || ''
+  const bankAccountName = effectiveBank?.account_name || effectiveBank?.accountName || companyName || ''
+  const bankAccountNo = effectiveBank?.account_no || effectiveBank?.accountNo || ''
+  const bankIfsc = effectiveBank?.ifsc_code || effectiveBank?.ifscCode || ''
+  const bankImageUrl = effectiveBank?.bank_image_url || effectiveBank?.bankImageUrl || data.bank_image_url || liveBankImg || ''
+  const signatureUrl = effectiveSettings?.signature_url || effectiveSettings?.signatureUrl || data.signature_url || liveSignUrl || ''
   
-  const defaultTermsList = Array.isArray(settings?.terms_conditions) && settings.terms_conditions.length > 0
-    ? settings.terms_conditions
+  const defaultTermsList = (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
+    ? effectiveSettings.terms_conditions
+    : (Array.isArray(snapshot?.terms_conditions) && snapshot.terms_conditions.length > 0)
+    ? snapshot.terms_conditions
+    : (liveTerms && liveTerms.length > 0)
+    ? liveTerms
     : [
       'Warranty as per manufacturer’s norms & should be claimed directly.',
       'Service warranty 30 days applicable on reported issues only.',
@@ -247,17 +270,17 @@ export default function ServiceInvoiceTemplate({ service, bill, settings }) {
                 taxableAmount={data.taxable_amount}
                 isGstInvoice={isGstInvoice}
                 isIntraState={isIntraState}
-                cgstRate={data.cgst_rate || settings?.cgst_rate || 9}
+                cgstRate={data.cgst_rate || effectiveSettings?.cgst_rate || 9}
                 cgstAmount={data.cgst_amount}
-                sgstRate={data.sgst_rate || settings?.sgst_rate || 9}
+                sgstRate={data.sgst_rate || effectiveSettings?.sgst_rate || 9}
                 sgstAmount={data.sgst_amount}
-                igstRate={data.igst_rate || settings?.igst_rate || 18}
+                igstRate={data.igst_rate || effectiveSettings?.igst_rate || 18}
                 igstAmount={data.igst_amount}
                 roundOff={data.round_off}
                 totalAmount={data.total_amount}
                 amountInWords={data.amount_in_words}
                 totalLabel="Service Total"
-                signatureUrl={settings?.signature_url || data.signature_url}
+                signatureUrl={signatureUrl}
                 companyName={companyName}
               />
             )}

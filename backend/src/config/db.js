@@ -355,7 +355,7 @@ export async function runDatabaseMigrations() {
           await pool.query(`ALTER TABLE settings ADD COLUMN credit_note_separator VARCHAR(10) DEFAULT '/';`)
         } catch {}
 
-        // Ensure customer_email, customer_type, receipt_number, delivery_address, same_as_billing, due_date, has_due_date columns exist in bills
+        // Ensure customer_email, customer_type, receipt_number, delivery_address, same_as_billing, due_date, has_due_date, company_snapshot columns exist in bills
         try {
           await pool.query(`ALTER TABLE bills ADD COLUMN customer_email VARCHAR(191) NULL AFTER customer_phone;`)
         } catch {}
@@ -376,6 +376,15 @@ export async function runDatabaseMigrations() {
         } catch {}
         try {
           await pool.query(`ALTER TABLE bills ADD COLUMN has_due_date BOOLEAN DEFAULT TRUE AFTER due_date;`)
+        } catch {}
+        try {
+          await pool.query(`ALTER TABLE bills ADD COLUMN company_snapshot LONGTEXT NULL AFTER notes;`)
+        } catch {}
+        try {
+          await pool.query(`ALTER TABLE service_bills ADD COLUMN company_snapshot LONGTEXT NULL AFTER notes;`)
+        } catch {}
+        try {
+          await pool.query(`ALTER TABLE returns_registry ADD COLUMN company_snapshot LONGTEXT NULL AFTER qc_notes;`)
         } catch {}
 
         // Ensure materials table has discount columns
@@ -449,11 +458,15 @@ export async function runDatabaseMigrations() {
         } catch (alterErr) {
           console.error('Error updating bills payment column definitions:', alterErr.message)
         }
-        // Ensure bills table has receipt_sent and receipt_sent_at columns for email tracking
-try {
-  await pool.query(`ALTER TABLE bills ADD COLUMN receipt_sent BOOLEAN DEFAULT FALSE;`)
-  await pool.query(`ALTER TABLE bills ADD COLUMN receipt_sent_at TIMESTAMP NULL;`)
-} catch {}
+        // Ensure bills table has receipt_sent, receipt_sent_at, invoice_sent, invoice_sent_at columns for email tracking
+        try {
+          await pool.query(`ALTER TABLE bills ADD COLUMN receipt_sent BOOLEAN DEFAULT FALSE;`)
+          await pool.query(`ALTER TABLE bills ADD COLUMN receipt_sent_at TIMESTAMP NULL;`)
+        } catch {}
+        try {
+          await pool.query(`ALTER TABLE bills ADD COLUMN invoice_sent BOOLEAN DEFAULT FALSE;`)
+          await pool.query(`ALTER TABLE bills ADD COLUMN invoice_sent_at TIMESTAMP NULL;`)
+        } catch {}
 
         console.log('✅ "bills" table ready.')
 
@@ -742,6 +755,10 @@ try {
         `)
         console.log('✅ "service_bills" table ready.')
 
+        try {
+          await pool.query(`ALTER TABLE service_bills MODIFY COLUMN service_status VARCHAR(50) DEFAULT 'Received';`)
+        } catch {}
+
         await pool.query(`
           CREATE TABLE IF NOT EXISTS service_bill_items (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -882,7 +899,83 @@ try {
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         `)
-        console.log('✅ "password_otps" table ready.')
+        // Step 24: Create Quotations and Quotation Items tables if not exists
+        try {
+          await pool.query(`ALTER TABLE settings ADD COLUMN quotation_prefix VARCHAR(50) DEFAULT 'SIS-QTN';`)
+          await pool.query(`ALTER TABLE settings ADD COLUMN quotation_month VARCHAR(20) DEFAULT 'AUTO';`)
+          await pool.query(`ALTER TABLE settings ADD COLUMN quotation_financial_year VARCHAR(20) DEFAULT '2026-27';`)
+          await pool.query(`ALTER TABLE settings ADD COLUMN quotation_starting_number INT DEFAULT 1;`)
+          await pool.query(`ALTER TABLE settings ADD COLUMN quotation_padding_digits INT DEFAULT 4;`)
+          await pool.query(`ALTER TABLE settings ADD COLUMN quotation_separator VARCHAR(10) DEFAULT '/';`)
+          await pool.query(`ALTER TABLE settings ADD COLUMN quotation_validity_days INT DEFAULT 15;`)
+        } catch {}
+
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS quotations (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            quotation_number VARCHAR(100) UNIQUE NOT NULL,
+            quotation_date DATE NOT NULL,
+            valid_until DATE NULL,
+            quotation_type ENUM('NON_GST', 'GST') DEFAULT 'NON_GST',
+            copy_type ENUM('ORIGINAL', 'DUPLICATE', 'TRIPLICATE') DEFAULT 'ORIGINAL',
+            customer_type VARCHAR(50) DEFAULT 'Individual',
+            customer_name VARCHAR(200) NOT NULL,
+            customer_phone VARCHAR(50),
+            customer_email VARCHAR(191),
+            customer_address TEXT,
+            customer_gstin VARCHAR(50),
+            delivery_address TEXT,
+            same_as_billing BOOLEAN DEFAULT TRUE,
+            place_of_supply VARCHAR(100) DEFAULT '33-Tamil Nadu',
+            taxable_amount DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+            cgst_rate DECIMAL(5, 2) DEFAULT 9.00,
+            cgst_amount DECIMAL(12, 2) DEFAULT 0.00,
+            sgst_rate DECIMAL(5, 2) DEFAULT 9.00,
+            sgst_amount DECIMAL(12, 2) DEFAULT 0.00,
+            igst_rate DECIMAL(5, 2) DEFAULT 18.00,
+            igst_amount DECIMAL(12, 2) DEFAULT 0.00,
+            total_tax DECIMAL(12, 2) DEFAULT 0.00,
+            round_off DECIMAL(8, 2) DEFAULT 0.00,
+            total_amount DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+            amount_in_words TEXT,
+            quotation_status VARCHAR(50) DEFAULT 'Draft',
+            converted_bill_id INT NULL,
+            converted_invoice_number VARCHAR(100) NULL,
+            email_sent BOOLEAN DEFAULT FALSE,
+            email_sent_at TIMESTAMP NULL,
+            notes TEXT,
+            company_snapshot LONGTEXT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        `)
+        console.log('✅ "quotations" table ready.')
+
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS quotation_items (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            quotation_id INT NOT NULL,
+            material_id INT NULL,
+            item_name VARCHAR(255) NOT NULL,
+            serial_number VARCHAR(150),
+            hsn_code VARCHAR(50),
+            quantity DECIMAL(10, 2) NOT NULL DEFAULT 1.00,
+            unit VARCHAR(50) DEFAULT 'NOS',
+            rate DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+            has_discount BOOLEAN DEFAULT FALSE,
+            discount_percent DECIMAL(5, 2) DEFAULT 0.00,
+            discount_amount DECIMAL(12, 2) DEFAULT 0.00,
+            original_rate DECIMAL(12, 2) DEFAULT 0.00,
+            tax_rate DECIMAL(5, 2) DEFAULT 18.00,
+            tax_amount DECIMAL(12, 2) DEFAULT 0.00,
+            return_policy BOOLEAN DEFAULT FALSE,
+            amount DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (quotation_id) REFERENCES quotations(id) ON DELETE CASCADE,
+            FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE SET NULL
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        `)
+        console.log('✅ "quotation_items" table ready.')
 
         console.log('✅ All database migrations finished successfully.')
         return true

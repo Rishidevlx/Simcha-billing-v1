@@ -44,9 +44,28 @@ import ListPageHeader from '../components/common/ListPageHeader'
 import ListKpiCard from '../components/common/ListKpiCard'
 import ListDateRangeFilter from '../components/common/ListDateRangeFilter'
 import ListPagePagination from '../components/common/ListPagePagination'
-import { Button, ActionButton, SearchInput } from '../components/ui'
+import { Button, ActionButton, SearchInput, Checkbox } from '../components/ui'
 import { API_ENDPOINTS } from '../config/api'
 import { getUserPermissions } from '../utils/access'
+
+// Local Date Helper to eliminate timezone UTC discrepancy (e.g. 2026-10-02T18:30:00Z -> 2026-10-03 in local IST)
+const getLocalDateString = (dateVal) => {
+  if (!dateVal) return ''
+  if (typeof dateVal === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateVal.trim())) {
+    return dateVal.trim()
+  }
+  const d = new Date(dateVal)
+  if (isNaN(d.getTime())) {
+    if (typeof dateVal === 'string') {
+      return dateVal.slice(0, 10)
+    }
+    return ''
+  }
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 export default function AllBillsPage({ setActiveRoute }) {
   const navigate = useNavigate()
@@ -126,24 +145,24 @@ export default function AllBillsPage({ setActiveRoute }) {
   const handleDatePresetChange = (preset) => {
     setDatePreset(preset)
     const today = new Date()
+    const todayStr = getLocalDateString(today)
     
     if (preset === 'ALL') {
       setStartDate('')
       setEndDate('')
     } else if (preset === 'TODAY') {
-      const formatted = today.toISOString().split('T')[0]
-      setStartDate(formatted)
-      setEndDate(formatted)
+      setStartDate(todayStr)
+      setEndDate(todayStr)
     } else if (preset === 'THIS_WEEK') {
       const day = today.getDay() || 7
       const firstDay = new Date(today)
       firstDay.setDate(today.getDate() - day + 1)
-      setStartDate(firstDay.toISOString().split('T')[0])
-      setEndDate(today.toISOString().split('T')[0])
+      setStartDate(getLocalDateString(firstDay))
+      setEndDate(todayStr)
     } else if (preset === 'THIS_MONTH') {
       const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
-      setStartDate(firstDay.toISOString().split('T')[0])
-      setEndDate(today.toISOString().split('T')[0])
+      setStartDate(getLocalDateString(firstDay))
+      setEndDate(todayStr)
     }
     setCurrentPage(1)
   }
@@ -202,6 +221,88 @@ export default function AllBillsPage({ setActiveRoute }) {
       }
     } catch (err) {
       console.error('Error fetching bill for receipt:', err)
+    }
+  }
+
+  // Send Invoice Email to Customer (Active when Pending, 1-time clickable turns red)
+  const handleSendInvoiceEmail = async (bill) => {
+    // 1. Check if already sent
+    if (bill.invoice_sent === 1 || bill.invoice_sent === true) {
+      const sentDate = bill.invoice_sent_at
+        ? new Date(bill.invoice_sent_at).toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        : 'an earlier date'
+      Swal.fire({
+        icon: 'info',
+        title: 'Invoice Already Sent',
+        html: `<p class="text-sm text-gray-600 dark:text-slate-300">Tax Invoice <b>${bill.invoice_number}</b> has already been emailed to the customer on <b>${sentDate}</b>.</p><p class="text-xs text-gray-400 mt-2">To prevent duplicate emails, invoice email can only be sent once.</p>`,
+        confirmButtonColor: '#043486'
+      })
+      return
+    }
+
+    // 2. Obtain & confirm recipient email
+    let targetEmail = (bill.customer_email || '').trim()
+
+    if (!targetEmail) {
+      const promptResult = await Swal.fire({
+        title: 'Send Tax Invoice',
+        text: `Customer email is missing for "${bill.customer_name}". Please enter recipient email:`,
+        input: 'email',
+        inputPlaceholder: 'customer@example.com',
+        showCancelButton: true,
+        confirmButtonColor: '#043486',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Send Invoice PDF',
+        inputValidator: (val) => {
+          if (!val || !val.trim()) {
+            return 'Please enter a valid email address!'
+          }
+        }
+      })
+
+      if (!promptResult.isConfirmed || !promptResult.value) return
+      targetEmail = promptResult.value.trim()
+    }
+
+    // 3. Dispatch Invoice Email API
+    try {
+      Swal.showLoading()
+      const res = await fetch(API_ENDPOINTS.EMAIL_SEND_BILL(bill.id), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipient: targetEmail })
+      })
+      const data = await res.json()
+
+      if (res.ok && data.success) {
+        setBills(prev => prev.map(b => b.id === bill.id ? { ...b, invoice_sent: 1, invoice_sent_at: new Date().toISOString() } : b))
+        Swal.mixin({
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true
+        }).fire({
+          icon: 'success',
+          title: `Invoice sent to ${targetEmail}`
+        })
+      } else {
+        throw new Error(data.message || 'Failed to dispatch invoice email.')
+      }
+    } catch (err) {
+      console.error('Error sending invoice email:', err)
+      Swal.fire({
+        icon: 'error',
+        title: 'Dispatch Failed',
+        text: err.message || 'Unable to send invoice email. Please verify SMTP settings.',
+        confirmButtonColor: '#043486'
+      })
     }
   }
 
@@ -470,19 +571,13 @@ export default function AllBillsPage({ setActiveRoute }) {
       const matchesMode = paymentModeFilter === 'ALL' || bill.payment_mode === paymentModeFilter
 
       // 5. Date Range Filter
-      let matchesDate = true
-      if (startDate && endDate) {
-        const billDate = new Date(bill.invoice_date).toISOString().split('T')[0]
-        matchesDate = billDate >= startDate && billDate <= endDate
-      } else if (startDate) {
-        const billDate = new Date(bill.invoice_date).toISOString().split('T')[0]
-        matchesDate = billDate >= startDate
-      } else if (endDate) {
-        const billDate = new Date(bill.invoice_date).toISOString().split('T')[0]
-        matchesDate = billDate <= endDate
+      if (startDate || endDate) {
+        const billDate = getLocalDateString(bill.invoice_date || bill.created_at)
+        if (startDate && billDate < startDate) return false
+        if (endDate && billDate > endDate) return false
       }
 
-      return matchesSearch && matchesStatus && matchesType && matchesMode && matchesDate
+      return matchesSearch && matchesStatus && matchesType && matchesMode
     })
   }, [bills, searchTerm, statusFilter, typeFilter, paymentModeFilter, startDate, endDate])
 
@@ -502,6 +597,8 @@ export default function AllBillsPage({ setActiveRoute }) {
   // Selection Logic
   const isAllPaginatedSelected =
     paginatedBills.length > 0 && paginatedBills.every((b) => selectedBillIds.includes(b.id))
+  const isSomePaginatedSelected =
+    paginatedBills.some((b) => selectedBillIds.includes(b.id)) && !isAllPaginatedSelected
 
   const handleToggleSelectAll = () => {
     if (isAllPaginatedSelected) {
@@ -772,7 +869,7 @@ export default function AllBillsPage({ setActiveRoute }) {
               type="button"
               onClick={() => {
                 handleResetFilters()
-                fetchBills()
+                fetchInitialData()
               }}
               title="Reload Outward Data"
               className="p-2 text-gray-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors shadow-xs cursor-pointer"
@@ -840,11 +937,10 @@ export default function AllBillsPage({ setActiveRoute }) {
               <thead className="bg-[#f8fafc] dark:bg-slate-800/80 border-b border-gray-200 dark:border-slate-800 text-xs uppercase tracking-wider text-gray-600 dark:text-slate-300 font-bold">
                 <tr>
                   <th className="py-3 px-3.5 text-center w-10">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={isAllPaginatedSelected}
+                      indeterminate={isSomePaginatedSelected}
                       onChange={handleToggleSelectAll}
-                      className="w-4 h-4 rounded-none accent-[#043486] cursor-pointer"
                       title="Select / Deselect all on this page"
                     />
                   </th>
@@ -879,17 +975,24 @@ export default function AllBillsPage({ setActiveRoute }) {
                     >
                       {/* Selection Checkbox */}
                       <td className="py-3.5 px-3.5 text-center">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={isSelected}
                           onChange={() => handleToggleSelectRow(bill.id)}
-                          className="w-4 h-4 rounded-none accent-[#043486] cursor-pointer"
                         />
                       </td>
 
                       {/* Invoice # */}
-                      <td className={`py-3.5 px-4 font-mono font-bold text-[#043486] dark:text-blue-400 ${isCancelled ? 'line-through text-slate-500 dark:text-slate-400' : ''}`}>
-                        <span>{bill.invoice_number}</span>
+                      <td className="py-3.5 px-4">
+                        <button
+                          type="button"
+                          onClick={() => handleViewBill(bill.id)}
+                          className={`font-mono font-bold text-[#043486] dark:text-blue-400 hover:underline cursor-pointer inline-flex items-center text-left ${
+                            isCancelled ? 'line-through text-slate-500 dark:text-slate-400' : ''
+                          }`}
+                          title="Click to view Invoice"
+                        >
+                          <span>{bill.invoice_number}</span>
+                        </button>
                       </td>
 
                       {/* Date */}
@@ -983,24 +1086,39 @@ export default function AllBillsPage({ setActiveRoute }) {
                             }
                           />
 
-                          {/* 2. Send Receipt Email (Active ONLY when Paid, icon turns red once sent) */}
+                          {/* 2. Send Email (Active when Pending -> Invoice Email, Active when Paid -> Receipt Email; turns red once sent) */}
                           <ActionButton
                             icon={Send}
-                            onClick={() => handleSendReceiptEmail(bill)}
-                            disabled={!isPaid}
+                            onClick={() => {
+                              if (isCancelled) return
+                              if (isPaid) {
+                                handleSendReceiptEmail(bill)
+                              } else {
+                                handleSendInvoiceEmail(bill)
+                              }
+                            }}
+                            disabled={isCancelled}
                             className={
-                              isPaid
+                              isCancelled
+                                ? '!text-gray-300 dark:!text-slate-700 opacity-40 cursor-not-allowed'
+                                : isPaid
                                 ? bill.receipt_sent
                                   ? '!text-red-500 dark:!text-red-400 hover:!bg-red-50 dark:hover:!bg-slate-800'
                                   : '!text-indigo-600 dark:!text-indigo-400 hover:!bg-indigo-50 dark:hover:!bg-slate-800'
-                                : '!text-gray-300 dark:!text-slate-700 opacity-40'
+                                : bill.invoice_sent
+                                ? '!text-red-500 dark:!text-red-400 hover:!bg-red-50 dark:hover:!bg-slate-800'
+                                : '!text-indigo-600 dark:!text-indigo-400 hover:!bg-indigo-50 dark:hover:!bg-slate-800'
                             }
                             title={
-                              !isPaid
-                                ? 'Send Receipt (Available only when status is Paid)'
-                                : bill.receipt_sent
-                                ? 'Receipt Already Sent (Click for details)'
-                                : 'Send Receipt Email to Customer'
+                              isCancelled
+                                ? 'Invoice is Cancelled'
+                                : isPaid
+                                ? bill.receipt_sent
+                                  ? 'Receipt Already Sent (Click for details)'
+                                  : 'Send Receipt Email to Customer'
+                                : bill.invoice_sent
+                                ? 'Invoice Already Sent (Click for details)'
+                                : 'Send Tax Invoice Email to Customer'
                             }
                           />
 

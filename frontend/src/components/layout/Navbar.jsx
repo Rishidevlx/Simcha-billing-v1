@@ -95,6 +95,7 @@ export default function Navbar({
   const fetchLowStockAlerts = async () => {
     try {
       const res = await fetch(API_ENDPOINTS.INVENTORY)
+      if (!res.ok) return
       const data = await res.json()
       if (data.success && (data.data || data.materials)) {
         const materials = data.data || data.materials || []
@@ -106,7 +107,7 @@ export default function Navbar({
         setLowStockItems(alerts)
       }
     } catch (err) {
-      console.error('Failed to fetch low stock alerts for navbar:', err)
+      // Ignore background polling network errors
     }
   }
 

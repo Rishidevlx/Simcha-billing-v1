@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import {
-  Receipt,
+  FileText,
   Plus,
   Trash2,
   Copy,
@@ -11,7 +11,6 @@ import {
   User,
   Phone,
   MapPin,
-  FileText,
   Boxes,
   Hash,
   IndianRupee,
@@ -23,11 +22,13 @@ import {
   FileDigit,
   ChevronDown,
   ArrowLeft,
-  List
+  List,
+  Send
 } from '../components/common/icons'
 import Swal from 'sweetalert2'
 import SearchableSelect from '../components/common/SearchableSelect'
-import InvoiceTemplate from '../components/invoice/InvoiceTemplate'
+import QuotationTemplate from '../components/quotation/QuotationTemplate'
+import QuotationModal from '../components/quotation/QuotationModal'
 import SkeletonLoader from '../components/common/SkeletonLoader'
 import { Button, Checkbox } from '../components/ui'
 import { BillSummaryCard, OutwardLineItems } from '../components/billing'
@@ -73,7 +74,7 @@ const INDIAN_STATES = [
   '38 - Ladakh'
 ]
 
-export default function CreateBillPage({ setActiveRoute }) {
+export default function CreateQuotationPage({ setActiveRoute }) {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const editId = searchParams.get('editId')
@@ -82,8 +83,8 @@ export default function CreateBillPage({ setActiveRoute }) {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
 
-  // Invoice Preview Modal State
-  const [previewBill, setPreviewBill] = useState(null)
+  // Quotation Preview Modal State
+  const [previewQuotation, setPreviewQuotation] = useState(null)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
 
   // Settings, Categories & Materials
@@ -91,14 +92,13 @@ export default function CreateBillPage({ setActiveRoute }) {
   const [categories, setCategories] = useState([])
   const [materials, setMaterials] = useState([])
 
-  // Bill Meta
-  const [invoiceNumber, setInvoiceNumber] = useState('INV-2026-01')
-  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0])
-  const [hasDueDate, setHasDueDate] = useState(true)
-  const [dueDate, setDueDate] = useState('')
-  const [invoiceType, setInvoiceType] = useState('GST')
+  // Quotation Meta
+  const [quotationNumber, setQuotationNumber] = useState('SIS-QTN/2026-27/0001')
+  const [quotationDate, setQuotationDate] = useState(new Date().toISOString().split('T')[0])
+  const [quotationType, setQuotationType] = useState('NON_GST')
   const [copyType, setCopyType] = useState('ORIGINAL')
   const [placeOfSupply, setPlaceOfSupply] = useState('33 - Tamil Nadu')
+  const [quotationStatus, setQuotationStatus] = useState('Draft')
 
   // Customer Information
   const [customerType, setCustomerType] = useState('Individual') // 'Individual' | 'Company'
@@ -110,12 +110,10 @@ export default function CreateBillPage({ setActiveRoute }) {
   const [deliveryAddress, setDeliveryAddress] = useState('')
   const [customerGstin, setCustomerGstin] = useState('')
 
-  // Payment & Remarks
-  const [paymentMode, setPaymentMode] = useState('')
-  const [paymentStatus, setPaymentStatus] = useState('Pending')
+  // Remarks / Notes
   const [notes, setNotes] = useState('')
 
-  // Items State (Array of line items with multi serial number support)
+  // Items State
   const [items, setItems] = useState([
     {
       material_id: '',
@@ -142,12 +140,10 @@ export default function CreateBillPage({ setActiveRoute }) {
     }
   ])
 
-  // Verified Serials Cache from DB: { [serial.toLowerCase()]: { found: true/false, status: 'Available'/'Sold', message: '...' } }
+  // Serials maps
   const [verifiedSerials, setVerifiedSerials] = useState({})
-
-  // Available Serials from Inventory Vault: { [materialId]: ['SN1', 'SN2'] }
   const [availableSerialsMap, setAvailableSerialsMap] = useState({})
-  const [activeSerialSuggest, setActiveSerialSuggest] = useState(null) // { itemIndex, serialIndex }
+  const [activeSerialSuggest, setActiveSerialSuggest] = useState(null)
 
   // Fetch available registered serials for a material
   const fetchAvailableSerialsForMaterial = async (materialId) => {
@@ -163,11 +159,11 @@ export default function CreateBillPage({ setActiveRoute }) {
         }))
       }
     } catch (err) {
-      console.error('Failed to fetch available serials for material:', err)
+      console.error('Failed to fetch serials for material:', err)
     }
   }
 
-  // Find Duplicate Serial Numbers across all invoice line items
+  // Duplicate Serials Check across all quotation lines
   const duplicateSerials = useMemo(() => {
     const counts = {}
     items.forEach(item => {
@@ -191,7 +187,7 @@ export default function CreateBillPage({ setActiveRoute }) {
     return duplicates
   }, [items])
 
-  // Verify serial number against Database
+  // Verify serial number against DB
   const verifySerialWithDb = async (serialVal) => {
     const trimmed = (serialVal || '').trim()
     if (!trimmed || verifiedSerials[trimmed.toLowerCase()] !== undefined) return
@@ -212,153 +208,141 @@ export default function CreateBillPage({ setActiveRoute }) {
     }
   }
 
-  // Fetch Next Number / Bill Details, Settings & Materials on load
+  // Fetch Next Number / Quotation Details, Settings & Materials on load
   const loadInitialData = async () => {
     try {
       setIsLoading(true)
-      
+
       // 1. Fetch Settings
       let loadedSettings = null
-      const settingsRes = await fetch(API_ENDPOINTS.SETTINGS)
-      const settingsData = await settingsRes.json()
-      if (settingsData.success && settingsData.settings) {
-        loadedSettings = settingsData.settings
-        setSettings(loadedSettings)
-        try {
-          localStorage.setItem('simcha_settings', JSON.stringify(loadedSettings))
-        } catch {}
+      try {
+        const sRes = await fetch(API_ENDPOINTS.SETTINGS)
+        const sData = await sRes.json()
+        if (sData.success) {
+          loadedSettings = sData.settings || sData.data
+          setSettings(loadedSettings)
+        }
+      } catch (e) {
+        console.error('Failed to load settings:', e)
       }
 
       // 2. Fetch Categories
-      const catRes = await fetch(API_ENDPOINTS.CATEGORIES)
-      const catData = await catRes.json()
-      if (catData.success && catData.categories) {
-        setCategories(catData.categories.filter(c => c.status === 'Active'))
+      try {
+        const cRes = await fetch(API_ENDPOINTS.CATEGORIES)
+        const cData = await cRes.json()
+        if (cData.success && cData.categories) {
+          setCategories(cData.categories.filter(c => c.status === 'Active'))
+        } else if (cData.success && cData.data) {
+          setCategories(cData.data.filter(c => c.status === 'Active'))
+        }
+      } catch (e) {
+        console.error('Failed to load categories:', e)
       }
 
       // 3. Fetch Materials
       let loadedMaterials = []
-      const matRes = await fetch(API_ENDPOINTS.MATERIALS)
-      const matData = await matRes.json()
-      if (matData.success && matData.materials) {
-        loadedMaterials = matData.materials.filter(m => m.status === 'Active')
-        setMaterials(loadedMaterials)
+      try {
+        const mRes = await fetch(API_ENDPOINTS.MATERIALS)
+        const mData = await mRes.json()
+        if (mData.success && mData.materials) {
+          loadedMaterials = mData.materials.filter(m => m.status === 'Active')
+          setMaterials(loadedMaterials)
+        } else if (mData.success && mData.data) {
+          loadedMaterials = mData.data.filter(m => m.status === 'Active')
+          setMaterials(loadedMaterials)
+        }
+      } catch (e) {
+        console.error('Failed to load materials:', e)
       }
 
-      // 4. If Edit Mode, Fetch Existing Bill
-      if (editId) {
-        const billRes = await fetch(API_ENDPOINTS.BILL_BY_ID(editId))
-        const billData = await billRes.json()
-        if (billData.success && billData.bill) {
-          const b = billData.bill
-          setInvoiceNumber(b.invoice_number || '')
-          setInvoiceDate(b.invoice_date ? b.invoice_date.split('T')[0] : new Date().toISOString().split('T')[0])
-          setHasDueDate(Boolean(b.has_due_date !== undefined ? b.has_due_date : b.due_date))
-          setDueDate(b.due_date ? b.due_date.split('T')[0] : '')
-          setInvoiceType(b.invoice_type || 'GST')
-          setCopyType(b.copy_type || 'ORIGINAL')
-          setPlaceOfSupply(b.place_of_supply || '33 - Tamil Nadu')
-          setCustomerType(b.customer_type || 'Individual')
-          setCustomerName(b.customer_name || '')
-          setCustomerPhone(b.customer_phone || '')
-          setCustomerEmail(b.customer_email || '')
-          setCustomerAddress(b.customer_address || '')
-          const isSame = b.same_as_billing !== undefined ? Boolean(b.same_as_billing) : (!b.delivery_address || b.delivery_address === b.customer_address)
-          setSameAsDelivery(isSame)
-          setDeliveryAddress(b.delivery_address || '')
-          setCustomerGstin(b.customer_gstin || '')
-          setPaymentMode(b.payment_mode || '')
-          setPaymentStatus(b.payment_status || 'Pending')
-          setNotes(b.notes || '')
+      // 4. Fetch Next Quotation Number or Edit Quotation Data
+      if (isEditMode) {
+        const editRes = await fetch(API_ENDPOINTS.QUOTATION_BY_ID(editId))
+        const editData = await editRes.json()
+        const qtn = editData.quotation || editData.data
+        if (editData.success && qtn) {
+          setQuotationNumber(qtn.quotation_number || '')
+          setQuotationDate(qtn.quotation_date ? qtn.quotation_date.slice(0, 10) : new Date().toISOString().split('T')[0])
+          setQuotationType(qtn.quotation_type || 'NON_GST')
+          setCopyType(qtn.copy_type || 'ORIGINAL')
+          setQuotationStatus(qtn.quotation_status || 'Draft')
+          setCustomerType(qtn.customer_type || 'Individual')
+          setCustomerName(qtn.customer_name || '')
+          setCustomerPhone(qtn.customer_phone || '')
+          setCustomerEmail(qtn.customer_email || '')
+          setCustomerAddress(qtn.customer_address || '')
+          setSameAsDelivery(Boolean(qtn.same_as_billing))
+          setDeliveryAddress(qtn.delivery_address || '')
+          setCustomerGstin(qtn.customer_gstin || '')
+          setPlaceOfSupply(qtn.place_of_supply || '33 - Tamil Nadu')
+          setNotes(qtn.notes || '')
 
-          if (Array.isArray(b.items) && b.items.length > 0) {
-            setItems(b.items.map(it => {
-              const serials = it.serial_numbers && it.serial_numbers.length > 0
+          if (qtn.items && qtn.items.length > 0) {
+            const mappedItems = qtn.items.map(it => {
+              const rawSerials = it.serial_numbers && Array.isArray(it.serial_numbers) && it.serial_numbers.length > 0
                 ? it.serial_numbers
-                : (it.serial_number ? it.serial_number.split(',').map(s => s.trim()) : [''])
-
-              const foundMat = loadedMaterials.find(m => String(m.id) === String(it.material_id))
-              const dbStock = foundMat 
-                ? parseFloat(foundMat.current_stock ?? foundMat.opening_stock ?? 0) 
-                : (it.current_stock !== undefined && it.current_stock !== null ? parseFloat(it.current_stock) : null)
+                : (it.serial_number ? it.serial_number.split(',').map(s => s.trim()).filter(Boolean) : [''])
               
-              const itemQty = parseFloat(it.quantity) || 1
-              // For an existing line item in edit mode, it already reserved itemQty in this bill.
-              // So available stock for editing this bill = current warehouse stock + itemQty.
-              const availableStock = dbStock !== null ? (dbStock + itemQty) : null
+              const qtyNum = Math.min(25, Math.max(1, Math.floor(parseFloat(it.quantity) || 1)))
+              while (rawSerials.length < qtyNum) {
+                rawSerials.push('')
+              }
 
               return {
                 material_id: it.material_id ? String(it.material_id) : '',
-                item_name: it.item_name || it.name || '',
-                category_name: it.category_name || (foundMat ? foundMat.category_name : '') || '',
-                category_id: it.category_id ? String(it.category_id) : (foundMat ? String(foundMat.category_id) : ''),
+                item_name: it.item_name || '',
+                category_name: it.category_name || '',
+                category_id: it.category_id ? String(it.category_id) : '',
                 serial_number: it.serial_number || '',
-                serial_numbers: serials,
-                hsn_code: it.hsn_code || (foundMat ? foundMat.hsn_code : '') || '',
-                quantity: itemQty,
-                unit: it.unit || (foundMat ? foundMat.unit : 'NOS') || 'NOS',
-                current_stock: availableStock,
+                serial_numbers: rawSerials,
+                hsn_code: it.hsn_code || '',
+                quantity: parseFloat(it.quantity) || 1,
+                unit: it.unit || 'NOS',
+                current_stock: it.current_stock !== undefined && it.current_stock !== null ? parseFloat(it.current_stock) : null,
                 rate: parseFloat(it.rate) || 0,
                 original_rate: parseFloat(it.original_rate || it.rate) || 0,
-                has_discount: Boolean(it.has_discount || parseFloat(it.discount_percent || 0) > 0),
+                has_discount: Boolean(it.has_discount),
                 discount_percent: parseFloat(it.discount_percent) || 0,
                 discount_amount: parseFloat(it.discount_amount) || 0,
-                tax_inclusive: it.tax_inclusive !== undefined ? Boolean(it.tax_inclusive) : true,
+                tax_inclusive: it.tax_inclusive !== false,
                 tax_rate: parseFloat(it.tax_rate) || 0,
                 tax_amount: parseFloat(it.tax_amount) || 0,
                 amount: parseFloat(it.amount) || 0,
-                has_serial: Boolean(it.has_serial || it.serial_tracking || (serials && serials.filter(Boolean).length > 0)),
+                has_serial: Boolean(it.serial_number || (it.serial_numbers && it.serial_numbers.length > 0)),
                 return_policy: Boolean(it.return_policy)
               }
-            }))
+            })
+            setItems(mappedItems)
           }
-        } else {
-          throw new Error(billData.message || 'Invoice not found')
         }
       } else {
-        // 5. Fetch Next Invoice Number (New Bill)
-        fetchNextInvoiceNumber()
+        await fetchNextQuotationNumber()
       }
 
     } catch (err) {
-      console.error('Error loading initial billing data:', err)
-      Swal.fire({
-        icon: 'error',
-        title: 'Failed to load bill data',
-        text: err.message || 'Could not fetch invoice details.'
-      })
+      console.error('Error loading initial quotation data:', err)
     } finally {
       setIsLoading(false)
     }
   }
 
-  const fetchNextInvoiceNumber = async (selectedDate = null) => {
-    if (isEditMode) return
+  // Fetch Next Formatted Quotation Number
+  const fetchNextQuotationNumber = async (overrideDate = null) => {
     try {
-      const url = selectedDate ? `${API_ENDPOINTS.NEXT_INVOICE_NUMBER}?date=${encodeURIComponent(selectedDate)}` : API_ENDPOINTS.NEXT_INVOICE_NUMBER
-      const res = await fetch(url)
+      const activeDate = overrideDate || quotationDate || new Date().toISOString().split('T')[0]
+      const res = await fetch(`${API_ENDPOINTS.NEXT_QUOTATION_NUMBER}?date=${activeDate}`)
       const data = await res.json()
-      if (data.success && data.nextInvoiceNumber) {
-        setInvoiceNumber(data.nextInvoiceNumber)
+      if (data.success && data.nextQuotationNumber) {
+        setQuotationNumber(data.nextQuotationNumber)
       }
-    } catch (err) {
-      console.error('Error fetching next invoice number:', err)
+    } catch (e) {
+      console.error('Failed to get next quotation number:', e)
     }
   }
 
   useEffect(() => {
     loadInitialData()
   }, [])
-
-  // Auto calculate due date whenever invoice date, settings, or hasDueDate changes
-  useEffect(() => {
-    if (invoiceDate && hasDueDate) {
-      const days = settings?.due_date_days !== undefined ? parseInt(settings.due_date_days, 10) : 15
-      const d = new Date(invoiceDate)
-      d.setDate(d.getDate() + days)
-      setDueDate(d.toISOString().split('T')[0])
-    }
-  }, [invoiceDate, settings, hasDueDate])
 
   // Check if Place of Supply is Intra-State (Tamil Nadu)
   const isIntraState = placeOfSupply.includes('33') || placeOfSupply.toLowerCase().includes('tamil nadu')
@@ -367,9 +351,8 @@ export default function CreateBillPage({ setActiveRoute }) {
   const defaultCgst = settings ? parseFloat(settings.cgst_rate) || 9.00 : 9.00
   const defaultSgst = settings ? parseFloat(settings.sgst_rate) || 9.00 : 9.00
   const defaultIgst = settings ? parseFloat(settings.igst_rate) || 18.00 : 18.00
-  const activeTaxRate = isIntraState ? (defaultCgst + defaultSgst) : defaultIgst
 
-  // Helper to determine effective tax rate for a material item
+  // Helper to determine effective tax rate
   const calculateEffectiveTaxRate = (isTaxEligible, type, intra) => {
     if (type === 'NON_GST') return 0
     if (isTaxEligible === false || isTaxEligible === 0 || isTaxEligible === '0') return 0
@@ -379,8 +362,8 @@ export default function CreateBillPage({ setActiveRoute }) {
     return intra ? (cgst + sgst) : igst
   }
 
-  // Helper to calculate line item pricing and taxes based on tax_inclusive flag
-  const calculateOutwardItem = (item, currentInvoiceType = invoiceType, isIntra = isIntraState) => {
+  // Helper to calculate line item pricing and taxes
+  const calculateQuotationItem = (item, currentType = quotationType, isIntra = isIntraState) => {
     const qty = parseFloat(item.quantity) || 0
     const rawRate = parseFloat(item.original_rate ?? item.rate ?? 0)
     const hasDiscount = Boolean(item.has_discount)
@@ -389,29 +372,26 @@ export default function CreateBillPage({ setActiveRoute }) {
     const effectiveSellingPrice = hasDiscount ? Math.max(0, rawRate - discountAmount) : rawRate
 
     const isTaxInclusive = item.tax_inclusive !== false && item.tax_inclusive !== 0 && item.tax_inclusive !== '0'
-    const effTaxRate = calculateEffectiveTaxRate(true, currentInvoiceType, isIntra)
+    const effTaxRate = calculateEffectiveTaxRate(true, currentType, isIntra)
 
     let unitRate = 0
     let taxable = 0
     let taxAmt = 0
     let totalAmt = 0
 
-    if (currentInvoiceType === 'GST' && effTaxRate > 0) {
+    if (currentType === 'GST' && effTaxRate > 0) {
       if (isTaxInclusive) {
-        // Tax Inclusive: Selling price already includes GST (e.g. 18%) -> Split tax from selling price
         totalAmt = parseFloat((qty * effectiveSellingPrice).toFixed(2))
         unitRate = parseFloat((effectiveSellingPrice / (1 + effTaxRate / 100)).toFixed(2))
         taxable = parseFloat((qty * unitRate).toFixed(2))
         taxAmt = parseFloat((totalAmt - taxable).toFixed(2))
       } else {
-        // Tax Exclusive: Selling price does NOT include GST -> Add 18% extra on top
         unitRate = parseFloat(effectiveSellingPrice.toFixed(2))
         taxable = parseFloat((qty * unitRate).toFixed(2))
         taxAmt = parseFloat((taxable * (effTaxRate / 100)).toFixed(2))
         totalAmt = parseFloat((taxable + taxAmt).toFixed(2))
       }
     } else {
-      // Non-GST or 0% tax
       unitRate = parseFloat(effectiveSellingPrice.toFixed(2))
       taxable = parseFloat((qty * unitRate).toFixed(2))
       taxAmt = 0
@@ -426,66 +406,46 @@ export default function CreateBillPage({ setActiveRoute }) {
       discount_amount: parseFloat(discountAmount.toFixed(2)),
       rate: unitRate,
       tax_inclusive: isTaxInclusive,
-      tax_rate: currentInvoiceType === 'GST' ? effTaxRate : 0,
+      tax_rate: currentType === 'GST' ? effTaxRate : 0,
       tax_amount: taxAmt,
       amount: totalAmt
     }
   }
 
-  // Toggle between NON_GST and GST TAX INVOICE
-  const handleToggleInvoiceType = (newType) => {
-    setInvoiceType(newType)
-    setItems(prevItems => prevItems.map(it => calculateOutwardItem(it, newType, isIntraState)))
+  // Toggle between NON_GST and GST TAX QUOTATION
+  const handleToggleQuotationType = (newType) => {
+    setQuotationType(newType)
+    setItems(prevItems => prevItems.map(it => calculateQuotationItem(it, newType, isIntraState)))
   }
 
-  // Handle Place of Supply Change (Supports full clear)
+  // Handle Place of Supply Change
   const handlePlaceOfSupplyChange = (newPlace) => {
     const val = newPlace || ''
     setPlaceOfSupply(val)
     const newIsIntra = !val || val.includes('33') || val.toLowerCase().includes('tamil nadu')
-    setItems(prevItems => prevItems.map(it => calculateOutwardItem(it, invoiceType, newIsIntra)))
+    setItems(prevItems => prevItems.map(it => calculateQuotationItem(it, quotationType, newIsIntra)))
   }
 
-  // Add Keyboard Shortcut Listeners
+  // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Ctrl + S or Ctrl + Enter: Save
       if ((e.ctrlKey || e.metaKey) && (e.key === 'Enter' || e.key === 's')) {
         e.preventDefault()
         handleSubmit(e)
-      }
-      // Alt + A or F2: Add Line Item
-      else if ((e.altKey && (e.key === 'a' || e.key === 'A')) || e.key === 'F2') {
+      } else if ((e.altKey && (e.key === 'a' || e.key === 'A')) || e.key === 'F2') {
         e.preventDefault()
         handleAddItem()
-      }
-      // Alt + R: Reset
-      else if (e.altKey && (e.key === 'r' || e.key === 'R')) {
+      } else if (e.altKey && (e.key === 'r' || e.key === 'R')) {
         e.preventDefault()
         handleReset()
-      }
-      // F8: Cash
-      else if (e.key === 'F8') {
-        e.preventDefault()
-        setPaymentMode('Cash')
-      }
-      // F9: UPI
-      else if (e.key === 'F9') {
-        e.preventDefault()
-        setPaymentMode('UPI')
-      }
-      // F10: Credit
-      else if (e.key === 'F10') {
-        e.preventDefault()
-        setPaymentMode('Credit')
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [items, customerName, customerPhone, customerAddress, sameAsDelivery, deliveryAddress, customerGstin, placeOfSupply, invoiceNumber, invoiceDate, hasDueDate, dueDate, invoiceType, copyType, paymentMode, paymentStatus, notes, settings])
+  }, [items, customerName, customerPhone, customerAddress, sameAsDelivery, deliveryAddress, customerGstin, placeOfSupply, quotationNumber, quotationDate, quotationType, copyType, notes, settings])
 
-  // Handle Category Selection for an item row
+  // Handle Category Selection
   const handleCategorySelect = (index, categoryId) => {
     const selectedCat = categories.find(c => String(c.id) === String(categoryId))
     setItems(prevItems => {
@@ -508,7 +468,6 @@ export default function CreateBillPage({ setActiveRoute }) {
       let newAmount = currentItem.amount
       let newHasSerial = currentItem.has_serial
 
-      // If category changes and selected material doesn't belong to it, reset product selection
       if (categoryId && currentItem.material_id) {
         const mat = materials.find(m => String(m.id) === String(currentItem.material_id))
         if (mat && String(mat.category_id) !== String(categoryId)) {
@@ -551,43 +510,13 @@ export default function CreateBillPage({ setActiveRoute }) {
     })
   }
 
-  // Handle Material Selection for an item row with duplicate detection, stock check and discount
+  // Handle Material Selection
   const handleMaterialSelect = (index, materialId) => {
     const selectedMat = materials.find(m => String(m.id) === String(materialId))
     
     if (selectedMat) {
-      const curStock = parseFloat(selectedMat.current_stock ?? selectedMat.opening_stock ?? 0)
-      if (curStock <= 0) {
-        Swal.mixin({
-          toast: true,
-          position: 'top-end',
-          showConfirmButton: false,
-          timer: 4000,
-          timerProgressBar: true
-        }).fire({
-          icon: 'error',
-          title: `Out of Stock: "${selectedMat.name}" has 0 stock!`
-        })
-      }
-
-      // Fetch available warehouse serials if serial tracking enabled
       if (selectedMat.serial_tracking || selectedMat.has_serial) {
         fetchAvailableSerialsForMaterial(selectedMat.id)
-      }
-
-      // Check if item already selected in another row
-      const isDuplicate = items.some((it, i) => i !== index && String(it.material_id) === String(materialId))
-      if (isDuplicate) {
-        Swal.mixin({
-          toast: true,
-          position: 'top-end',
-          showConfirmButton: false,
-          timer: 3000,
-          timerProgressBar: true
-        }).fire({
-          icon: 'info',
-          title: `"${selectedMat.name}" is already in the bill.`
-        })
       }
     }
 
@@ -598,138 +527,104 @@ export default function CreateBillPage({ setActiveRoute }) {
         const qty = Math.min(25, Math.max(1, parseFloat(updated[index].quantity) || 1))
         const hasSerial = Boolean(selectedMat.serial_tracking || selectedMat.has_serial)
         const qtyCount = Math.min(25, Math.max(1, Math.floor(qty)))
+        const sArray = Array(qtyCount).fill('')
 
-        let currentSerials = updated[index].serial_numbers || []
-        if (hasSerial) {
-          currentSerials = Array.from({ length: qtyCount }, (_, i) => currentSerials[i] || '')
-        }
+        const rawRate = parseFloat(selectedMat.selling_price) || 0
+        const hasDiscount = Boolean(selectedMat.has_discount)
+        const discountPercent = hasDiscount ? (parseFloat(selectedMat.discount_percent) || 0) : 0
 
-        const rawItem = {
+        const baseItem = {
           ...updated[index],
-          material_id: selectedMat.id,
-          item_name: selectedMat.name,
-          current_stock: curStock,
-          category_id: selectedMat.category_id ? String(selectedMat.category_id) : updated[index].category_id,
-          category_name: selectedMat.category_name || updated[index].category_name || '',
+          material_id: String(selectedMat.id),
+          item_name: selectedMat.name || '',
+          category_id: selectedMat.category_id ? String(selectedMat.category_id) : '',
+          category_name: selectedMat.category_name || '',
           hsn_code: selectedMat.hsn_code || '',
           unit: selectedMat.unit || 'NOS',
-          quantity: qty,
-          original_rate: parseFloat(selectedMat.selling_price) || 0,
-          has_discount: Boolean(selectedMat.has_discount),
-          discount_percent: selectedMat.has_discount ? (parseFloat(selectedMat.discount_percent) || 0) : 0,
-          tax_inclusive: selectedMat.tax_inclusive !== false && selectedMat.tax_inclusive !== 0 && selectedMat.tax_inclusive !== '0',
+          current_stock: curStock,
+          original_rate: rawRate,
+          rate: rawRate,
+          has_discount: hasDiscount,
+          discount_percent: discountPercent,
           has_serial: hasSerial,
-          serial_numbers: currentSerials,
-          serial_number: currentSerials.filter(Boolean).join(', '),
-          return_policy: Boolean(selectedMat.return_policy)
+          serial_numbers: sArray,
+          serial_number: '',
+          tax_inclusive: true
         }
 
-        updated[index] = calculateOutwardItem(rawItem, invoiceType, isIntraState)
+        updated[index] = calculateQuotationItem(baseItem, quotationType, isIntraState)
       } else {
         updated[index] = {
           ...updated[index],
           material_id: '',
           item_name: '',
           current_stock: null,
-          serial_number: '',
-          serial_numbers: [''],
-          hsn_code: '',
           rate: 0,
           original_rate: 0,
           has_discount: false,
           discount_percent: 0,
           discount_amount: 0,
-          unit: 'NOS',
-          tax_inclusive: true,
-          tax_rate: invoiceType === 'GST' ? activeTaxRate : 0,
           tax_amount: 0,
           amount: 0,
           has_serial: false,
-          return_policy: false
+          serial_numbers: [''],
+          serial_number: ''
         }
       }
       return updated
     })
   }
 
-  // Handle Input Changes on Item Row
+  // Handle generic Item field change
   const handleItemChange = (index, field, value) => {
     setItems(prevItems => {
       const updated = [...prevItems]
-      let finalVal = value
+      let currentItem = { ...updated[index], [field]: value }
 
       if (field === 'quantity') {
-        const num = parseFloat(value)
-        if (isNaN(num) || num < 1) {
-          finalVal = value === '' ? '' : 1
-        } else if (num > 25) {
-          finalVal = 25
-        } else {
-          finalVal = Math.floor(num)
+        const numQty = parseFloat(value) || 0
+        const cappedQty = Math.min(25, Math.max(0, numQty))
+        currentItem.quantity = cappedQty
+
+        if (currentItem.has_serial) {
+          const qtyCount = Math.min(25, Math.max(1, Math.floor(cappedQty || 1)))
+          const curSerials = currentItem.serial_numbers || ['']
+          const newSerials = [...curSerials]
+          if (newSerials.length < qtyCount) {
+            while (newSerials.length < qtyCount) newSerials.push('')
+          } else if (newSerials.length > qtyCount) {
+            newSerials.splice(qtyCount)
+          }
+          currentItem.serial_numbers = newSerials
+          currentItem.serial_number = newSerials.filter(Boolean).join(', ')
         }
       }
 
-      let current = { ...updated[index], [field]: finalVal }
-
-      // Adjust serial numbers array length if quantity changes and has_serial is enabled
-      if (field === 'quantity' && current.has_serial) {
-        const qtyCount = Math.min(25, Math.max(1, Math.floor(parseFloat(finalVal) || 1)))
-        const existingSerials = current.serial_numbers || []
-        current.serial_numbers = Array.from({ length: qtyCount }, (_, i) => existingSerials[i] || '')
-        current.serial_number = current.serial_numbers.filter(Boolean).join(', ')
+      if (field === 'has_discount' && !value) {
+        currentItem.discount_percent = 0
+        currentItem.discount_amount = 0
       }
 
-      updated[index] = calculateOutwardItem(current, invoiceType, isIntraState)
+      updated[index] = calculateQuotationItem(currentItem, quotationType, isIntraState)
       return updated
     })
   }
 
-  // Handle individual serial number change with duplicate toast warning
-  const handleSerialNumberChange = (itemIndex, serialIndex, val) => {
-    const trimmedVal = (val || '').trim().toLowerCase()
-
-    // Live Duplicate Check across all line items and slots
-    if (trimmedVal) {
-      let isDuplicate = false
-      items.forEach((it, iIdx) => {
-        const itSerials = it.serial_numbers && it.serial_numbers.length > 0
-          ? it.serial_numbers
-          : (it.serial_number ? [it.serial_number] : [])
-        
-        itSerials.forEach((sn, sIdx) => {
-          if (iIdx === itemIndex && sIdx === serialIndex) return
-          if ((sn || '').trim().toLowerCase() === trimmedVal) {
-            isDuplicate = true
-          }
-        })
-      })
-
-      if (isDuplicate) {
-        Swal.mixin({
-          toast: true,
-          position: 'top-end',
-          showConfirmButton: false,
-          timer: 3500,
-          timerProgressBar: true
-        }).fire({
-          icon: 'warning',
-          title: 'Duplicate Serial Number!',
-          text: `"${val.trim()}" is already entered in another slot in this invoice.`
-        })
-      }
-    }
-
-    setItems(prev => {
-      const updated = [...prev]
-      const serials = [...(updated[itemIndex].serial_numbers || [])]
-      serials[serialIndex] = val
-      updated[itemIndex].serial_numbers = serials
-      updated[itemIndex].serial_number = serials.filter(Boolean).join(', ')
+  // Handle Serial Number Change
+  const handleSerialNumberChange = (itemIndex, serialIndex, value) => {
+    setItems(prevItems => {
+      const updated = [...prevItems]
+      const currentItem = { ...updated[itemIndex] }
+      const newSerials = [...(currentItem.serial_numbers || [''])]
+      newSerials[serialIndex] = value
+      currentItem.serial_numbers = newSerials
+      currentItem.serial_number = newSerials.filter(Boolean).join(', ')
+      updated[itemIndex] = currentItem
       return updated
     })
 
-    if (val.trim()) {
-      verifySerialWithDb(val.trim())
+    if (value && value.trim()) {
+      verifySerialWithDb(value.trim())
     }
   }
 
@@ -754,7 +649,7 @@ export default function CreateBillPage({ setActiveRoute }) {
         discount_percent: 0,
         discount_amount: 0,
         tax_inclusive: true,
-        tax_rate: invoiceType === 'GST' ? activeTaxRate : 0,
+        tax_rate: quotationType === 'GST' ? (isIntraState ? (defaultCgst + defaultSgst) : defaultIgst) : 0,
         tax_amount: 0,
         amount: 0,
         has_serial: false,
@@ -795,7 +690,7 @@ export default function CreateBillPage({ setActiveRoute }) {
       Swal.fire({
         icon: 'warning',
         title: 'At least one item required',
-        text: 'A bill must have at least one line item.',
+        text: 'A quotation must have at least one line item.',
         confirmButtonColor: '#043486'
       })
       return
@@ -815,23 +710,12 @@ export default function CreateBillPage({ setActiveRoute }) {
     })
   }
 
-  // Aggregate Bill Calculations
-  const taxableAmount = items.reduce((sum, item) => sum + ((parseFloat(item.quantity) || 0) * (parseFloat(item.rate) || 0)), 0)
-  const totalTax = invoiceType === 'GST' ? items.reduce((sum, item) => sum + (parseFloat(item.tax_amount) || 0), 0) : 0
-  const totalDiscountSavings = items.reduce((sum, item) => sum + ((parseFloat(item.discount_amount) || 0) * (parseFloat(item.quantity) || 1)), 0)
-  const totalGrossOrigAmt = items.reduce((sum, item) => sum + (((parseFloat(item.original_rate) || parseFloat(item.rate) || 0)) * (parseFloat(item.quantity) || 1)), 0)
-
-  const cgstAmount = (invoiceType === 'GST' && isIntraState) ? (totalTax / 2) : 0
-  const sgstAmount = (invoiceType === 'GST' && isIntraState) ? (totalTax / 2) : 0
-  const igstAmount = (invoiceType === 'GST' && !isIntraState) ? totalTax : 0
-
-  const rawGrandTotal = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0)
-  const roundedGrandTotal = Math.round(rawGrandTotal)
-  const roundOff = parseFloat((roundedGrandTotal - rawGrandTotal).toFixed(2))
-  const amountInWords = numberToIndianRupees(roundedGrandTotal)
-
-  // Reset form
+  // Reset Form
   const handleReset = () => {
+    if (!isEditMode) {
+      setQuotationDate(new Date().toISOString().split('T')[0])
+      fetchNextQuotationNumber()
+    }
     setCustomerType('Individual')
     setCustomerName('')
     setCustomerPhone('')
@@ -840,15 +724,7 @@ export default function CreateBillPage({ setActiveRoute }) {
     setSameAsDelivery(true)
     setDeliveryAddress('')
     setCustomerGstin('')
-    setPlaceOfSupply('33 - Tamil Nadu')
-    setHasDueDate(true)
-    const days = settings?.due_date_days !== undefined ? parseInt(settings.due_date_days, 10) : 15
-    const d = new Date()
-    d.setDate(d.getDate() + days)
-    setDueDate(d.toISOString().split('T')[0])
     setNotes('')
-    setPaymentMode('')
-    setPaymentStatus('Pending')
     setItems([
       {
         material_id: '',
@@ -867,33 +743,93 @@ export default function CreateBillPage({ setActiveRoute }) {
         discount_percent: 0,
         discount_amount: 0,
         tax_inclusive: true,
-        tax_rate: invoiceType === 'GST' ? activeTaxRate : 0,
+        tax_rate: 18.00,
         tax_amount: 0,
         amount: 0,
         has_serial: false,
         return_policy: false
       }
     ])
-    fetchNextInvoiceNumber()
   }
 
-  // Validate Bill before saving
-  const validateBill = () => {
-    if (!customerName.trim()) {
+  // Totals Calculation
+  const totalGrossOrigAmt = useMemo(() => {
+    return items.reduce((acc, it) => {
+      const orig = parseFloat(it.original_rate ?? it.rate ?? 0)
+      const q = parseFloat(it.quantity) || 0
+      return acc + (orig * q)
+    }, 0)
+  }, [items])
+
+  const totalDiscountSavings = useMemo(() => {
+    return items.reduce((acc, it) => {
+      const discAmt = parseFloat(it.discount_amount) || 0
+      const q = parseFloat(it.quantity) || 0
+      return acc + (discAmt * q)
+    }, 0)
+  }, [items])
+
+  const taxableAmount = useMemo(() => {
+    return items.reduce((acc, it) => {
+      const qty = parseFloat(it.quantity) || 0
+      const rate = parseFloat(it.rate) || 0
+      return acc + (qty * rate)
+    }, 0)
+  }, [items])
+
+  const cgstAmount = useMemo(() => {
+    if (quotationType === 'NON_GST' || !isIntraState) return 0
+    return parseFloat((taxableAmount * (defaultCgst / 100)).toFixed(2))
+  }, [quotationType, isIntraState, taxableAmount, defaultCgst])
+
+  const sgstAmount = useMemo(() => {
+    if (quotationType === 'NON_GST' || !isIntraState) return 0
+    return parseFloat((taxableAmount * (defaultSgst / 100)).toFixed(2))
+  }, [quotationType, isIntraState, taxableAmount, defaultSgst])
+
+  const igstAmount = useMemo(() => {
+    if (quotationType === 'NON_GST' || isIntraState) return 0
+    return parseFloat((taxableAmount * (defaultIgst / 100)).toFixed(2))
+  }, [quotationType, isIntraState, taxableAmount, defaultIgst])
+
+  const totalTax = useMemo(() => {
+    if (quotationType === 'NON_GST') return 0
+    return isIntraState ? (cgstAmount + sgstAmount) : igstAmount
+  }, [quotationType, isIntraState, cgstAmount, sgstAmount, igstAmount])
+
+  const rawGrandTotal = useMemo(() => {
+    return taxableAmount + totalTax
+  }, [taxableAmount, totalTax])
+
+  const roundedGrandTotal = useMemo(() => {
+    return Math.round(rawGrandTotal)
+  }, [rawGrandTotal])
+
+  const roundOff = useMemo(() => {
+    return parseFloat((roundedGrandTotal - rawGrandTotal).toFixed(2))
+  }, [roundedGrandTotal, rawGrandTotal])
+
+  const amountInWords = useMemo(() => {
+    return numberToIndianRupees(roundedGrandTotal)
+  }, [roundedGrandTotal])
+
+  // Validation
+  const validateQuotation = () => {
+    if (!quotationNumber.trim()) {
       Swal.fire({
         icon: 'warning',
-        title: 'Customer Name Required',
-        text: 'Please enter customer / client full name.',
+        title: 'Quotation Number Missing',
+        text: 'Please enter a valid quotation number.',
         confirmButtonColor: '#043486'
       })
       return false
     }
 
-    if (customerPhone.trim() && customerPhone.trim().length !== 10) {
+    if (!customerName.trim()) {
       Swal.fire({
         icon: 'warning',
-        title: 'Invalid Mobile Number',
-        text: 'Mobile number must be exactly 10 digits.',
+        title: 'Customer Name Required',
+        text: 'Please enter the customer / client name.',
         confirmButtonColor: '#043486'
       })
       return false
@@ -913,7 +849,7 @@ export default function CreateBillPage({ setActiveRoute }) {
       Swal.fire({
         icon: 'warning',
         title: 'No Items Added',
-        text: 'Please add at least one line item to the bill.',
+        text: 'Please add at least one line item to the quotation.',
         confirmButtonColor: '#043486'
       })
       return false
@@ -930,73 +866,16 @@ export default function CreateBillPage({ setActiveRoute }) {
         })
         return false
       }
-
-      // Check Out of Stock and Insufficient Stock for warehouse inventory items
-      if (it.material_id) {
-        const foundMat = materials.find(m => String(m.id) === String(it.material_id))
-        const rawStock = it.current_stock !== null && it.current_stock !== undefined
-          ? parseFloat(it.current_stock)
-          : (foundMat ? parseFloat(foundMat.current_stock ?? foundMat.opening_stock ?? 0) : null)
-
-        const curStock = rawStock !== null ? rawStock : 0
-        const reqQty = parseFloat(it.quantity) || 1
-
-        if (rawStock !== null && curStock <= 0) {
-          Swal.fire({
-            icon: 'error',
-            title: 'Product Out of Stock!',
-            html: `Cannot bill <strong>"${it.item_name || 'Selected Material'}"</strong> because available stock is <strong>0 ${it.unit || 'NOS'}</strong>.<br/><br/>Please update inventory or remove item before creating outward bill.`,
-            confirmButtonColor: '#d33'
-          })
-          return false
-        }
-        if (rawStock !== null && reqQty > curStock) {
-          Swal.fire({
-            icon: 'warning',
-            title: 'Insufficient Stock Quantity!',
-            html: `Product <strong>"${it.item_name || 'Selected Material'}"</strong> only has <strong>${curStock} ${it.unit || 'NOS'}</strong> in stock, but requested quantity is <strong>${reqQty}</strong>.`,
-            confirmButtonColor: '#043486'
-          })
-          return false
-        }
-      }
-
-      if (it.has_serial) {
-        const qtyCount = Math.min(25, Math.max(1, Math.floor(parseFloat(it.quantity) || 1)))
-        for (let sIdx = 0; sIdx < qtyCount; sIdx++) {
-          const serialVal = it.serial_numbers?.[sIdx] || (sIdx === 0 ? it.serial_number : '') || ''
-          if (!serialVal.trim()) {
-            Swal.fire({
-              icon: 'warning',
-              title: `Serial Number Missing!`,
-              text: `Item #${i + 1} (${it.item_name || 'Item'}) requires ${qtyCount} serial numbers. Slot #${sIdx + 1} is empty.`,
-              confirmButtonColor: '#043486'
-            })
-            return false
-          }
-        }
-      }
-    }
-
-    if (duplicateSerials.size > 0) {
-      const dupeList = Array.from(duplicateSerials).join(', ')
-      Swal.fire({
-        icon: 'error',
-        title: 'Duplicate Serial Numbers Found!',
-        text: `The following serial numbers are duplicated in this bill: ${dupeList}. Each serial number must be unique.`,
-        confirmButtonColor: '#043486'
-      })
-      return false
     }
 
     return true
   }
 
-  // Handle Form Submission (Save & Print or Save & New)
+  // Handle Form Submission
   const handleSubmit = async (e, isSaveAndNew = false) => {
     if (e && e.preventDefault) e.preventDefault()
 
-    if (!validateBill()) return
+    if (!validateQuotation()) return
 
     const validItems = items.map(it => {
       const qtyCount = Math.min(25, Math.max(1, Math.floor(parseFloat(it.quantity) || 1)))
@@ -1028,11 +907,9 @@ export default function CreateBillPage({ setActiveRoute }) {
 
     try {
       const payload = {
-        invoice_number: invoiceNumber.trim(),
-        invoice_date: invoiceDate,
-        due_date: hasDueDate ? dueDate : null,
-        has_due_date: hasDueDate,
-        invoice_type: invoiceType,
+        quotation_number: quotationNumber.trim(),
+        quotation_date: quotationDate,
+        quotation_type: quotationType,
         copy_type: copyType,
         customer_type: customerType || 'Individual',
         customer_name: customerName.trim(),
@@ -1051,83 +928,58 @@ export default function CreateBillPage({ setActiveRoute }) {
         igst_rate: defaultIgst,
         igst_amount: parseFloat(igstAmount.toFixed(2)),
         total_tax: parseFloat(totalTax.toFixed(2)),
-        round_off: roundOff,
-        total_amount: roundedGrandTotal,
+        round_off: parseFloat(roundOff.toFixed(2)),
+        total_amount: parseFloat(roundedGrandTotal.toFixed(2)),
         amount_in_words: amountInWords,
-        payment_mode: paymentMode,
-        payment_status: paymentStatus,
+        quotation_status: quotationStatus || 'Draft',
         notes: notes.trim(),
         items: validItems
       }
 
-      const endpoint = isEditMode && editId ? API_ENDPOINTS.BILL_BY_ID(editId) : API_ENDPOINTS.BILLS
-      const method = isEditMode && editId ? 'PUT' : 'POST'
+      const url = isEditMode
+        ? API_ENDPOINTS.QUOTATION_BY_ID(editId)
+        : API_ENDPOINTS.QUOTATIONS
 
-      const res = await fetch(endpoint, {
+      const method = isEditMode ? 'PUT' : 'POST'
+
+      const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
 
-      const data = await res.json()
+      const result = await response.json()
 
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || (isEditMode ? 'Failed to update invoice' : 'Failed to save bill'))
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Failed to save quotation.')
       }
 
-      if (isEditMode) {
-        Swal.fire({
-          icon: 'success',
-          title: 'Invoice Updated Successfully!',
-          text: `Invoice #${invoiceNumber} has been updated.`,
-          confirmButtonColor: '#043486'
-        }).then(() => {
-          navigate('/outward-list')
-        })
-        return
+      const savedQuotation = {
+        id: result.quotation_id || (isEditMode ? parseInt(editId, 10) : result.data?.id),
+        ...payload,
+        items: validItems
       }
 
-      if (isSaveAndNew) {
-        Swal.mixin({
-          toast: true,
-          position: 'top-end',
-          showConfirmButton: false,
-          timer: 3000,
-          timerProgressBar: true
-        }).fire({
-          icon: 'success',
-          title: `Invoice ${invoiceNumber} saved! Ready for next.`
-        })
-        handleReset()
-      } else {
-        const savedBillData = {
-          ...payload,
-          id: data.billId,
-          items: validItems
-        }
-        setPreviewBill(savedBillData)
+      setPreviewQuotation(savedQuotation)
 
-        Swal.fire({
-          icon: 'success',
-          title: 'Invoice Created Successfully!',
-          text: `Invoice #${invoiceNumber} saved. Auto-dispatching email & opening print...`,
-          showConfirmButton: false,
-          timer: 1200
-        })
+      // Success Alert with simple OK button that navigates to quotations list
+      await Swal.fire({
+        icon: 'success',
+        title: isEditMode ? 'Quotation Updated!' : 'Quotation Generated Successfully!',
+        html: `Quotation <strong>#${payload.quotation_number}</strong> of <strong>₹${roundedGrandTotal.toLocaleString('en-IN')}</strong> has been saved.`,
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#043486',
+        allowEnterKey: true
+      })
 
-        setTimeout(() => {
-          window.print()
-          handleReset()
-          loadInitialData()
-        }, 500)
-      }
+      navigate('/quotations/list')
 
     } catch (err) {
-      console.error('Error saving invoice:', err)
+      console.error('Error saving quotation:', err)
       Swal.fire({
         icon: 'error',
-        title: 'Error Saving Invoice',
-        text: err.message || 'Unable to save bill to database.',
+        title: 'Error Saving Quotation',
+        text: err.message || 'Unable to save quotation to database.',
         confirmButtonColor: '#043486'
       })
     } finally {
@@ -1156,11 +1008,11 @@ export default function CreateBillPage({ setActiveRoute }) {
       const discRate = hasDisc ? (origRate * (1 - discPct / 100)).toFixed(2) : origRate.toFixed(2)
       const curStock = parseFloat(m.current_stock ?? m.opening_stock ?? 0)
       const isOut = curStock <= 0
-      const stockBadge = isOut ? '🔴 Out of Stock (0 in stock)' : `🟢 Stock: ${curStock} ${m.unit || 'NOS'}`
+      const stockBadge = isOut ? '⚪ (0 stock)' : `🟢 Stock: ${curStock} ${m.unit || 'NOS'}`
 
       return {
         value: m.id,
-        label: isOut ? `${m.name} [Out of Stock]` : m.name,
+        label: m.name,
         subLabel: `${stockBadge} • ${m.category_name ? `[${m.category_name}] • ` : ''}${hasDisc ? `₹${discRate} (Disc ${discPct}% from ₹${origRate})` : `₹${m.selling_price}`} / ${m.unit || 'NOS'}${m.hsn_code ? ` • HSN: ${m.hsn_code}` : ''}`
       }
     })
@@ -1174,23 +1026,23 @@ export default function CreateBillPage({ setActiveRoute }) {
   return (
     <div className="space-y-6 font-['Poppins',sans-serif] pb-16 animate-in fade-in duration-200">
       
-      {/* 1. Page Header (Transparent Top Bar with Outward List Button) */}
+      {/* 1. Page Header (Transparent Top Bar with Quotations List Button) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-200/80 dark:border-slate-800 pb-3">
         <div className="flex items-center gap-3">
           {isEditMode && (
             <button
               type="button"
-              onClick={() => navigate('/outward-list')}
+              onClick={() => navigate('/quotations/list')}
               className="p-2 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-none transition-colors cursor-pointer"
-              title="Back to Outward List"
+              title="Back to Quotations List"
             >
               <ArrowLeft size={18} />
             </button>
           )}
           <div>
             <h1 className="text-xl font-bold tracking-tight text-[#292424] dark:text-white uppercase flex items-center gap-2.5">
-              <Receipt className="text-[#043486] dark:text-blue-400" size={22} />
-              <span>{isEditMode ? `EDIT INVOICE (#${invoiceNumber})` : 'CREATE NEW INVOICE'}</span>
+              <FileText className="text-[#043486] dark:text-blue-400" size={22} />
+              <span>{isEditMode ? `EDIT QUOTATION (#${quotationNumber})` : 'CREATE NEW QUOTATION'}</span>
               {isEditMode && (
                 <span className="px-2 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-300 text-[10px] font-bold uppercase">
                   Edit Mode
@@ -1198,63 +1050,63 @@ export default function CreateBillPage({ setActiveRoute }) {
               )}
             </h1>
             <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
-              {isEditMode ? 'Modify outward bill details, line items, and update customer invoice.' : 'Generate customer invoice with automated GST taxes and live currency calculation.'}
+              {isEditMode ? 'Modify quotation details, line items, and update customer estimate.' : 'Generate customer quotation estimate with automated GST taxes, PDF generation and email delivery.'}
             </p>
           </div>
         </div>
 
-        {/* Right Side: OUTWARD LIST Action Button */}
+        {/* Right Side: QUOTATIONS LIST Action Button */}
         <div className="flex items-center gap-2.5">
           <Button
             variant="list"
             icon={List}
-            onClick={() => navigate('/outward-list')}
+            onClick={() => navigate('/quotations/list')}
             className="text-xs font-semibold"
           >
-            OUTWARD LIST
+            QUOTATIONS LIST
           </Button>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
 
-        {/* 2. Responsive Split Screen Layout (Left 8 Cols: Forms & Items | Right 4 Cols: Sticky Live Summary) */}
+        {/* 2. Responsive Split Screen Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
           {/* ================= LEFT MAIN COLUMN (8 COLS) ================= */}
           <div className="lg:col-span-8 space-y-6">
 
-            {/* A. Invoice Specifications */}
+            {/* A. Quotation Specifications */}
             <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-6 shadow-sm space-y-5 transition-colors">
               <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
                 <h2 className="text-sm font-bold text-[#043486] dark:text-blue-400 tracking-wide uppercase flex items-center gap-2">
                   <FileText size={16} />
-                  <span>Invoice Specifications</span>
+                  <span>Quotation Specifications</span>
                 </h2>
 
                 {/* Non-GST / GST Toggle */}
                 <div className="flex items-center bg-gray-100 dark:bg-slate-800 p-1 rounded-none border border-gray-200 dark:border-slate-700">
                   <button
                     type="button"
-                    onClick={() => handleToggleInvoiceType('NON_GST')}
+                    onClick={() => handleToggleQuotationType('NON_GST')}
                     className={`px-3.5 py-1.5 text-xs font-semibold rounded-none transition-all cursor-pointer ${
-                      invoiceType === 'NON_GST'
+                      quotationType === 'NON_GST'
                         ? 'bg-[#043486] text-white shadow-sm'
                         : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
                     }`}
                   >
-                    NON-GST INVOICE
+                    NON-GST QUOTATION
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleToggleInvoiceType('GST')}
+                    onClick={() => handleToggleQuotationType('GST')}
                     className={`px-3.5 py-1.5 text-xs font-semibold rounded-none transition-all cursor-pointer ${
-                      invoiceType === 'GST'
+                      quotationType === 'GST'
                         ? 'bg-[#043486] text-white shadow-sm'
                         : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
                     }`}
                   >
-                    GST TAX INVOICE
+                    GST TAX QUOTATION
                   </button>
                 </div>
               </div>
@@ -1262,16 +1114,16 @@ export default function CreateBillPage({ setActiveRoute }) {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
-                    Invoice Date <span className="text-red-500 font-bold">*</span>
+                    Quotation Date <span className="text-red-500 font-bold">*</span>
                   </label>
                   <input
                     type="date"
-                    value={invoiceDate}
+                    value={quotationDate}
                     onChange={(e) => {
                       const newDate = e.target.value
-                      setInvoiceDate(newDate)
+                      setQuotationDate(newDate)
                       if (!isEditMode && newDate) {
-                        fetchNextInvoiceNumber(newDate)
+                        fetchNextQuotationNumber(newDate)
                       }
                     }}
                     required
@@ -1304,59 +1156,6 @@ export default function CreateBillPage({ setActiveRoute }) {
                     <option value="Company">Company (Business / Firm)</option>
                   </select>
                 </div>
-
-                {/* Due Date Row Checkbox + Editable Input */}
-                <div className="sm:col-span-3 pt-3 border-t border-gray-100 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50/60 dark:bg-slate-950/40 p-3">
-                  <Checkbox
-                    checked={hasDueDate}
-                    onChange={(e) => {
-                      const isChecked = e.target.checked
-                      setHasDueDate(isChecked)
-                      if (isChecked) {
-                        const days = settings?.due_date_days !== undefined ? parseInt(settings.due_date_days, 10) : 15
-                        const d = new Date(invoiceDate)
-                        d.setDate(d.getDate() + days)
-                        setDueDate(d.toISOString().split('T')[0])
-                      } else {
-                        setDueDate('')
-                      }
-                    }}
-                    label="Enable Payment Due Date"
-                    description={`(Default: ${settings?.due_date_days || 15} days from invoice date)`}
-                  />
-
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs font-semibold text-gray-700 dark:text-slate-300 whitespace-nowrap">
-                      Due Date:
-                    </label>
-                    <input
-                      type="date"
-                      value={dueDate}
-                      onChange={(e) => {
-                        const val = e.target.value
-                        setDueDate(val)
-                        if (val) {
-                          setHasDueDate(true)
-                        }
-                      }}
-                      placeholder="dd-mm-yyyy"
-                      className="px-3 py-1.5 text-xs text-[#292424] dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] font-medium"
-                    />
-                    {dueDate && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDueDate('')
-                          setHasDueDate(false)
-                        }}
-                        title="Clear Due Date"
-                        className="text-[10px] font-bold text-gray-400 hover:text-red-600 px-1 transition-colors cursor-pointer"
-                      >
-                        ✕ Clear
-                      </button>
-                    )}
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -1365,7 +1164,7 @@ export default function CreateBillPage({ setActiveRoute }) {
               <div className="flex items-center gap-2 pb-3 border-b border-gray-200 dark:border-slate-800">
                 <User size={16} className="text-[#043486] dark:text-blue-400" />
                 <h2 className="text-sm font-bold text-[#043486] dark:text-blue-400 tracking-wide uppercase">
-                  Bill To / Customer Details
+                  Estimate For / Customer Details
                 </h2>
               </div>
 
@@ -1412,13 +1211,13 @@ export default function CreateBillPage({ setActiveRoute }) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1.5">
-                      Customer Email ID <span className="text-gray-400 text-[11px] font-normal">(Optional)</span>
+                      Customer Email ID <span className="text-gray-400 text-[11px] font-normal">(For Automatic Email Dispatch)</span>
                     </label>
                     <input
                       type="email"
                       value={customerEmail}
                       onChange={(e) => setCustomerEmail(e.target.value)}
-                      placeholder="Enter customer email address (e.g. client@gmail.com)"
+                      placeholder="Enter customer email (e.g. client@example.com)"
                       className="w-full px-4 py-3 text-sm text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 font-medium placeholder:text-gray-400 dark:placeholder:text-slate-500"
                     />
                   </div>
@@ -1481,8 +1280,8 @@ export default function CreateBillPage({ setActiveRoute }) {
           {/* ================= RIGHT STICKY SUMMARY COLUMN (4 COLS) ================= */}
           <div className="lg:col-span-4 lg:sticky lg:top-20 space-y-4">
             <BillSummaryCard
-              title="Invoice Summary"
-              billNumber={invoiceNumber}
+              title="Quotation Summary"
+              billNumber={quotationNumber}
               totalGrossOrigAmt={totalGrossOrigAmt}
               totalDiscountSavings={totalDiscountSavings}
               taxableAmount={taxableAmount}
@@ -1500,16 +1299,16 @@ export default function CreateBillPage({ setActiveRoute }) {
               bankDetails={settings}
               isSaving={isSaving}
               isEditMode={isEditMode}
-              saveButtonText={isEditMode ? 'Update Invoice (Ctrl+Enter)' : 'Save Invoice (Ctrl+Enter)'}
+              saveButtonText={isEditMode ? 'Update Quotation (Ctrl+Enter)' : 'Save Quotation (Ctrl+Enter)'}
               onSave={(e) => handleSubmit(e, false)}
               onReset={handleReset}
-              onCancel={isEditMode ? () => navigate('/outward-list') : null}
+              onCancel={isEditMode ? () => navigate('/quotations/list') : null}
             />
           </div>
 
         </div>
 
-        {/* ================= MIDDLE SECTION: 100% FULL WIDTH INVOICE LINE ITEMS ================= */}
+        {/* ================= MIDDLE SECTION: 100% FULL WIDTH LINE ITEMS ================= */}
         <OutwardLineItems
           items={items}
           categoryOptions={categoryOptions}
@@ -1533,12 +1332,23 @@ export default function CreateBillPage({ setActiveRoute }) {
 
       </form>
 
-      {/* Direct Printable Invoice Portal to document.body for reliable A4 print without blank page */}
-      {previewBill && typeof document !== 'undefined' && createPortal(
-        <div id="invoice-print-wrapper">
-          <InvoiceTemplate bill={previewBill} settings={settings} />
+      {/* Direct Printable Quotation Portal */}
+      {previewQuotation && typeof document !== 'undefined' && createPortal(
+        <div id="quotation-print-wrapper">
+          <QuotationTemplate quotation={previewQuotation} settings={settings} />
         </div>,
         document.body
+      )}
+
+      {/* Quotation Modal for Preview, PDF Download & Email */}
+      {previewQuotation && (
+        <QuotationModal
+          isOpen={isPreviewOpen}
+          onClose={() => setIsPreviewOpen(false)}
+          quotation={previewQuotation}
+          settings={settings}
+          onQuotationUpdated={(updated) => setPreviewQuotation(updated)}
+        />
       )}
     </div>
   )

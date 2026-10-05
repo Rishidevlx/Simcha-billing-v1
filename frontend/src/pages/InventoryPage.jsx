@@ -32,7 +32,7 @@ import { getUserPermissions } from '../utils/access'
 import ListPageHeader from '../components/common/ListPageHeader'
 import ListKpiCard from '../components/common/ListKpiCard'
 import ListPagePagination from '../components/common/ListPagePagination'
-import { Button, ActionButton, StatusPill, SearchInput, TabNav, TabButton } from '../components/ui'
+import { Button, ActionButton, StatusPill, SearchInput, TabNav, TabButton, Checkbox } from '../components/ui'
 
 export default function InventoryPage({ setActiveRoute }) {
   const { can, hasAny } = getUserPermissions()
@@ -745,12 +745,11 @@ export default function InventoryPage({ setActiveRoute }) {
                 <tr className="bg-[#f8fafc] dark:bg-slate-800/80 border-b border-gray-200 dark:border-slate-800 text-[11px] font-bold text-gray-600 dark:text-slate-300 uppercase tracking-wider">
                   {/* Select All Checkbox */}
                   <th className="py-3 px-3.5 w-10 text-center">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={isAllPaginatedSelected}
+                      indeterminate={selectedIds.length > 0 && !isAllPaginatedSelected}
                       onChange={handleToggleSelectAll}
                       disabled={loading || paginatedInventory.length === 0}
-                      className="w-4 h-4 text-[#043486] rounded-none border-gray-300 dark:border-slate-600 focus:ring-0 cursor-pointer accent-[#043486]"
                     />
                   </th>
                   <th className="py-3 px-3 w-12 text-center">ID</th>
@@ -809,11 +808,9 @@ export default function InventoryPage({ setActiveRoute }) {
                       >
                         {/* Checkbox */}
                         <td className="py-3 px-3.5 text-center">
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             checked={isSelected}
                             onChange={() => handleToggleSelectRow(item.id)}
-                            className="w-4 h-4 text-[#043486] rounded-none border-gray-300 dark:border-slate-600 focus:ring-0 cursor-pointer accent-[#043486]"
                           />
                         </td>
 
