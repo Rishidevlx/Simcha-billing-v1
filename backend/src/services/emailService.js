@@ -916,7 +916,7 @@ export async function generateInvoicePdfBuffer(bill, settings = {}) {
 /**
  * Send Invoice PDF Email via configured SMTP
  */
-export async function sendInvoiceEmail(billId, customRecipient = null) {
+export async function sendInvoiceEmail(billId, customRecipient = null, customPdfBase64 = null) {
   try {
     const pool = getPool()
 
@@ -1013,7 +1013,9 @@ export async function sendInvoiceEmail(billId, customRecipient = null) {
     if (customRecipient) {
       const isCustomer = bill.customer_email && customRecipient.trim().toLowerCase() === bill.customer_email.trim().toLowerCase()
       const copyType = isCustomer ? 'ORIGINAL' : (bill.copy_type || 'DUPLICATE')
-      const pdfBuffer = await generateInvoicePdfBuffer({ ...bill, copy_type: copyType }, settings)
+      const pdfBuffer = customPdfBase64
+        ? Buffer.from(customPdfBase64, 'base64')
+        : await generateInvoicePdfBuffer({ ...bill, copy_type: copyType }, settings)
       
       const subject = (config.email_subject || 'Tax Invoice - {invoice_number}')
         .replace('{invoice_number}', bill.invoice_number)
@@ -1906,9 +1908,45 @@ export async function generateReceiptPdfBuffer(bill, settings = {}) {
 /**
  * Send Receipt PDF Email via configured SMTP to Customer
  */
-export async function sendReceiptEmail(billId, customRecipient = null) {
+export async function sendReceiptEmail(billOrId, param2 = null, param3 = null, param4 = null) {
   try {
     const pool = getPool()
+
+    let bill = null
+    let settings = {}
+    let targetRecipient = null
+    let customPdfBase64 = null
+    let billId = null
+
+    if (typeof billOrId === 'object' && billOrId !== null) {
+      // Called with (billPayload, settings, targetEmail, customPdfBase64)
+      bill = billOrId
+      settings = param2 || {}
+      targetRecipient = (param3 || bill.customer_email || '').trim()
+      customPdfBase64 = param4
+      billId = bill.id
+    } else {
+      // Called with (billId, customRecipient, customPdfBase64)
+      billId = billOrId
+      targetRecipient = (param2 || '').trim()
+      customPdfBase64 = param3
+
+      const [billRows] = await pool.query('SELECT * FROM bills WHERE id = ?', [billId])
+      if (billRows.length === 0) {
+        return { success: false, message: 'Invoice bill record not found.' }
+      }
+      bill = billRows[0]
+
+      const [itemRows] = await pool.query('SELECT * FROM bill_items WHERE bill_id = ? ORDER BY id ASC', [billId])
+      bill.items = itemRows
+
+      const [settingsRows] = await pool.query('SELECT * FROM settings WHERE id = 1')
+      settings = settingsRows.length > 0 ? settingsRows[0] : {}
+
+      if (!targetRecipient) {
+        targetRecipient = (bill.customer_email || '').trim()
+      }
+    }
 
     // 1. Fetch Email Config
     const [configRows] = await pool.query('SELECT * FROM email_configs WHERE id = 1')
@@ -1921,20 +1959,6 @@ export async function sendReceiptEmail(billId, customRecipient = null) {
       return { success: false, message: 'SMTP credentials (User/Password) not configured in Settings.' }
     }
 
-    // 2. Fetch Bill Details & Settings
-    const [billRows] = await pool.query('SELECT * FROM bills WHERE id = ?', [billId])
-    if (billRows.length === 0) {
-      return { success: false, message: 'Invoice bill record not found.' }
-    }
-    const bill = billRows[0]
-
-    const [itemRows] = await pool.query('SELECT * FROM bill_items WHERE bill_id = ? ORDER BY id ASC', [billId])
-    bill.items = itemRows
-
-    const [settingsRows] = await pool.query('SELECT * FROM settings WHERE id = 1')
-    const settings = settingsRows.length > 0 ? settingsRows[0] : {}
-
-    const targetRecipient = (customRecipient || bill.customer_email || '').trim()
     if (!targetRecipient) {
       return { success: false, message: 'No customer email address provided for receipt delivery.' }
     }
@@ -1950,13 +1974,15 @@ export async function sendReceiptEmail(billId, customRecipient = null) {
       }
     })
 
-    const formattedDate = new Date(bill.invoice_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-    const formattedTotal = `₹ ${parseFloat(bill.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+    const formattedDate = new Date(bill.invoice_date || bill.service_date || new Date()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    const formattedTotal = `₹ ${parseFloat(bill.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
 
-    // 4. Generate Receipt PDF
-    const pdfBuffer = await generateReceiptPdfBuffer(bill, settings)
+    // 4. Generate Receipt PDF Buffer
+    const pdfBuffer = customPdfBase64
+      ? Buffer.from(customPdfBase64, 'base64')
+      : await generateReceiptPdfBuffer(bill, settings)
 
-    const receiptNo = bill.receipt_number || bill.invoice_number
+    const receiptNo = bill.receipt_number || bill.invoice_number || bill.service_number || 'REC'
     const subject = `Payment Receipt - ${receiptNo}`
 
     const companyDisplayName = settings.company_name || config.sender_name || 'Billing System'
@@ -1983,8 +2009,8 @@ export async function sendReceiptEmail(billId, customRecipient = null) {
                 <td style="padding: 6px 0; font-weight: bold; font-family: monospace; color: #043486;">${receiptNo}</td>
               </tr>
               <tr>
-                <td style="padding: 6px 0; color: #64748b;">Invoice #:</td>
-                <td style="padding: 6px 0; font-weight: bold; font-family: monospace; color: #475569;">${bill.invoice_number}</td>
+                <td style="padding: 6px 0; color: #64748b;">Invoice / Service #:</td>
+                <td style="padding: 6px 0; font-weight: bold; font-family: monospace; color: #475569;">${bill.invoice_number || bill.service_number || '-'}</td>
               </tr>
               <tr>
                 <td style="padding: 6px 0; color: #64748b;">Receipt Date:</td>
@@ -2036,12 +2062,16 @@ export async function sendReceiptEmail(billId, customRecipient = null) {
       ]
     })
 
-    // Update database record: mark receipt_sent = 1, receipt_sent_at = NOW()
-    await pool.query('UPDATE bills SET receipt_sent = 1, receipt_sent_at = NOW() WHERE id = ?', [billId])
+    // Update database record if billId exists
+    if (billId) {
+      try {
+        await pool.query('UPDATE bills SET receipt_sent = 1, receipt_sent_at = NOW() WHERE id = ?', [billId])
+      } catch {}
+    }
 
     return {
       success: true,
-      message: `Payment Receipt email sent successfully to ${targetRecipient}`
+      message: `Payment receipt PDF sent successfully to ${targetRecipient}`
     }
   } catch (error) {
     console.error('❌ Error sending receipt email:', error)
@@ -2771,7 +2801,7 @@ export async function generateQuotationPdfBuffer(quotation, settings = {}) {
 /**
  * Send Quotation PDF Email via configured SMTP
  */
-export async function sendQuotationEmail(quotationId, customRecipient = null) {
+export async function sendQuotationEmail(quotationId, customRecipient = null, customPdfBase64 = null) {
   try {
     const pool = getPool()
 
@@ -2811,7 +2841,6 @@ export async function sendQuotationEmail(quotationId, customRecipient = null) {
     })
 
     const formattedDate = new Date(quotation.quotation_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-    const formattedValidUntil = quotation.valid_until ? new Date(quotation.valid_until).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '15 Days'
     const formattedTotal = `₹ ${parseFloat(quotation.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
 
     const companyDisplayName = settings.company_name || config.sender_name || 'Simcha Info Solutions'
@@ -2870,7 +2899,9 @@ export async function sendQuotationEmail(quotationId, customRecipient = null) {
       </div>
     `
 
-    const pdfBuffer = await generateQuotationPdfBuffer(quotation, settings)
+    const pdfBuffer = customPdfBase64
+      ? Buffer.from(customPdfBase64, 'base64')
+      : await generateQuotationPdfBuffer(quotation, settings)
 
     // Case A: Custom single recipient
     if (customRecipient) {
@@ -2956,7 +2987,7 @@ export async function sendQuotationEmail(quotationId, customRecipient = null) {
 /**
  * Send Service Quotation PDF Email via configured SMTP
  */
-export async function sendServiceQuotationEmail(serviceId, customRecipient = null) {
+export async function sendServiceQuotationEmail(serviceId, customRecipient = null, customPdfBase64 = null) {
   try {
     const pool = getPool()
 
@@ -3076,7 +3107,9 @@ export async function sendServiceQuotationEmail(serviceId, customRecipient = nul
       </div>
     `
 
-    const pdfBuffer = await generateQuotationPdfBuffer(quotationData, settings)
+    const pdfBuffer = customPdfBase64
+      ? Buffer.from(customPdfBase64, 'base64')
+      : await generateQuotationPdfBuffer(quotationData, settings)
 
     // Send to recipient
     const recipient = (customRecipient || service.customer_email || '').trim()

@@ -670,7 +670,7 @@ export async function updateQuotationStatus(req, res) {
 export async function sendQuotationEmailController(req, res) {
   try {
     const { id } = req.params
-    const { email } = req.body || {}
+    const { email, recipient: customRecip, pdf_base64, pdfBase64 } = req.body || {}
 
     const pool = getPool()
     const [quotations] = await pool.query('SELECT * FROM quotations WHERE id = ?', [id])
@@ -682,7 +682,7 @@ export async function sendQuotationEmailController(req, res) {
     }
 
     const quotation = quotations[0]
-    const recipient = email || quotation.customer_email
+    const recipient = email || customRecip || quotation.customer_email
 
     if (!recipient || !recipient.trim()) {
       return res.status(400).json({
@@ -691,7 +691,7 @@ export async function sendQuotationEmailController(req, res) {
       })
     }
 
-    const result = await sendQuotationEmail(id, recipient)
+    const result = await sendQuotationEmail(id, recipient, pdf_base64 || pdfBase64)
     if (!result.success) {
       return res.status(500).json(result)
     }

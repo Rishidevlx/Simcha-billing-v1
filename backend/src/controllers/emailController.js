@@ -150,9 +150,9 @@ export async function testSmtpConnection(req, res) {
 export async function dispatchBillEmail(req, res) {
   try {
     const { billId } = req.params
-    const { recipient } = req.body
+    const { recipient, pdf_base64, pdfBase64 } = req.body || {}
 
-    const result = await sendInvoiceEmail(billId, recipient)
+    const result = await sendInvoiceEmail(billId, recipient, pdf_base64 || pdfBase64)
     if (result.success) {
       return res.status(200).json(result)
     } else {

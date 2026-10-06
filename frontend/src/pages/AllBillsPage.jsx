@@ -47,6 +47,7 @@ import ListPagePagination from '../components/common/ListPagePagination'
 import { Button, ActionButton, SearchInput, Checkbox } from '../components/ui'
 import { API_ENDPOINTS } from '../config/api'
 import { getUserPermissions } from '../utils/access'
+import { generateInvoicePdfBase64, generateReceiptPdfBase64 } from '../utils/pdfEmailHelper'
 
 // Local Date Helper to eliminate timezone UTC discrepancy (e.g. 2026-10-02T18:30:00Z -> 2026-10-03 in local IST)
 const getLocalDateString = (dateVal) => {
@@ -270,13 +271,41 @@ export default function AllBillsPage({ setActiveRoute }) {
       targetEmail = promptResult.value.trim()
     }
 
-    // 3. Dispatch Invoice Email API
+    // 3. Dispatch Invoice Email API with client-generated PDF Base64
     try {
-      Swal.showLoading()
+      Swal.fire({
+        title: 'Sending Invoice...',
+        text: 'Generating PDF and sending email...',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading()
+        }
+      })
+
+      // Fetch full bill with items if needed
+      let fullBill = bill
+      if (!fullBill.items || fullBill.items.length === 0) {
+        try {
+          const detailRes = await fetch(API_ENDPOINTS.BILL_BY_ID(bill.id))
+          const detailData = await detailRes.json()
+          if (detailData.success && detailData.bill) {
+            fullBill = detailData.bill
+          }
+        } catch (e) {}
+      }
+
+      // Generate Base64 PDF directly on the frontend
+      let pdfBase64 = null
+      try {
+        pdfBase64 = await generateInvoicePdfBase64(fullBill, settings)
+      } catch (pdfErr) {
+        console.warn('Frontend PDF generation fallback note:', pdfErr)
+      }
+
       const res = await fetch(API_ENDPOINTS.EMAIL_SEND_BILL(bill.id), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipient: targetEmail })
+        body: JSON.stringify({ recipient: targetEmail, pdf_base64: pdfBase64 })
       })
       const data = await res.json()
 
@@ -375,7 +404,7 @@ export default function AllBillsPage({ setActiveRoute }) {
       if (!confirmResult.isConfirmed) return
     }
 
-    // 4. Dispatch Email API
+    // 4. Dispatch Email API with client-generated PDF Base64
     try {
       Swal.fire({
         title: 'Sending Receipt...',
@@ -386,10 +415,30 @@ export default function AllBillsPage({ setActiveRoute }) {
         }
       })
 
+      // Fetch full bill with items if needed
+      let fullBill = bill
+      if (!fullBill.items || fullBill.items.length === 0) {
+        try {
+          const detailRes = await fetch(API_ENDPOINTS.BILL_BY_ID(bill.id))
+          const detailData = await detailRes.json()
+          if (detailData.success && detailData.bill) {
+            fullBill = detailData.bill
+          }
+        } catch (e) {}
+      }
+
+      // Generate Base64 PDF directly on the frontend
+      let pdfBase64 = null
+      try {
+        pdfBase64 = await generateReceiptPdfBase64(fullBill, settings)
+      } catch (pdfErr) {
+        console.warn('Frontend receipt PDF generation fallback note:', pdfErr)
+      }
+
       const res = await fetch(API_ENDPOINTS.BILL_SEND_RECEIPT(bill.id), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: targetEmail })
+        body: JSON.stringify({ email: targetEmail, recipient: targetEmail, pdf_base64: pdfBase64 })
       })
       const data = await res.json()
 

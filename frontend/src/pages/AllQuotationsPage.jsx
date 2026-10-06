@@ -43,6 +43,7 @@ import ListPagePagination from '../components/common/ListPagePagination'
 import { Button, ActionButton, SearchInput, Checkbox, StatusPill, TabNav, TabButton } from '../components/ui'
 import { API_ENDPOINTS } from '../config/api'
 import { getUserPermissions } from '../utils/access'
+import { generateQuotationPdfBase64 } from '../utils/pdfEmailHelper'
 
 // Local Date Helper to eliminate timezone UTC discrepancy
 const getLocalDateString = (dateVal) => {
@@ -338,23 +339,61 @@ export default function AllQuotationsPage({ setActiveRoute }) {
 
   // Send Quotation PDF via Email (Instant Dispatch)
   const handleSendQuotationEmail = async (qtn) => {
-    const email = (qtn.customer_email || '').trim()
-    if (!email) {
-      Swal.fire({
-        icon: 'warning',
+    let targetEmail = (qtn.customer_email || '').trim()
+    if (!targetEmail) {
+      const promptResult = await Swal.fire({
         title: 'Customer Email Missing',
-        text: 'This quotation does not have a customer email address. Please edit the quotation and add an email.',
-        confirmButtonColor: '#043486'
+        text: 'Enter the email address to receive this quotation:',
+        input: 'email',
+        inputPlaceholder: 'customer@example.com',
+        showCancelButton: true,
+        confirmButtonText: 'Send Quotation',
+        confirmButtonColor: '#043486',
+        cancelButtonColor: '#64748b',
+        inputValidator: (value) => {
+          if (!value || !value.trim()) return 'Please enter a valid email address!'
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+          if (!emailRegex.test(value.trim())) return 'Invalid email address format'
+        }
       })
-      return
+      if (!promptResult.isConfirmed || !promptResult.value) return
+      targetEmail = promptResult.value.trim()
     }
 
     try {
-      Swal.showLoading()
+      Swal.fire({
+        title: 'Sending Quotation...',
+        text: 'Generating PDF and sending email...',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading()
+        }
+      })
+
+      // Fetch full quotation with items if needed
+      let fullQtn = qtn
+      if (!fullQtn.items || fullQtn.items.length === 0) {
+        try {
+          const detailRes = await fetch(API_ENDPOINTS.QUOTATION_BY_ID(qtn.id))
+          const detailData = await detailRes.json()
+          if (detailData.success && (detailData.quotation || detailData.data)) {
+            fullQtn = detailData.quotation || detailData.data
+          }
+        } catch (e) {}
+      }
+
+      // Generate Base64 PDF directly on the frontend
+      let pdfBase64 = null
+      try {
+        pdfBase64 = await generateQuotationPdfBase64(fullQtn, settings)
+      } catch (pdfErr) {
+        console.warn('Frontend PDF generation fallback note:', pdfErr)
+      }
+
       const res = await fetch(API_ENDPOINTS.QUOTATION_SEND_EMAIL(qtn.id), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email: targetEmail, pdf_base64: pdfBase64 })
       })
       const data = await res.json()
 
@@ -367,13 +406,14 @@ export default function AllQuotationsPage({ setActiveRoute }) {
           timerProgressBar: true
         }).fire({
           icon: 'success',
-          title: `Quotation sent to ${email}`
+          title: `Quotation sent to ${targetEmail}`
         })
         fetchQuotations()
       } else {
         throw new Error(data.message || 'Failed to dispatch email.')
       }
     } catch (err) {
+      console.error('Error sending quotation email:', err)
       Swal.fire({
         icon: 'error',
         title: 'Dispatch Failed',

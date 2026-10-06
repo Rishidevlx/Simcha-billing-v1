@@ -671,7 +671,7 @@ export async function deleteServiceBill(req, res) {
 export async function sendServiceReceiptEmail(req, res) {
   try {
     const { id } = req.params
-    const { recipient_email } = req.body
+    const { recipient_email, email, pdf_base64, pdfBase64 } = req.body || {}
     const pool = getPool()
 
     const [services] = await pool.query('SELECT * FROM service_bills WHERE id = ?', [id])
@@ -683,7 +683,7 @@ export async function sendServiceReceiptEmail(req, res) {
     }
 
     const service = services[0]
-    const targetEmail = (recipient_email || service.customer_email || '').trim()
+    const targetEmail = (recipient_email || email || service.customer_email || '').trim()
     if (!targetEmail) {
       return res.status(400).json({
         success: false,
@@ -704,7 +704,7 @@ export async function sendServiceReceiptEmail(req, res) {
       items
     }
 
-    const emailResult = await sendReceiptEmail(billPayload, settings, targetEmail)
+    const emailResult = await sendReceiptEmail(billPayload, settings, targetEmail, pdf_base64 || pdfBase64)
 
     if (emailResult.success) {
       await pool.query('UPDATE service_bills SET receipt_email_sent = TRUE WHERE id = ?', [id])
@@ -731,10 +731,10 @@ export async function sendServiceReceiptEmail(req, res) {
 export async function sendServiceQuotationEmailController(req, res) {
   try {
     const { id } = req.params
-    const { recipient_email, email } = req.body || {}
-    const targetEmail = recipient_email || email
+    const { recipient_email, email, recipient, pdf_base64, pdfBase64 } = req.body || {}
+    const targetEmail = recipient_email || email || recipient
 
-    const result = await sendServiceQuotationEmail(id, targetEmail)
+    const result = await sendServiceQuotationEmail(id, targetEmail, pdf_base64 || pdfBase64)
     if (!result.success) {
       return res.status(500).json(result)
     }

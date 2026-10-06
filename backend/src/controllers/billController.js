@@ -712,7 +712,7 @@ export async function updateBillPayment(req, res) {
 export async function sendBillReceiptEmail(req, res) {
   try {
     const { id } = req.params
-    const { email } = req.body || {}
+    const { email, recipient: customRecip, pdf_base64, pdfBase64 } = req.body || {}
 
     const pool = getPool()
     const [bills] = await pool.query('SELECT * FROM bills WHERE id = ?', [id])
@@ -724,7 +724,7 @@ export async function sendBillReceiptEmail(req, res) {
     }
 
     const bill = bills[0]
-    const recipient = email || bill.customer_email
+    const recipient = email || customRecip || bill.customer_email
 
     if (!recipient || !recipient.trim()) {
       return res.status(400).json({
@@ -733,7 +733,7 @@ export async function sendBillReceiptEmail(req, res) {
       })
     }
 
-    const result = await sendReceiptEmail(id, recipient)
+    const result = await sendReceiptEmail(id, recipient, pdf_base64 || pdfBase64)
     if (!result.success) {
       return res.status(500).json(result)
     }

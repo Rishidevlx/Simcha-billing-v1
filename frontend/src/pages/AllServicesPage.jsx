@@ -50,6 +50,7 @@ import ListDateRangeFilter from '../components/common/ListDateRangeFilter'
 import { Button, ActionButton, SearchInput, DataTable, Pagination, TabNav, TabButton } from '../components/ui'
 import { API_ENDPOINTS } from '../config/api'
 import { getUserPermissions } from '../utils/access'
+import { generateServiceQuotationPdfBase64, generateServiceReceiptPdfBase64 } from '../utils/pdfEmailHelper'
 
 
 // Local Date Helper to eliminate timezone UTC discrepancy (e.g. 2026-10-02T18:30:00Z -> 2026-10-03 in local IST)
@@ -498,10 +499,30 @@ export default function AllServicesPage({ setActiveRoute }) {
         }
       })
 
+      // Fetch full service details if needed
+      let fullService = service
+      if (!fullService.items || fullService.items.length === 0) {
+        try {
+          const detailRes = await fetch(API_ENDPOINTS.SERVICE_BY_ID(service.id))
+          const detailData = await detailRes.json()
+          if (detailData.success && detailData.service) {
+            fullService = detailData.service
+          }
+        } catch (e) {}
+      }
+
+      // Generate Base64 PDF directly on the frontend
+      let pdfBase64 = null
+      try {
+        pdfBase64 = await generateServiceQuotationPdfBase64(fullService, settings)
+      } catch (pdfErr) {
+        console.warn('Frontend Service Quotation PDF generation fallback note:', pdfErr)
+      }
+
       const res = await fetch(API_ENDPOINTS.SERVICE_SEND_QUOTATION(service.id), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipient_email: targetEmail, email: targetEmail })
+        body: JSON.stringify({ recipient_email: targetEmail, email: targetEmail, pdf_base64: pdfBase64 })
       })
       const data = await res.json()
 
@@ -627,10 +648,30 @@ export default function AllServicesPage({ setActiveRoute }) {
         }
       })
 
+      // Fetch full service details if needed
+      let fullService = service
+      if (!fullService.items || fullService.items.length === 0) {
+        try {
+          const detailRes = await fetch(API_ENDPOINTS.SERVICE_BY_ID(service.id))
+          const detailData = await detailRes.json()
+          if (detailData.success && detailData.service) {
+            fullService = detailData.service
+          }
+        } catch (e) {}
+      }
+
+      // Generate Base64 PDF directly on the frontend
+      let pdfBase64 = null
+      try {
+        pdfBase64 = await generateServiceReceiptPdfBase64(fullService, settings)
+      } catch (pdfErr) {
+        console.warn('Frontend Service Receipt PDF generation fallback note:', pdfErr)
+      }
+
       const res = await fetch(API_ENDPOINTS.SERVICE_SEND_RECEIPT(service.id), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: targetEmail })
+        body: JSON.stringify({ email: targetEmail, recipient_email: targetEmail, pdf_base64: pdfBase64 })
       })
       const data = await res.json()
 
