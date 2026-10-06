@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "postinstall": "puppeteer browsers install chrome || true"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -18,6 +19,7 @@
     "mysql2": "^3.12.0",
     "nodemailer": "^10.0.10",
     "pdfkit": "^0.20.2",
+    "puppeteer": "^25.12.0",
     "puppeteer-core": "^25.11.0"
   }
 }

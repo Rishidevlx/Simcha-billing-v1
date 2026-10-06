@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer-core'
+import puppeteer from 'puppeteer'
 import nodemailer from 'nodemailer'
 import fs from 'fs'
 import path from 'path'
@@ -8,21 +8,81 @@ import { getPool } from '../config/db.js'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// Locate system Chrome or Edge executable
+// Locate system Chrome, Edge or Chromium executable if available
 function getChromeExecutablePath() {
   const possiblePaths = [
+    // Environment variables (Standard on Docker, Render, Railway, AWS, Heroku)
+    process.env.PUPPETEER_EXECUTABLE_PATH,
+    process.env.CHROME_BIN,
+    process.env.CHROME_PATH,
+    // Windows paths
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
     'C:\\Users\\rishi\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe',
     'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
     'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+    // Linux paths (Ubuntu, Debian, Alpine, Cloud VMs, Render, Heroku)
     '/usr/bin/google-chrome',
-    '/usr/bin/chromium-browser'
-  ]
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/snap/bin/chromium',
+    '/usr/lib/chromium/chromium',
+    '/usr/lib/chromium-browser/chromium-browser',
+    '/opt/google/chrome/google-chrome',
+    // macOS paths
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge'
+  ].filter(Boolean)
+
   for (const p of possiblePaths) {
-    if (fs.existsSync(p)) return p
+    try {
+      if (fs.existsSync(p)) return p
+    } catch {}
   }
   return null
+}
+
+/**
+ * Universal Puppeteer Browser Launcher
+ * Works across Local Windows/Mac development and Cloud Linux deployments (Render, Railway, Docker, etc.)
+ */
+async function launchPuppeteerBrowser() {
+  const launchArgs = [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--disable-software-rasterizer',
+    '--no-first-run',
+    '--no-zygote',
+    '--font-render-hinting=none'
+  ]
+
+  // 1. Try launching with system / env executable path if located
+  const systemChromePath = getChromeExecutablePath()
+  if (systemChromePath) {
+    try {
+      return await puppeteer.launch({
+        executablePath: systemChromePath,
+        headless: 'new',
+        args: launchArgs
+      })
+    } catch (sysErr) {
+      console.warn(`[Puppeteer] Failed launching with system path "${systemChromePath}":`, sysErr.message)
+    }
+  }
+
+  // 2. Try launching with Puppeteer's default bundled Chromium
+  try {
+    return await puppeteer.launch({
+      headless: 'new',
+      args: launchArgs
+    })
+  } catch (bundledErr) {
+    console.error('[Puppeteer] Failed launching bundled Chromium:', bundledErr.message)
+    throw new Error(`Chrome/Chromium executable not found on server to render PDF. Please ensure Chrome or Puppeteer Chromium is installed on the hosting server. (Details: ${bundledErr.message})`)
+  }
 }
 
 // Convert image file to base64 data URI
@@ -832,24 +892,8 @@ export function generateInvoiceHtml(bill, settings = {}) {
  * Generate 100% Vector PDF Buffer via Headless Chrome / Puppeteer
  */
 export async function generateInvoicePdfBuffer(bill, settings = {}) {
-  const chromePath = getChromeExecutablePath()
-  if (!chromePath) {
-    throw new Error('Chrome/Edge executable not found on server to render PDF.')
-  }
-
   const htmlContent = generateInvoiceHtml(bill, settings)
-
-  const browser = await puppeteer.launch({
-    executablePath: chromePath,
-    headless: 'new',
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--font-render-hinting=none'
-    ]
-  })
+  const browser = await launchPuppeteerBrowser()
 
   try {
     const page = await browser.newPage()
@@ -1838,24 +1882,8 @@ export function generateReceiptHtml(bill, settings = {}) {
  * Generate 100% Vector Receipt PDF Buffer via Headless Chrome / Puppeteer
  */
 export async function generateReceiptPdfBuffer(bill, settings = {}) {
-  const chromePath = getChromeExecutablePath()
-  if (!chromePath) {
-    throw new Error('Chrome/Edge executable not found on server to render PDF.')
-  }
-
   const htmlContent = generateReceiptHtml(bill, settings)
-
-  const browser = await puppeteer.launch({
-    executablePath: chromePath,
-    headless: 'new',
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--font-render-hinting=none'
-    ]
-  })
+  const browser = await launchPuppeteerBrowser()
 
   try {
     const page = await browser.newPage()
@@ -2719,24 +2747,8 @@ export function generateQuotationHtml(quotation, settings = {}) {
  * Generate 100% Vector Quotation PDF Buffer via Headless Chrome / Puppeteer
  */
 export async function generateQuotationPdfBuffer(quotation, settings = {}) {
-  const chromePath = getChromeExecutablePath()
-  if (!chromePath) {
-    throw new Error('Chrome/Edge executable not found on server to render PDF.')
-  }
-
   const htmlContent = generateQuotationHtml(quotation, settings)
-
-  const browser = await puppeteer.launch({
-    executablePath: chromePath,
-    headless: 'new',
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--font-render-hinting=none'
-    ]
-  })
+  const browser = await launchPuppeteerBrowser()
 
   try {
     const page = await browser.newPage()
