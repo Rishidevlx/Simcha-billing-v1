@@ -72,29 +72,24 @@ export default function ServiceReceiptTemplate({ service, bill, settings, compan
   const companyAddress = effectiveCompany?.address || ''
   const signatureUrl = effectiveSettings?.signature_url || effectiveSettings?.signatureUrl || data.signature_url || liveSignUrl || null
 
-  const defaultTermsList = (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
+  const defaultTermsList = (Array.isArray(effectiveSettings?.service_receipt_terms) && effectiveSettings.service_receipt_terms.length > 0)
+    ? effectiveSettings.service_receipt_terms
+    : (Array.isArray(snapshot?.service_receipt_terms) && snapshot.service_receipt_terms.length > 0)
+    ? snapshot.service_receipt_terms
+    : (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
     ? effectiveSettings.terms_conditions
     : (Array.isArray(snapshot?.terms_conditions) && snapshot.terms_conditions.length > 0)
     ? snapshot.terms_conditions
     : (liveTerms && liveTerms.length > 0)
     ? liveTerms
     : [
-      'Warranty as per manufacturer’s norms & should be claimed directly.',
-      'Service warranty 30 days applicable on reported issues only.',
-      'Please carry service receipt copy for warranty claims.',
-      'Replaced spare parts will not be returned unless requested prior.'
+      'Payment received for service invoice and repair charges.',
+      'Please retain this service receipt for warranty and service records.',
+      '90 days warranty on replaced hardware components only.'
     ]
 
-  const items = Array.isArray(data.items) ? data.items : []
-  const hasReturnableItems = items.some(it => it.return_policy === true || it.return_policy === 1 || it.return_policy === '1')
-  const returnDays = settings?.return_days || 7
-  const returnClause = settings?.return_policy_clause
-    ? settings.return_policy_clause.replace('{days}', `${returnDays} days`)
-    : `Products eligible for return must be returned within ${returnDays} days of purchase with original invoice copy.`
-
-  const termsList = hasReturnableItems
-    ? [returnClause, ...defaultTermsList.filter(t => !t.toLowerCase().includes('will not be taken back'))]
-    : defaultTermsList
+  const termsList = defaultTermsList
+  const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data?.parts) ? data.parts : [])
   const isGstInvoice = data.service_type === 'GST' || data.invoice_type === 'GST' || parseFloat(data.total_tax || 0) > 0
   const isIntraState = !data.place_of_supply || data.place_of_supply.includes('33') || data.place_of_supply.toLowerCase().includes('tamil nadu')
 

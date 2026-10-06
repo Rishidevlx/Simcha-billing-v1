@@ -1347,12 +1347,15 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                         ) : (
                           selectedBill.items.map((it, idx) => {
                             const itemKey = it.id || `${it.item_name}_${it.product_name}_${idx}`
-                            const mat = materials.find(m => (it.material_id && m.id === it.material_id) || m.name === (it.product_name || it.item_name))
+                            const mat = materials.find(m => 
+                              (it.material_id && String(m.id) === String(it.material_id)) || 
+                              (m.name && (it.product_name || it.item_name) && m.name.toLowerCase().trim() === (it.product_name || it.item_name).toLowerCase().trim())
+                            )
                             const baseReturnable = 
-                              it.is_returnable === 1 || it.is_returnable === true || it.is_returnable === '1' ||
                               it.return_policy === true || it.return_policy === 1 || it.return_policy === '1' || it.return_policy === 'true' ||
-                              (mat && (mat.is_returnable === 1 || mat.is_returnable === true || mat.is_returnable === '1')) ||
-                              (it.is_returnable === undefined && it.return_policy === undefined)
+                              it.is_returnable === true || it.is_returnable === 1 || it.is_returnable === '1' || it.is_returnable === 'true' ||
+                              (mat && (mat.return_policy === true || mat.return_policy === 1 || mat.return_policy === '1' || mat.return_policy === 'true' || mat.is_returnable === true || mat.is_returnable === 1 || mat.is_returnable === '1')) ||
+                              (it.is_returnable === undefined && it.return_policy === undefined && (!mat || mat.return_policy !== 0))
                             const remainingQty = getItemRemainingReturnableQty(it, selectedBill?.id, selectedBill?.invoice_number)
                             const isFullyReturned = remainingQty <= 0
                             const isReturnable = baseReturnable && !isFullyReturned

@@ -90,10 +90,11 @@ export default function UserManualPage() {
   const TABS = [
     { id: 'setup', label: '1. How to Set Up?' },
     { id: 'product', label: '2. How to Add a Product?' },
-    { id: 'billing', label: '3. How to Create a Bill?' },
-    { id: 'service', label: '4. How to Bill a Service?' },
-    { id: 'returns', label: '5. How to Return a Product?' },
-    { id: 'roles_users', label: '6. How to Manage Roles & Users?' }
+    { id: 'quotation', label: '3. How to Create a Quotation?' },
+    { id: 'billing', label: '4. How to Create a Bill?' },
+    { id: 'service', label: '5. How to Bill a Service?' },
+    { id: 'returns', label: '6. How to Return a Product?' },
+    { id: 'roles_users', label: '7. How to Manage Roles & Users?' }
   ]
 
   return (
@@ -455,7 +456,158 @@ export default function UserManualPage() {
         </div>
       )}
 
-      {/* ================= TAB 3: HOW TO CREATE A BILL? ================= */}
+      {/* ================= TAB 3: HOW TO CREATE A QUOTATION? ================= */}
+      {activeTab === 'quotation' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 items-stretch bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
+
+          {/* LEFT SIDE: Simple, Clean Headings & Spacious Crisp Points */}
+          <div className="lg:col-span-6 p-6 sm:p-8 lg:p-10 space-y-9">
+
+            {/* Step 1: Create Quotation */}
+            <div className="space-y-4">
+              <div
+                onClick={() => navigate('/quotations')}
+                className="group flex items-center justify-between cursor-pointer border-b border-slate-100 dark:border-slate-800 pb-3 hover:border-[#043486] transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="w-7 h-7 rounded-full bg-[#043486] text-white flex items-center justify-center text-xs font-bold shadow-2xs">1</span>
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-[#043486] dark:group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
+                    Create Outward Quotation
+                  </h2>
+                </div>
+                <span className="text-xs text-[#043486] dark:text-blue-400 font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  Open Page <ExternalLink size={13} />
+                </span>
+              </div>
+
+              <ul className="space-y-3.5 text-sm text-slate-600 dark:text-slate-400 pl-9 list-disc list-outside leading-relaxed">
+                <li><b>Estimate Generation:</b> Enter Customer Details, Quotation Date, and Validity Period (e.g., 15 Days).</li>
+                <li><b>Line Items &amp; Serials:</b> Select products, rates, discounts, taxes, and optional serial numbers.</li>
+                <li><b>Zero Stock Deduction:</b> Quotations generate formal estimates <i>without</i> locking or deducting warehouse inventory stock.</li>
+                <li><b>Custom Quotation Terms:</b> Auto-loads specific Quotation Terms &amp; Conditions from System Settings.</li>
+              </ul>
+            </div>
+
+            {/* Step 2: Quotations List & Management */}
+            <div className="space-y-4">
+              <div
+                onClick={() => navigate('/quotations/list')}
+                className="group flex items-center justify-between cursor-pointer border-b border-slate-100 dark:border-slate-800 pb-3 hover:border-[#043486] transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="w-7 h-7 rounded-full bg-[#043486] text-white flex items-center justify-center text-xs font-bold shadow-2xs">2</span>
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-[#043486] dark:group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
+                    Quotations Registry &amp; Sharing
+                  </h2>
+                </div>
+                <span className="text-xs text-[#043486] dark:text-blue-400 font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  Open Page <ExternalLink size={13} />
+                </span>
+              </div>
+
+              <ul className="space-y-3.5 text-sm text-slate-600 dark:text-slate-400 pl-9 list-disc list-outside leading-relaxed">
+                <li><b>Lifecycle Tracking:</b> Filter and manage quotations across Draft, Sent, Approved, Converted, and Cancelled stages.</li>
+                <li><b>PDF &amp; Email:</b> Instantly print, download thermal/A4 quotation slip, or email PDF directly to customer.</li>
+              </ul>
+            </div>
+
+            {/* Step 3: Convert to Invoice */}
+            <div className="space-y-4">
+              <div
+                onClick={() => navigate('/quotations/list')}
+                className="group flex items-center justify-between cursor-pointer border-b border-slate-100 dark:border-slate-800 pb-3 hover:border-[#043486] transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shadow-2xs">3</span>
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex items-center gap-1.5">
+                    Customer Approval &amp; Auto Convert to Invoice
+                  </h2>
+                </div>
+                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  Open Page <ExternalLink size={13} />
+                </span>
+              </div>
+
+              <ul className="space-y-3.5 text-sm text-slate-600 dark:text-slate-400 pl-9 list-disc list-outside leading-relaxed">
+                <li><b>One-Click Conversion:</b> Once customer approves, click <b>"Convert to Invoice"</b> in Quotations List.</li>
+                <li><b>Automatic Sales Invoice Creation:</b> System instantly generates official Sales Invoice number (e.g., <code>SIS/10/2026-27/0015</code>).</li>
+                <li><b>Outward List Addition:</b> The generated invoice is automatically registered in <b>Outward List</b> with full billing records.</li>
+                <li><b>Automatic Stock &amp; Serial Update:</b> Warehouse stock is deducted, movement is recorded in Stock Ledger, and serial numbers are marked as <b>Sold</b>!</li>
+              </ul>
+            </div>
+
+          </div>
+
+          {/* RIGHT SIDE: Flowchart Diagram */}
+          <div className="lg:col-span-6 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 p-6 sm:p-8 lg:p-10 flex flex-col items-center justify-start">
+
+            <div className="w-full max-w-sm flex flex-col items-center space-y-2 sticky top-6">
+
+              {/* START OVAL */}
+              <div className="w-48 py-2 px-4 rounded-full border-2 border-[#043486] bg-blue-50 dark:bg-slate-800 text-center font-bold text-xs sm:text-[13px] text-[#043486] dark:text-blue-300 shadow-2xs">
+                Start Quotation
+              </div>
+
+              <FlowArrow />
+
+              {/* STEP 1 RECTANGLE */}
+              <div className="w-64 py-2.5 px-4 border border-slate-700 dark:border-slate-300 bg-white dark:bg-slate-950 text-center text-xs sm:text-[12.5px] font-semibold text-slate-800 dark:text-slate-100 shadow-2xs">
+                1. Create Quotation (Price Estimate)
+              </div>
+
+              <FlowArrow />
+
+              {/* STEP 2 RECTANGLE */}
+              <div className="w-64 py-2.5 px-4 border border-slate-700 dark:border-slate-300 bg-white dark:bg-slate-950 text-center text-xs sm:text-[12.5px] font-semibold text-slate-800 dark:text-slate-100 shadow-2xs">
+                2. Send Quotation PDF to Customer
+              </div>
+
+              <FlowArrow />
+
+              {/* DECISION DIAMOND */}
+              <div className="w-48 py-2.5 px-3 border border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-center text-xs font-bold text-amber-800 dark:text-amber-300 rotate-0 shadow-2xs">
+                Customer Approves Price?
+              </div>
+
+              <BranchSplit />
+
+              {/* DUAL BRANCH RECTANGLES */}
+              <div className="w-full grid grid-cols-2 gap-3 px-1">
+                {/* Left Branch (Rejected/Cancelled) */}
+                <div className="p-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-center text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                  <span className="text-red-500 font-bold block mb-0.5">NO</span>
+                  Quotation Marked as Cancelled / Expired
+                </div>
+
+                {/* Right Branch (Approved & Convert) */}
+                <div className="p-2.5 border border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-center text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">
+                  <span className="text-emerald-600 font-bold block mb-0.5">YES</span>
+                  Click "Convert to Invoice"
+                </div>
+              </div>
+
+              <BranchMerge />
+
+              {/* AUTO CONVERSION RECTANGLE */}
+              <div className="w-64 py-2.5 px-4 border border-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 text-center text-xs sm:text-[12px] font-bold text-emerald-800 dark:text-emerald-200 shadow-2xs">
+                Auto-Generates Sales Invoice &amp; Deducts Stock
+              </div>
+
+              <FlowArrow />
+
+              {/* END OVAL */}
+              <div className="w-48 py-2 px-4 rounded-full border-2 border-emerald-600 bg-emerald-50 dark:bg-emerald-950 text-center font-bold text-xs sm:text-[13px] text-emerald-700 dark:text-emerald-300 shadow-2xs">
+                Official Bill in Outward List (End)
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* ================= TAB 4: HOW TO CREATE A BILL? ================= */}
       {activeTab === 'billing' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 items-stretch bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
 

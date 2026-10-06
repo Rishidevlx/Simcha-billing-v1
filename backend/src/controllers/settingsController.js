@@ -15,16 +15,33 @@ export async function getSettings(req, res) {
 
     const settings = rows[0]
     
-    // Parse terms_conditions if it's JSON or string
-    let parsedTerms = []
-    if (typeof settings.terms_conditions === 'string') {
-      try {
-        parsedTerms = JSON.parse(settings.terms_conditions)
-      } catch (e) {
-        parsedTerms = settings.terms_conditions.split('\n').filter(Boolean)
+    // Helper to parse terms array from string or JSON
+    const parseTermsField = (fieldVal) => {
+      if (typeof fieldVal === 'string') {
+        try {
+          return JSON.parse(fieldVal)
+        } catch (e) {
+          return fieldVal.split('\n').filter(Boolean)
+        }
+      } else if (Array.isArray(fieldVal)) {
+        return fieldVal
       }
-    } else if (Array.isArray(settings.terms_conditions)) {
-      parsedTerms = settings.terms_conditions
+      return []
+    }
+
+    // Parse terms_conditions if it's JSON or string
+    let parsedTerms = parseTermsField(settings.terms_conditions)
+    let quotationTerms = parseTermsField(settings.quotation_terms)
+    let serviceQuotationTerms = parseTermsField(settings.service_quotation_terms)
+    let invoiceTerms = parseTermsField(settings.invoice_terms)
+    let serviceTerms = parseTermsField(settings.service_terms)
+    let receiptTerms = parseTermsField(settings.receipt_terms)
+    let serviceReceiptTerms = parseTermsField(settings.service_receipt_terms)
+    let returnTerms = parseTermsField(settings.return_terms)
+
+    // Fallback invoice_terms to terms_conditions if empty
+    if (invoiceTerms.length === 0 && parsedTerms.length > 0) {
+      invoiceTerms = [...parsedTerms]
     }
 
     // Parse theme_config if it's JSON string
@@ -46,6 +63,13 @@ export async function getSettings(req, res) {
       settings: {
         ...settings,
         terms_conditions: parsedTerms,
+        quotation_terms: quotationTerms,
+        service_quotation_terms: serviceQuotationTerms,
+        invoice_terms: invoiceTerms,
+        service_terms: serviceTerms,
+        receipt_terms: receiptTerms,
+        service_receipt_terms: serviceReceiptTerms,
+        return_terms: returnTerms,
         theme_config: parsedTheme
       }
     })
@@ -105,6 +129,18 @@ async function ensureSettingsColumns(pool) {
     "ALTER TABLE settings ADD COLUMN IF NOT EXISTS quotation_padding_digits INT DEFAULT 4;",
     "ALTER TABLE settings ADD COLUMN IF NOT EXISTS quotation_separator VARCHAR(10) DEFAULT '/';",
     "ALTER TABLE settings ADD COLUMN IF NOT EXISTS quotation_validity_days INT DEFAULT 15;",
+    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS service_quotation_prefix VARCHAR(50) DEFAULT '';",
+    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS service_quotation_month VARCHAR(20) DEFAULT 'AUTO';",
+    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS service_quotation_financial_year VARCHAR(20) DEFAULT '2026-27';",
+    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS service_quotation_starting_number INT DEFAULT 1;",
+    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS service_quotation_padding_digits INT DEFAULT 4;",
+    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS service_quotation_separator VARCHAR(10) DEFAULT '/';",
+    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS service_receipt_prefix VARCHAR(50) DEFAULT '';",
+    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS service_receipt_month VARCHAR(20) DEFAULT 'AUTO';",
+    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS service_receipt_financial_year VARCHAR(20) DEFAULT '2026-27';",
+    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS service_receipt_starting_number INT DEFAULT 1;",
+    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS service_receipt_padding_digits INT DEFAULT 4;",
+    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS service_receipt_separator VARCHAR(10) DEFAULT '/';",
     "ALTER TABLE settings ADD COLUMN IF NOT EXISTS primary_color VARCHAR(50) DEFAULT '#043486';",
     "ALTER TABLE settings ADD COLUMN IF NOT EXISTS secondary_color VARCHAR(50) DEFAULT '#0248BC';",
     "ALTER TABLE settings ADD COLUMN IF NOT EXISTS accent_color VARCHAR(50) DEFAULT '#3B82F6';",
@@ -113,7 +149,14 @@ async function ensureSettingsColumns(pool) {
     "ALTER TABLE settings ADD COLUMN IF NOT EXISTS favicon_url LONGTEXT NULL;",
     "ALTER TABLE settings ADD COLUMN IF NOT EXISTS invoice_accent_color VARCHAR(50) DEFAULT '#043486';",
     "ALTER TABLE settings ADD COLUMN IF NOT EXISTS invoice_header_style VARCHAR(50) DEFAULT 'banner';",
-    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS theme_config JSON NULL;"
+    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS theme_config JSON NULL;",
+    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS quotation_terms TEXT NULL;",
+    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS service_quotation_terms TEXT NULL;",
+    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS invoice_terms TEXT NULL;",
+    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS service_terms TEXT NULL;",
+    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS receipt_terms TEXT NULL;",
+    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS service_receipt_terms TEXT NULL;",
+    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS return_terms TEXT NULL;"
   ]
 
   for (const sql of alterStatements) {
@@ -139,11 +182,14 @@ export async function updateSettings(req, res) {
       'company_name', 'address', 'phone', 'email', 'gstin',
       'bank_name', 'account_name', 'account_no', 'ifsc_code', 'branch',
       'bank_image_url', 'signature_url', 'terms_conditions',
+      'quotation_terms', 'service_quotation_terms', 'invoice_terms', 'service_terms', 'receipt_terms', 'service_receipt_terms', 'return_terms',
       'return_days', 'return_policy_clause', 'due_date_days',
       'cgst_rate', 'sgst_rate', 'igst_rate',
       'invoice_prefix', 'invoice_month', 'invoice_financial_year', 'invoice_starting_number', 'invoice_padding_digits', 'invoice_separator',
       'receipt_prefix', 'receipt_month', 'receipt_financial_year', 'receipt_starting_number', 'receipt_padding_digits', 'receipt_separator',
       'service_prefix', 'service_month', 'service_financial_year', 'service_starting_number', 'service_padding_digits', 'service_separator',
+      'service_quotation_prefix', 'service_quotation_month', 'service_quotation_financial_year', 'service_quotation_starting_number', 'service_quotation_padding_digits', 'service_quotation_separator',
+      'service_receipt_prefix', 'service_receipt_month', 'service_receipt_financial_year', 'service_receipt_starting_number', 'service_receipt_padding_digits', 'service_receipt_separator',
       'return_prefix', 'return_month', 'return_financial_year', 'return_starting_number', 'return_padding_digits', 'return_separator',
       'credit_note_prefix', 'credit_note_month', 'credit_note_financial_year', 'credit_note_starting_number', 'credit_note_padding_digits', 'credit_note_separator',
       'quotation_prefix', 'quotation_month', 'quotation_financial_year', 'quotation_starting_number', 'quotation_padding_digits', 'quotation_separator', 'quotation_validity_days',
@@ -163,11 +209,16 @@ export async function updateSettings(req, res) {
     for (const key of allowedFields) {
       if (req.body[key] !== undefined) {
         let val = req.body[key]
-        if (key === 'terms_conditions') {
-          val = Array.isArray(val) ? JSON.stringify(val) : (typeof val === 'string' ? val : '[]')
+        if (['terms_conditions', 'quotation_terms', 'service_quotation_terms', 'invoice_terms', 'service_terms', 'receipt_terms', 'service_receipt_terms', 'return_terms'].includes(key)) {
+          val = Array.isArray(val) ? JSON.stringify(val.filter(t => t && String(t).trim())) : (typeof val === 'string' ? val : '[]')
+          // Keep terms_conditions synced if invoice_terms is updated
+          if (key === 'invoice_terms' && req.body.terms_conditions === undefined) {
+            updates.push('`terms_conditions` = ?')
+            values.push(val)
+          }
         } else if (key === 'theme_config') {
           val = typeof val === 'object' && val !== null ? JSON.stringify(val) : val
-        } else if (['return_days', 'due_date_days', 'quotation_validity_days', 'invoice_starting_number', 'invoice_padding_digits', 'receipt_starting_number', 'receipt_padding_digits', 'service_starting_number', 'service_padding_digits', 'return_starting_number', 'return_padding_digits', 'credit_note_starting_number', 'credit_note_padding_digits', 'quotation_starting_number', 'quotation_padding_digits'].includes(key)) {
+        } else if (['return_days', 'due_date_days', 'quotation_validity_days', 'invoice_starting_number', 'invoice_padding_digits', 'receipt_starting_number', 'receipt_padding_digits', 'service_starting_number', 'service_padding_digits', 'service_quotation_starting_number', 'service_quotation_padding_digits', 'service_receipt_starting_number', 'service_receipt_padding_digits', 'return_starting_number', 'return_padding_digits', 'credit_note_starting_number', 'credit_note_padding_digits', 'quotation_starting_number', 'quotation_padding_digits'].includes(key)) {
           val = val !== null && val !== '' && !isNaN(val) ? parseInt(val, 10) : null
         } else if (['cgst_rate', 'sgst_rate', 'igst_rate'].includes(key)) {
           val = val !== null && val !== '' && !isNaN(val) ? parseFloat(val) : null

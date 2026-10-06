@@ -549,7 +549,8 @@ export default function CreateQuotationPage({ setActiveRoute }) {
           has_serial: hasSerial,
           serial_numbers: sArray,
           serial_number: '',
-          tax_inclusive: true
+          tax_inclusive: true,
+          return_policy: Boolean(selectedMat.return_policy === 1 || selectedMat.return_policy === '1' || selectedMat.return_policy === true || selectedMat.return_policy === 'true')
         }
 
         updated[index] = calculateQuotationItem(baseItem, quotationType, isIntraState)
@@ -865,6 +866,26 @@ export default function CreateQuotationPage({ setActiveRoute }) {
           confirmButtonColor: '#043486'
         })
         return false
+      }
+
+      if (it.has_serial) {
+        const qtyCount = Math.min(25, Math.max(1, Math.floor(parseFloat(it.quantity) || 1)))
+        for (let sIdx = 0; sIdx < qtyCount; sIdx++) {
+          const serialVal = it.serial_numbers?.[sIdx] || (sIdx === 0 ? it.serial_number : '') || ''
+          const trimmed = serialVal.trim().toLowerCase()
+          if (trimmed) {
+            const dbStatus = verifiedSerials[trimmed]
+            if (dbStatus && dbStatus.found === true && dbStatus.status && dbStatus.status.toLowerCase() !== 'available') {
+              Swal.fire({
+                icon: 'error',
+                title: 'Unavailable Serial Number!',
+                html: `Serial number <strong>"${serialVal.trim()}"</strong> for item <strong>"${it.item_name || 'Item'}"</strong> is already marked as <strong>${dbStatus.status}</strong> in inventory.<br/><br/>Please choose an available serial number.`,
+                confirmButtonColor: '#d33'
+              })
+              return false
+            }
+          }
+        }
       }
     }
 

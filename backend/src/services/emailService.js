@@ -192,13 +192,14 @@ export function generateInvoiceHtml(bill, settings = {}) {
   const signatureUrl = settings.signature_url || settings.signatureUrl || bill.signature_url || ''
 
   let termsList = []
-  if (Array.isArray(settings.terms_conditions)) {
-    termsList = settings.terms_conditions
-  } else if (typeof settings.terms_conditions === 'string') {
+  const targetTerms = settings.invoice_terms || settings.terms_conditions
+  if (Array.isArray(targetTerms)) {
+    termsList = targetTerms
+  } else if (typeof targetTerms === 'string') {
     try {
-      termsList = JSON.parse(settings.terms_conditions)
+      termsList = JSON.parse(targetTerms)
     } catch {
-      termsList = [settings.terms_conditions]
+      termsList = [targetTerms]
     }
   }
   if (!termsList || termsList.length === 0) {
@@ -1201,21 +1202,21 @@ export function generateReceiptHtml(bill, settings = {}) {
   const bankBranch = settings.branch_name || 'PEELAMEDU'
 
   let termsList = []
-  if (Array.isArray(settings.terms_conditions)) {
-    termsList = settings.terms_conditions
-  } else if (typeof settings.terms_conditions === 'string') {
+  const targetTerms = settings.receipt_terms || settings.terms_conditions
+  if (Array.isArray(targetTerms)) {
+    termsList = targetTerms
+  } else if (typeof targetTerms === 'string') {
     try {
-      termsList = JSON.parse(settings.terms_conditions)
+      termsList = JSON.parse(targetTerms)
     } catch {
-      termsList = [settings.terms_conditions]
+      termsList = [targetTerms]
     }
   }
   if (!termsList || termsList.length === 0) {
     termsList = [
-      'Warranty as per manufacturer’s norms & should be claimed directly.',
-      'Warranty claim takes 1 to 8 weeks.',
-      'Please carry receipt copy for warranty.',
-      'Goods Once Sold will not be taken back or exchanged.'
+      'Payment received subject to realization of cheque / online transfer.',
+      'This is an official computer generated payment acknowledgement.',
+      'Please preserve this receipt for all warranty claims and audit purposes.'
     ]
   }
 
@@ -2099,13 +2100,14 @@ export function generateQuotationHtml(quotation, settings = {}) {
   const bankIfsc = settings.ifsc_code || 'CNRB0002732'
 
   let termsList = []
-  if (Array.isArray(settings.terms_conditions)) {
-    termsList = settings.terms_conditions
-  } else if (typeof settings.terms_conditions === 'string') {
+  const targetTerms = settings.quotation_terms || settings.terms_conditions
+  if (Array.isArray(targetTerms)) {
+    termsList = targetTerms
+  } else if (typeof targetTerms === 'string') {
     try {
-      termsList = JSON.parse(settings.terms_conditions)
+      termsList = JSON.parse(targetTerms)
     } catch {
-      termsList = [settings.terms_conditions]
+      termsList = [targetTerms]
     }
   }
   if (!termsList || termsList.length === 0) {

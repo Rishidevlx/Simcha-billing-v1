@@ -39,10 +39,11 @@ const MONTH_MAP = {
 
 function formatMonthValue(d, monthSetting) {
   const autoMonth = String(d.getMonth() + 1).padStart(2, '0')
-  if (!monthSetting || !monthSetting.trim() || monthSetting.trim().toUpperCase() === 'AUTO') {
+  const str = String(monthSetting || '').trim()
+  if (!str || str.toUpperCase() === 'AUTO') {
     return autoMonth
   }
-  const clean = monthSetting.trim().toUpperCase()
+  const clean = str.toUpperCase()
   if (MONTH_MAP[clean]) {
     return MONTH_MAP[clean]
   }
@@ -62,12 +63,13 @@ function buildDynamicNumber(prefix, sep, monthSetting, fySetting, seqNum, paddin
   const autoFy = (now.getMonth() >= 3)
     ? `${currentYear}-${String(currentYear + 1).slice(-2)}`
     : `${currentYear - 1}-${String(currentYear).slice(-2)}`
-  const activeFy = (fySetting && fySetting.trim() && fySetting.trim().toUpperCase() !== 'AUTO')
-    ? fySetting.trim()
+  const fyStr = String(fySetting || '').trim()
+  const activeFy = (fyStr && fyStr.toUpperCase() !== 'AUTO')
+    ? fyStr
     : autoFy
 
-  const cleanPrefix = (prefix || 'SIS-RET').replace(/[-/.]+$/, '')
-  return `${cleanPrefix}${sep}${activeMonth}${sep}${activeFy}${sep}${String(seqNum).padStart(padding, '0')}`
+  const cleanPrefix = String(prefix || 'SIS-RET').replace(/[-/.]+$/, '')
+  return `${cleanPrefix}${sep}${activeMonth}${sep}${activeFy}${sep}${String(seqNum).padStart(padding || 4, '0')}`
 }
 
 // Generate next formatted Return Number based on system settings
@@ -79,7 +81,7 @@ export async function getNextReturnNumber(req, res) {
     // 1. Get numbering settings
     const [settingRows] = await pool.query('SELECT * FROM settings WHERE id = 1')
     const s = settingRows.length > 0 ? settingRows[0] : {}
-    const prefix = (s.return_prefix !== undefined && s.return_prefix !== null && s.return_prefix.trim() !== '') ? s.return_prefix.trim() : 'SIS-RET'
+    const prefix = (s.return_prefix !== undefined && s.return_prefix !== null && String(s.return_prefix).trim() !== '') ? String(s.return_prefix).trim() : 'SIS-RET'
     const month = s.return_month
     const fy = s.return_financial_year
     const startNum = parseInt(s.return_starting_number, 10) || 1
@@ -93,11 +95,12 @@ export async function getNextReturnNumber(req, res) {
     const autoFy = (effectiveDate.getMonth() >= 3)
       ? `${currentYear}-${String(currentYear + 1).slice(-2)}`
       : `${currentYear - 1}-${String(currentYear).slice(-2)}`
-    const activeFy = (fy && fy.trim() && fy.trim().toUpperCase() !== 'AUTO')
-      ? fy.trim()
+    const fyStr = String(fy || '').trim()
+    const activeFy = (fyStr && fyStr.toUpperCase() !== 'AUTO')
+      ? fyStr
       : autoFy
 
-    const cleanPrefix = prefix.replace(/[-/.]+$/, '')
+    const cleanPrefix = String(prefix).replace(/[-/.]+$/, '')
 
     // 2. Extract sequence numbers from existing returns_registry matching current prefix/month/fy
     const pattern = `${cleanPrefix}${sep}${activeMonth}${sep}${activeFy}%`
@@ -266,8 +269,9 @@ export async function createReturn(req, res) {
     // Fetch numbering setup
     const [settingRows] = await pool.query('SELECT * FROM settings WHERE id = 1')
     const s = settingRows.length > 0 ? settingRows[0] : {}
-    const prefix = (s.return_prefix !== undefined && s.return_prefix !== null && s.return_prefix.trim() !== '') ? s.return_prefix.trim() : 'SIS-RET'
-    const fy = (s.return_financial_year && s.return_financial_year.trim()) ? s.return_financial_year.trim() : '2026-27'
+    const prefix = (s.return_prefix !== undefined && s.return_prefix !== null && String(s.return_prefix).trim() !== '') ? String(s.return_prefix).trim() : 'SIS-RET'
+    const month = (s.return_month !== undefined && s.return_month !== null && String(s.return_month).trim() !== '') ? String(s.return_month).trim() : 'AUTO'
+    const fy = (s.return_financial_year !== undefined && s.return_financial_year !== null && String(s.return_financial_year).trim() !== '') ? String(s.return_financial_year).trim() : '2026-27'
     const startNum = parseInt(s.return_starting_number, 10) || 1
     const padding = parseInt(s.return_padding_digits, 10) || 4
     const sep = (s.return_separator !== undefined && s.return_separator !== null) ? s.return_separator : '/'
@@ -307,7 +311,7 @@ export async function createReturn(req, res) {
 
       const returnNumber = item.return_number && item.return_number.trim()
         ? item.return_number.trim()
-        : buildDynamicNumber(prefix, sep, fy, nextSequence++, padding)
+        : buildDynamicNumber(prefix, sep, month, fy, nextSequence++, padding)
 
       const returnDate = item.return_date || new Date().toISOString().split('T')[0]
       const billId = item.bill_id ? parseInt(item.bill_id, 10) : null

@@ -81,7 +81,11 @@ export default function QuotationTemplate({ quotation, settings, company }) {
   const bankImageUrl = effectiveBank?.bank_image_url || effectiveBank?.bankImageUrl || quotation.bank_image_url || liveBankImg || ''
   const signatureUrl = effectiveSettings?.signature_url || effectiveSettings?.signatureUrl || quotation.signature_url || liveSignUrl || ''
   
-  const defaultTermsList = (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
+  const defaultTermsList = (Array.isArray(effectiveSettings?.quotation_terms) && effectiveSettings.quotation_terms.length > 0)
+    ? effectiveSettings.quotation_terms
+    : (Array.isArray(snapshot?.quotation_terms) && snapshot.quotation_terms.length > 0)
+    ? snapshot.quotation_terms
+    : (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
     ? effectiveSettings.terms_conditions
     : (Array.isArray(snapshot?.terms_conditions) && snapshot.terms_conditions.length > 0)
     ? snapshot.terms_conditions

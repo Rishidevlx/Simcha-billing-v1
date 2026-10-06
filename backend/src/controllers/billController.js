@@ -40,10 +40,11 @@ const MONTH_MAP = {
 
 function formatMonthValue(d, monthSetting) {
   const autoMonth = String(d.getMonth() + 1).padStart(2, '0')
-  if (!monthSetting || !monthSetting.trim() || monthSetting.trim().toUpperCase() === 'AUTO') {
+  const str = String(monthSetting || '').trim()
+  if (!str || str.toUpperCase() === 'AUTO') {
     return autoMonth
   }
-  const clean = monthSetting.trim().toUpperCase()
+  const clean = str.toUpperCase()
   if (MONTH_MAP[clean]) {
     return MONTH_MAP[clean]
   }
@@ -63,11 +64,12 @@ function buildDynamicNumber(prefix, sep, monthSetting, fySetting, seqNum, paddin
   const autoFy = (now.getMonth() >= 3)
     ? `${currentYear}-${String(currentYear + 1).slice(-2)}`
     : `${currentYear - 1}-${String(currentYear).slice(-2)}`
-  const activeFy = (fySetting && fySetting.trim() && fySetting.trim().toUpperCase() !== 'AUTO')
-    ? fySetting.trim()
+  const fyStr = String(fySetting || '').trim()
+  const activeFy = (fyStr && fyStr.toUpperCase() !== 'AUTO')
+    ? fyStr
     : autoFy
 
-  const cleanPrefix = (prefix || 'SIS').replace(/[-/.]+$/, '')
+  const cleanPrefix = String(prefix || 'SIS').replace(/[-/.]+$/, '')
   return `${cleanPrefix}${sep}${activeMonth}${sep}${activeFy}${sep}${String(seqNum).padStart(padding, '0')}`
 }
 
@@ -83,7 +85,7 @@ export async function getNextInvoiceNumber(req, res) {
       FROM settings WHERE id = 1
     `)
     const s = settingRows.length > 0 ? settingRows[0] : {}
-    const prefix = (s.invoice_prefix !== undefined && s.invoice_prefix !== null && s.invoice_prefix.trim() !== '') ? s.invoice_prefix.trim() : 'SIS'
+    const prefix = (s.invoice_prefix !== undefined && s.invoice_prefix !== null && String(s.invoice_prefix).trim() !== '') ? String(s.invoice_prefix).trim() : 'SIS'
     const month = s.invoice_month
     const fy = s.invoice_financial_year
     const startNum = parseInt(s.invoice_starting_number, 10) || 1
@@ -97,11 +99,12 @@ export async function getNextInvoiceNumber(req, res) {
     const autoFy = (effectiveDate.getMonth() >= 3)
       ? `${currentYear}-${String(currentYear + 1).slice(-2)}`
       : `${currentYear - 1}-${String(currentYear).slice(-2)}`
-    const activeFy = (fy && fy.trim() && fy.trim().toUpperCase() !== 'AUTO')
-      ? fy.trim()
+    const fyStr = String(fy || '').trim()
+    const activeFy = (fyStr && fyStr.toUpperCase() !== 'AUTO')
+      ? fyStr
       : autoFy
 
-    const cleanPrefix = prefix.replace(/[-/.]+$/, '')
+    const cleanPrefix = String(prefix).replace(/[-/.]+$/, '')
 
     // Extract sequence numbers from existing bills matching current prefix/month/fy
     const pattern = `${cleanPrefix}${sep}${activeMonth}${sep}${activeFy}%`
@@ -274,6 +277,29 @@ export async function createBill(req, res) {
       })
     }
 
+    // Check if any serial number is already sold in inventory_serials
+    for (const item of items) {
+      const billedSerials = []
+      if (Array.isArray(item.serial_numbers)) {
+        item.serial_numbers.forEach(s => { if (s && String(s).trim()) billedSerials.push(String(s).trim()) })
+      } else if (item.serial_number && String(item.serial_number).trim()) {
+        String(item.serial_number).split(/[\n,]+/).forEach(s => { if (s && s.trim()) billedSerials.push(s.trim()) })
+      }
+
+      for (const sn of billedSerials) {
+        const [soldRows] = await pool.query(
+          'SELECT serial_number, status FROM inventory_serials WHERE LOWER(serial_number) = LOWER(?)',
+          [sn]
+        )
+        if (soldRows.length > 0 && soldRows[0].status && soldRows[0].status.toLowerCase() !== 'available') {
+          return res.status(400).json({
+            success: false,
+            message: `Serial number "${sn}" is already marked as "${soldRows[0].status}" in inventory and cannot be billed again.`
+          })
+        }
+      }
+    }
+
     // Determine receipt_number if not provided
     let finalReceiptNumber = (receipt_number || '').trim()
     if (!finalReceiptNumber) {
@@ -308,6 +334,20 @@ export async function createBill(req, res) {
       parsedTerms = currentSettings.terms_conditions
     }
 
+    let parsedInvoiceTerms = []
+    if (typeof currentSettings.invoice_terms === 'string') {
+      try { parsedInvoiceTerms = JSON.parse(currentSettings.invoice_terms) } catch { parsedInvoiceTerms = [] }
+    } else if (Array.isArray(currentSettings.invoice_terms)) {
+      parsedInvoiceTerms = currentSettings.invoice_terms
+    }
+    let parsedReceiptTerms = []
+    if (typeof currentSettings.receipt_terms === 'string') {
+      try { parsedReceiptTerms = JSON.parse(currentSettings.receipt_terms) } catch { parsedReceiptTerms = [] }
+    } else if (Array.isArray(currentSettings.receipt_terms)) {
+      parsedReceiptTerms = currentSettings.receipt_terms
+    }
+    const finalInvoiceTerms = parsedInvoiceTerms.length > 0 ? parsedInvoiceTerms : parsedTerms
+
     const companySnapshot = JSON.stringify({
       company_name: currentSettings.company_name || 'SIMCHA INFO SOLUTIONS',
       address: currentSettings.address || '',
@@ -321,7 +361,9 @@ export async function createBill(req, res) {
       branch: currentSettings.branch || '',
       bank_image_url: currentSettings.bank_image_url || '',
       signature_url: currentSettings.signature_url || '',
-      terms_conditions: parsedTerms
+      invoice_terms: finalInvoiceTerms,
+      receipt_terms: parsedReceiptTerms,
+      terms_conditions: finalInvoiceTerms
     })
 
     // Insert into bills table

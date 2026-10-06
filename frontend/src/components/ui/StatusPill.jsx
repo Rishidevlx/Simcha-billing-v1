@@ -30,11 +30,20 @@ export default function StatusPill({
     'low stock': 'bg-[#f7b84b] text-white',
     partial: 'bg-[#f7b84b] text-white',
     
-    // Info / Blue / Purple / Replaced / Credit Note
+    // Info / Blue / Purple / Replaced / Credit Note / Numbering Modules
     'in progress': 'bg-[#299cdb] text-white',
     processing: 'bg-[#299cdb] text-white',
     replaced: 'bg-[#299cdb] text-white',
     issued: 'bg-[#299cdb] text-white',
+    'sales quotation': 'bg-[#299cdb] text-white',
+    'outward sales': 'bg-[#3577f1] text-white',
+    'service estimation': 'bg-[#6559cc] text-white',
+    'service ticket': 'bg-[#6559cc] text-white',
+    'sales receipt': 'bg-[#0ab39c] text-white',
+    'sales payment receipt': 'bg-[#0ab39c] text-white',
+    'service receipt': 'bg-[#0ab39c] text-white',
+    'against invoice': 'bg-[#f7b84b] text-white',
+    'financial credit': 'bg-[#6559cc] text-white',
     'credit note': 'bg-[#6559cc] text-white',
     'credit note issued': 'bg-[#6559cc] text-white',
     refunded: 'bg-[#6559cc] text-white',

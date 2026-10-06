@@ -965,12 +965,24 @@ export default function CreateBillPage({ setActiveRoute }) {
         const qtyCount = Math.min(25, Math.max(1, Math.floor(parseFloat(it.quantity) || 1)))
         for (let sIdx = 0; sIdx < qtyCount; sIdx++) {
           const serialVal = it.serial_numbers?.[sIdx] || (sIdx === 0 ? it.serial_number : '') || ''
-          if (!serialVal.trim()) {
+          const trimmed = serialVal.trim().toLowerCase()
+          if (!trimmed) {
             Swal.fire({
               icon: 'warning',
               title: `Serial Number Missing!`,
               text: `Item #${i + 1} (${it.item_name || 'Item'}) requires ${qtyCount} serial numbers. Slot #${sIdx + 1} is empty.`,
               confirmButtonColor: '#043486'
+            })
+            return false
+          }
+
+          const dbStatus = verifiedSerials[trimmed]
+          if (dbStatus && dbStatus.found === true && dbStatus.status && dbStatus.status.toLowerCase() !== 'available') {
+            Swal.fire({
+              icon: 'error',
+              title: 'Unavailable Serial Number!',
+              html: `Serial number <strong>"${serialVal.trim()}"</strong> for item <strong>"${it.item_name || 'Item'}"</strong> is already marked as <strong>${dbStatus.status}</strong> in inventory.<br/><br/>You cannot issue or bill an already sold/unavailable product.`,
+              confirmButtonColor: '#d33'
             })
             return false
           }

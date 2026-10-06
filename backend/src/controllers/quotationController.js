@@ -40,10 +40,11 @@ const MONTH_MAP = {
 
 function formatMonthValue(d, monthSetting) {
   const autoMonth = String(d.getMonth() + 1).padStart(2, '0')
-  if (!monthSetting || !monthSetting.trim() || monthSetting.trim().toUpperCase() === 'AUTO') {
+  const str = String(monthSetting || '').trim()
+  if (!str || str.toUpperCase() === 'AUTO') {
     return autoMonth
   }
-  const clean = monthSetting.trim().toUpperCase()
+  const clean = str.toUpperCase()
   if (MONTH_MAP[clean]) {
     return MONTH_MAP[clean]
   }
@@ -66,7 +67,7 @@ export async function getNextQuotationNumber(req, res) {
       FROM settings WHERE id = 1
     `)
     const s = settingRows.length > 0 ? settingRows[0] : {}
-    const prefix = (s.quotation_prefix !== undefined && s.quotation_prefix !== null && s.quotation_prefix.trim() !== '') ? s.quotation_prefix.trim() : 'SIS-QTN'
+    const prefix = (s.quotation_prefix !== undefined && s.quotation_prefix !== null && String(s.quotation_prefix).trim() !== '') ? String(s.quotation_prefix).trim() : 'SIS-QTN'
     const month = s.quotation_month
     const fy = s.quotation_financial_year
     const startNum = parseInt(s.quotation_starting_number, 10) || 1
@@ -80,11 +81,12 @@ export async function getNextQuotationNumber(req, res) {
     const autoFy = (effectiveDate.getMonth() >= 3)
       ? `${currentYear}-${String(currentYear + 1).slice(-2)}`
       : `${currentYear - 1}-${String(currentYear).slice(-2)}`
-    const activeFy = (fy && fy.trim() && fy.trim().toUpperCase() !== 'AUTO')
-      ? fy.trim()
+    const fyStr = String(fy || '').trim()
+    const activeFy = (fyStr && fyStr.toUpperCase() !== 'AUTO')
+      ? fyStr
       : autoFy
 
-    const cleanPrefix = prefix.replace(/[-/.]+$/, '')
+    const cleanPrefix = String(prefix).replace(/[-/.]+$/, '')
 
     // Match existing quotations
     const pattern = `${cleanPrefix}${sep}${activeMonth}${sep}${activeFy}%`
@@ -199,6 +201,14 @@ export async function createQuotation(req, res) {
       parsedTerms = currentSettings.terms_conditions
     }
 
+    let parsedQuotationTerms = []
+    if (typeof currentSettings.quotation_terms === 'string') {
+      try { parsedQuotationTerms = JSON.parse(currentSettings.quotation_terms) } catch { parsedQuotationTerms = [] }
+    } else if (Array.isArray(currentSettings.quotation_terms)) {
+      parsedQuotationTerms = currentSettings.quotation_terms
+    }
+    const finalQuotationTerms = parsedQuotationTerms.length > 0 ? parsedQuotationTerms : parsedTerms
+
     const companySnapshot = JSON.stringify({
       company_name: currentSettings.company_name || 'SIMCHA INFO SOLUTIONS',
       address: currentSettings.address || '',
@@ -212,7 +222,8 @@ export async function createQuotation(req, res) {
       branch: currentSettings.branch || '',
       bank_image_url: currentSettings.bank_image_url || '',
       signature_url: currentSettings.signature_url || '',
-      terms_conditions: parsedTerms
+      quotation_terms: finalQuotationTerms,
+      terms_conditions: finalQuotationTerms
     })
 
     // Calculate default valid_until if not provided (default quotation_validity_days)
@@ -840,6 +851,43 @@ export async function convertQuotationToInvoice(req, res) {
     const seq = matchSeq ? parseInt(matchSeq[1], 10) : rStartNum
     const finalReceiptNumber = `${rPrefix}${rSep}${rFy}${rSep}${String(seq).padStart(rPadding, '0')}`
 
+    // Build Invoice Company Snapshot with Invoice & Receipt terms (not quotation terms)
+    const [snapSettingRows] = await pool.query('SELECT * FROM settings WHERE id = 1')
+    const curSettings = snapSettingRows.length > 0 ? snapSettingRows[0] : {}
+    let parsedInvTerms = []
+    if (typeof curSettings.invoice_terms === 'string') {
+      try { parsedInvTerms = JSON.parse(curSettings.invoice_terms) } catch { parsedInvTerms = [] }
+    } else if (Array.isArray(curSettings.invoice_terms)) {
+      parsedInvTerms = curSettings.invoice_terms
+    }
+    let parsedRecTerms = []
+    if (typeof curSettings.receipt_terms === 'string') {
+      try { parsedRecTerms = JSON.parse(curSettings.receipt_terms) } catch { parsedRecTerms = [] }
+    } else if (Array.isArray(curSettings.receipt_terms)) {
+      parsedRecTerms = curSettings.receipt_terms
+    }
+    const finalInvoiceTerms = parsedInvTerms.length > 0 
+      ? parsedInvTerms 
+      : (typeof curSettings.terms_conditions === 'string' ? (JSON.parse(curSettings.terms_conditions || '[]')) : (curSettings.terms_conditions || []))
+
+    const invoiceCompanySnapshot = JSON.stringify({
+      company_name: curSettings.company_name || 'SIMCHA INFO SOLUTIONS',
+      address: curSettings.address || '',
+      phone: curSettings.phone || '',
+      email: curSettings.email || '',
+      gstin: curSettings.gstin || '',
+      bank_name: curSettings.bank_name || '',
+      account_name: curSettings.account_name || curSettings.company_name || '',
+      account_no: curSettings.account_no || '',
+      ifsc_code: curSettings.ifsc_code || '',
+      branch: curSettings.branch || '',
+      bank_image_url: curSettings.bank_image_url || '',
+      signature_url: curSettings.signature_url || '',
+      invoice_terms: finalInvoiceTerms,
+      receipt_terms: parsedRecTerms,
+      terms_conditions: finalInvoiceTerms
+    })
+
     // Insert into bills
     const [billResult] = await pool.query(`
       INSERT INTO bills (
@@ -878,7 +926,7 @@ export async function convertQuotationToInvoice(req, res) {
       payment_mode,
       payment_status,
       `Converted from Quotation #${quotation.quotation_number}. ${quotation.notes || ''}`,
-      quotation.company_snapshot
+      invoiceCompanySnapshot
     ])
 
     const newBillId = billResult.insertId
@@ -909,6 +957,25 @@ export async function convertQuotationToInvoice(req, res) {
         it.amount,
         it.return_policy
       ])
+
+      // Update Serial Numbers status to 'Sold' in inventory_serials
+      if (it.serial_number && it.serial_number.trim() && it.material_id) {
+        const serialsList = it.serial_number
+          .split(/[\n,]+/)
+          .map(s => s.trim())
+          .filter(Boolean)
+
+        for (const sn of serialsList) {
+          try {
+            await pool.query(
+              'UPDATE inventory_serials SET status = "Sold", updated_at = NOW() WHERE material_id = ? AND LOWER(serial_number) = LOWER(?)',
+              [it.material_id, sn]
+            )
+          } catch (snErr) {
+            console.error('Error updating inventory_serials status to Sold:', snErr)
+          }
+        }
+      }
 
       // Deduct current stock
       if (it.material_id) {

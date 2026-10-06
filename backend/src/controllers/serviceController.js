@@ -40,10 +40,11 @@ const MONTH_MAP = {
 
 function formatMonthValue(d, monthSetting) {
   const autoMonth = String(d.getMonth() + 1).padStart(2, '0')
-  if (!monthSetting || !monthSetting.trim() || monthSetting.trim().toUpperCase() === 'AUTO') {
+  const str = String(monthSetting || '').trim()
+  if (!str || str.toUpperCase() === 'AUTO') {
     return autoMonth
   }
-  const clean = monthSetting.trim().toUpperCase()
+  const clean = str.toUpperCase()
   if (MONTH_MAP[clean]) {
     return MONTH_MAP[clean]
   }
@@ -63,11 +64,12 @@ function buildDynamicNumber(prefix, sep, monthSetting, fySetting, seqNum, paddin
   const autoFy = (now.getMonth() >= 3)
     ? `${currentYear}-${String(currentYear + 1).slice(-2)}`
     : `${currentYear - 1}-${String(currentYear).slice(-2)}`
-  const activeFy = (fySetting && fySetting.trim() && fySetting.trim().toUpperCase() !== 'AUTO')
-    ? fySetting.trim()
+  const fyStr = String(fySetting || '').trim()
+  const activeFy = (fyStr && fyStr.toUpperCase() !== 'AUTO')
+    ? fyStr
     : autoFy
 
-  const cleanPrefix = (prefix || 'SIS-SR').replace(/[-/.]+$/, '')
+  const cleanPrefix = String(prefix || 'SIS-SR').replace(/[-/.]+$/, '')
   return `${cleanPrefix}${sep}${activeMonth}${sep}${activeFy}${sep}${String(seqNum).padStart(padding, '0')}`
 }
 
@@ -83,7 +85,7 @@ export async function getNextServiceNumber(req, res) {
       FROM settings WHERE id = 1
     `)
     const s = settingRows.length > 0 ? settingRows[0] : {}
-    const prefix = (s.service_prefix !== undefined && s.service_prefix !== null && s.service_prefix.trim() !== '') ? s.service_prefix.trim() : 'SIS-SR'
+    const prefix = (s.service_prefix !== undefined && s.service_prefix !== null && String(s.service_prefix).trim() !== '') ? String(s.service_prefix).trim() : 'SIS-SR'
     const month = s.service_month
     const fy = s.service_financial_year
     const startNum = parseInt(s.service_starting_number, 10) || 1
@@ -97,11 +99,12 @@ export async function getNextServiceNumber(req, res) {
     const autoFy = (effectiveDate.getMonth() >= 3)
       ? `${currentYear}-${String(currentYear + 1).slice(-2)}`
       : `${currentYear - 1}-${String(currentYear).slice(-2)}`
-    const activeFy = (fy && fy.trim() && fy.trim().toUpperCase() !== 'AUTO')
-      ? fy.trim()
+    const fyStr = String(fy || '').trim()
+    const activeFy = (fyStr && fyStr.toUpperCase() !== 'AUTO')
+      ? fyStr
       : autoFy
 
-    const cleanPrefix = prefix.replace(/[-/.]+$/, '')
+    const cleanPrefix = String(prefix).replace(/[-/.]+$/, '')
 
     // Extract sequence numbers from existing service_bills matching current prefix/month/fy
     const pattern = `${cleanPrefix}${sep}${activeMonth}${sep}${activeFy}%`
@@ -207,15 +210,28 @@ export async function createServiceBill(req, res) {
     let finalReceiptNumber = (receipt_number || '').trim()
     if (!finalReceiptNumber) {
       const [settingRows] = await pool.query(`
-        SELECT receipt_prefix, receipt_financial_year, receipt_starting_number, receipt_padding_digits, receipt_separator 
+        SELECT 
+          service_receipt_prefix, service_receipt_financial_year, service_receipt_starting_number, service_receipt_padding_digits, service_receipt_separator,
+          receipt_prefix, receipt_financial_year, receipt_starting_number, receipt_padding_digits, receipt_separator 
         FROM settings WHERE id = 1
       `)
       const s = settingRows.length > 0 ? settingRows[0] : {}
-      const prefix = (s.receipt_prefix !== undefined && s.receipt_prefix !== null && s.receipt_prefix.trim() !== '') ? s.receipt_prefix.trim() : 'SIS-REC'
-      const fy = (s.receipt_financial_year && s.receipt_financial_year.trim()) ? s.receipt_financial_year.trim() : '2026-27'
-      const startNum = parseInt(s.receipt_starting_number, 10) || 1
-      const padding = parseInt(s.receipt_padding_digits, 10) || 4
-      const sep = (s.receipt_separator !== undefined && s.receipt_separator !== null) ? s.receipt_separator : '/'
+      const hasServiceRec = (s.service_receipt_prefix !== undefined && s.service_receipt_prefix !== null && s.service_receipt_prefix.trim() !== '')
+      const prefix = hasServiceRec 
+        ? s.service_receipt_prefix.trim() 
+        : ((s.receipt_prefix !== undefined && s.receipt_prefix !== null && s.receipt_prefix.trim() !== '') ? s.receipt_prefix.trim() : 'SIS-REC')
+      const fy = hasServiceRec 
+        ? (s.service_receipt_financial_year && s.service_receipt_financial_year.trim() ? s.service_receipt_financial_year.trim() : '2026-27')
+        : ((s.receipt_financial_year && s.receipt_financial_year.trim()) ? s.receipt_financial_year.trim() : '2026-27')
+      const startNum = hasServiceRec
+        ? (parseInt(s.service_receipt_starting_number, 10) || 1)
+        : (parseInt(s.receipt_starting_number, 10) || 1)
+      const padding = hasServiceRec
+        ? (parseInt(s.service_receipt_padding_digits, 10) || 4)
+        : (parseInt(s.receipt_padding_digits, 10) || 4)
+      const sep = hasServiceRec
+        ? ((s.service_receipt_separator !== undefined && s.service_receipt_separator !== null) ? s.service_receipt_separator : '/')
+        : ((s.receipt_separator !== undefined && s.receipt_separator !== null) ? s.receipt_separator : '/')
 
       const match = service_number.match(/(\d+)$/)
       const seq = match ? parseInt(match[1], 10) : startNum
@@ -234,6 +250,20 @@ export async function createServiceBill(req, res) {
       parsedTerms = currentSettings.terms_conditions
     }
 
+    let parsedServiceTerms = []
+    if (typeof currentSettings.service_terms === 'string') {
+      try { parsedServiceTerms = JSON.parse(currentSettings.service_terms) } catch { parsedServiceTerms = [] }
+    } else if (Array.isArray(currentSettings.service_terms)) {
+      parsedServiceTerms = currentSettings.service_terms
+    }
+    let parsedServiceReceiptTerms = []
+    if (typeof currentSettings.service_receipt_terms === 'string') {
+      try { parsedServiceReceiptTerms = JSON.parse(currentSettings.service_receipt_terms) } catch { parsedServiceReceiptTerms = [] }
+    } else if (Array.isArray(currentSettings.service_receipt_terms)) {
+      parsedServiceReceiptTerms = currentSettings.service_receipt_terms
+    }
+    const finalServiceTerms = parsedServiceTerms.length > 0 ? parsedServiceTerms : parsedTerms
+
     const companySnapshot = JSON.stringify({
       company_name: currentSettings.company_name || 'SIMCHA INFO SOLUTIONS',
       address: currentSettings.address || '',
@@ -247,7 +277,9 @@ export async function createServiceBill(req, res) {
       branch: currentSettings.branch || '',
       bank_image_url: currentSettings.bank_image_url || '',
       signature_url: currentSettings.signature_url || '',
-      terms_conditions: parsedTerms
+      service_terms: finalServiceTerms,
+      service_receipt_terms: parsedServiceReceiptTerms,
+      terms_conditions: finalServiceTerms
     })
 
     // Insert into service_bills table

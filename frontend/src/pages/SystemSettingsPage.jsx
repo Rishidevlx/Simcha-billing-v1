@@ -49,9 +49,12 @@ export default function SystemSettingsPage() {
   // Edit mode per tab/section
   const [editStates, setEditStates] = useState({
     company: false,
-    numbering: false,
     taxes: false,
     bank: false,
+    numbering_quotations: false,
+    numbering_invoices: false,
+    numbering_receipts: false,
+    numbering_returns: false,
     terms: false
   })
 
@@ -111,6 +114,22 @@ export default function SystemSettingsPage() {
   const [quotationSeparator, setQuotationSeparator] = useState('')
   const [quotationValidityDays, setQuotationValidityDays] = useState('')
 
+  // Dynamic Service Quotation Numbering Settings
+  const [serviceQuotationPrefix, setServiceQuotationPrefix] = useState('')
+  const [serviceQuotationMonth, setServiceQuotationMonth] = useState('')
+  const [serviceQuotationFinancialYear, setServiceQuotationFinancialYear] = useState('')
+  const [serviceQuotationStartingNumber, setServiceQuotationStartingNumber] = useState('')
+  const [serviceQuotationPaddingDigits, setServiceQuotationPaddingDigits] = useState('')
+  const [serviceQuotationSeparator, setServiceQuotationSeparator] = useState('')
+
+  // Dynamic Service Receipt Numbering Settings
+  const [serviceReceiptPrefix, setServiceReceiptPrefix] = useState('')
+  const [serviceReceiptMonth, setServiceReceiptMonth] = useState('')
+  const [serviceReceiptFinancialYear, setServiceReceiptFinancialYear] = useState('')
+  const [serviceReceiptStartingNumber, setServiceReceiptStartingNumber] = useState('')
+  const [serviceReceiptPaddingDigits, setServiceReceiptPaddingDigits] = useState('')
+  const [serviceReceiptSeparator, setServiceReceiptSeparator] = useState('')
+
   // Tax Rates
   const [cgstRate, setCgstRate] = useState('')
   const [sgstRate, setSgstRate] = useState('')
@@ -128,8 +147,15 @@ export default function SystemSettingsPage() {
   const [isUploadingSign, setIsUploadingSign] = useState(false)
   const [previewZoomImg, setPreviewZoomImg] = useState(null)
 
-  // Terms & Conditions
+  // Terms & Conditions (Individual Modular Schemas)
   const [terms, setTerms] = useState([])
+  const [quotationTerms, setQuotationTerms] = useState([])
+  const [serviceQuotationTerms, setServiceQuotationTerms] = useState([])
+  const [invoiceTerms, setInvoiceTerms] = useState([])
+  const [serviceTerms, setServiceTerms] = useState([])
+  const [receiptTerms, setReceiptTerms] = useState([])
+  const [serviceReceiptTerms, setServiceReceiptTerms] = useState([])
+  const [returnTerms, setReturnTerms] = useState([])
   const [returnDays, setReturnDays] = useState('')
   const [returnClause, setReturnClause] = useState('')
   const [dueDateDays, setDueDateDays] = useState('')
@@ -213,6 +239,22 @@ export default function SystemSettingsPage() {
     setQuotationSeparator(s.quotation_separator || '')
     setQuotationValidityDays(s.quotation_validity_days !== undefined && s.quotation_validity_days !== null ? String(s.quotation_validity_days) : '15')
 
+    // Service Quotation numbering
+    setServiceQuotationPrefix(s.service_quotation_prefix || '')
+    setServiceQuotationMonth(s.service_quotation_month || '')
+    setServiceQuotationFinancialYear(s.service_quotation_financial_year || '')
+    setServiceQuotationStartingNumber(s.service_quotation_starting_number !== undefined && s.service_quotation_starting_number !== null ? String(s.service_quotation_starting_number) : '')
+    setServiceQuotationPaddingDigits(s.service_quotation_padding_digits !== undefined && s.service_quotation_padding_digits !== null ? String(s.service_quotation_padding_digits) : '')
+    setServiceQuotationSeparator(s.service_quotation_separator || '')
+
+    // Service Receipt numbering
+    setServiceReceiptPrefix(s.service_receipt_prefix || '')
+    setServiceReceiptMonth(s.service_receipt_month || '')
+    setServiceReceiptFinancialYear(s.service_receipt_financial_year || '')
+    setServiceReceiptStartingNumber(s.service_receipt_starting_number !== undefined && s.service_receipt_starting_number !== null ? String(s.service_receipt_starting_number) : '')
+    setServiceReceiptPaddingDigits(s.service_receipt_padding_digits !== undefined && s.service_receipt_padding_digits !== null ? String(s.service_receipt_padding_digits) : '')
+    setServiceReceiptSeparator(s.service_receipt_separator || '')
+
     setCgstRate(s.cgst_rate !== undefined && s.cgst_rate !== null ? String(s.cgst_rate) : '')
     setSgstRate(s.sgst_rate !== undefined && s.sgst_rate !== null ? String(s.sgst_rate) : '')
     setIgstRate(s.igst_rate !== undefined && s.igst_rate !== null ? String(s.igst_rate) : '')
@@ -226,6 +268,23 @@ export default function SystemSettingsPage() {
     setReturnDays(s.return_days !== undefined && s.return_days !== null ? String(s.return_days) : '')
     setReturnClause(s.return_policy_clause || '')
     setDueDateDays(s.due_date_days !== undefined && s.due_date_days !== null ? String(s.due_date_days) : '')
+
+    // Individual Terms & Conditions
+    setQuotationTerms(Array.isArray(s.quotation_terms) ? s.quotation_terms : [])
+    setServiceQuotationTerms(Array.isArray(s.service_quotation_terms) ? s.service_quotation_terms : [])
+    
+    if (Array.isArray(s.invoice_terms) && s.invoice_terms.length > 0) {
+      setInvoiceTerms(s.invoice_terms)
+    } else if (Array.isArray(s.terms_conditions)) {
+      setInvoiceTerms(s.terms_conditions)
+    } else {
+      setInvoiceTerms([])
+    }
+
+    setServiceTerms(Array.isArray(s.service_terms) ? s.service_terms : [])
+    setReceiptTerms(Array.isArray(s.receipt_terms) ? s.receipt_terms : [])
+    setServiceReceiptTerms(Array.isArray(s.service_receipt_terms) ? s.service_receipt_terms : [])
+    setReturnTerms(Array.isArray(s.return_terms) ? s.return_terms : [])
 
     if (Array.isArray(s.terms_conditions)) {
       setTerms(s.terms_conditions)
@@ -248,7 +307,77 @@ export default function SystemSettingsPage() {
 
   const handleCancelTab = (tabId) => {
     if (savedSettings) {
-      populateFields(savedSettings)
+      const s = savedSettings
+      if (tabId === 'numbering_quotations') {
+        setQuotationPrefix(s.quotation_prefix || '')
+        setQuotationMonth(s.quotation_month || '')
+        setQuotationFinancialYear(s.quotation_financial_year || '')
+        setQuotationStartingNumber(s.quotation_starting_number !== undefined && s.quotation_starting_number !== null ? String(s.quotation_starting_number) : '')
+        setQuotationPaddingDigits(s.quotation_padding_digits !== undefined && s.quotation_padding_digits !== null ? String(s.quotation_padding_digits) : '')
+        setQuotationSeparator(s.quotation_separator || '')
+        setQuotationValidityDays(s.quotation_validity_days !== undefined && s.quotation_validity_days !== null ? String(s.quotation_validity_days) : '')
+        setServiceQuotationPrefix(s.service_quotation_prefix || '')
+        setServiceQuotationMonth(s.service_quotation_month || '')
+        setServiceQuotationFinancialYear(s.service_quotation_financial_year || '')
+        setServiceQuotationStartingNumber(s.service_quotation_starting_number !== undefined && s.service_quotation_starting_number !== null ? String(s.service_quotation_starting_number) : '')
+        setServiceQuotationPaddingDigits(s.service_quotation_padding_digits !== undefined && s.service_quotation_padding_digits !== null ? String(s.service_quotation_padding_digits) : '')
+        setServiceQuotationSeparator(s.service_quotation_separator || '')
+      } else if (tabId === 'numbering_invoices') {
+        setInvoicePrefix(s.invoice_prefix || '')
+        setInvoiceMonth(s.invoice_month || '')
+        setInvoiceFinancialYear(s.invoice_financial_year || '')
+        setInvoiceStartingNumber(s.invoice_starting_number !== undefined && s.invoice_starting_number !== null ? String(s.invoice_starting_number) : '')
+        setInvoicePaddingDigits(s.invoice_padding_digits !== undefined && s.invoice_padding_digits !== null ? String(s.invoice_padding_digits) : '')
+        setInvoiceSeparator(s.invoice_separator || '')
+        setDueDateDays(s.due_date_days !== undefined && s.due_date_days !== null ? String(s.due_date_days) : '')
+        setServicePrefix(s.service_prefix || '')
+        setServiceMonth(s.service_month || '')
+        setServiceFinancialYear(s.service_financial_year || '')
+        setServiceStartingNumber(s.service_starting_number !== undefined && s.service_starting_number !== null ? String(s.service_starting_number) : '')
+        setServicePaddingDigits(s.service_padding_digits !== undefined && s.service_padding_digits !== null ? String(s.service_padding_digits) : '')
+        setServiceSeparator(s.service_separator || '')
+      } else if (tabId === 'numbering_receipts') {
+        setReceiptPrefix(s.receipt_prefix || '')
+        setReceiptMonth(s.receipt_month || '')
+        setReceiptFinancialYear(s.receipt_financial_year || '')
+        setReceiptStartingNumber(s.receipt_starting_number !== undefined && s.receipt_starting_number !== null ? String(s.receipt_starting_number) : '')
+        setReceiptPaddingDigits(s.receipt_padding_digits !== undefined && s.receipt_padding_digits !== null ? String(s.receipt_padding_digits) : '')
+        setReceiptSeparator(s.receipt_separator || '')
+        setServiceReceiptPrefix(s.service_receipt_prefix || '')
+        setServiceReceiptMonth(s.service_receipt_month || '')
+        setServiceReceiptFinancialYear(s.service_receipt_financial_year || '')
+        setServiceReceiptStartingNumber(s.service_receipt_starting_number !== undefined && s.service_receipt_starting_number !== null ? String(s.service_receipt_starting_number) : '')
+        setServiceReceiptPaddingDigits(s.service_receipt_padding_digits !== undefined && s.service_receipt_padding_digits !== null ? String(s.service_receipt_padding_digits) : '')
+        setServiceReceiptSeparator(s.service_receipt_separator || '')
+      } else if (tabId === 'numbering_returns') {
+        setReturnPrefix(s.return_prefix || '')
+        setReturnMonth(s.return_month || '')
+        setReturnFinancialYear(s.return_financial_year || '')
+        setReturnStartingNumber(s.return_starting_number !== undefined && s.return_starting_number !== null ? String(s.return_starting_number) : '')
+        setReturnPaddingDigits(s.return_padding_digits !== undefined && s.return_padding_digits !== null ? String(s.return_padding_digits) : '')
+        setReturnSeparator(s.return_separator || '')
+        setCreditNotePrefix(s.credit_note_prefix || '')
+        setCreditNoteMonth(s.credit_note_month || '')
+        setCreditNoteFinancialYear(s.credit_note_financial_year || '')
+        setCreditNoteStartingNumber(s.credit_note_starting_number !== undefined && s.credit_note_starting_number !== null ? String(s.credit_note_starting_number) : '')
+        setCreditNotePaddingDigits(s.credit_note_padding_digits !== undefined && s.credit_note_padding_digits !== null ? String(s.credit_note_padding_digits) : '')
+        setCreditNoteSeparator(s.credit_note_separator || '')
+      } else if (tabId === 'terms_quotations') {
+        setQuotationTerms(Array.isArray(s.quotation_terms) ? s.quotation_terms : [])
+        setServiceQuotationTerms(Array.isArray(s.service_quotation_terms) ? s.service_quotation_terms : [])
+      } else if (tabId === 'terms_invoices') {
+        setInvoiceTerms(Array.isArray(s.invoice_terms) && s.invoice_terms.length > 0 ? s.invoice_terms : (Array.isArray(s.terms_conditions) ? s.terms_conditions : []))
+        setServiceTerms(Array.isArray(s.service_terms) ? s.service_terms : [])
+        setReturnDays(s.return_days !== undefined && s.return_days !== null ? String(s.return_days) : '')
+        setReturnClause(s.return_policy_clause || '')
+      } else if (tabId === 'terms_receipts') {
+        setReceiptTerms(Array.isArray(s.receipt_terms) ? s.receipt_terms : [])
+        setServiceReceiptTerms(Array.isArray(s.service_receipt_terms) ? s.service_receipt_terms : [])
+      } else if (tabId === 'terms_returns') {
+        setReturnTerms(Array.isArray(s.return_terms) ? s.return_terms : [])
+      } else {
+        populateFields(s)
+      }
     }
     toggleEditTab(tabId, false)
   }
@@ -532,22 +661,59 @@ export default function SystemSettingsPage() {
         gstin: gstin.trim(),
         signature_url: signatureUrl || null
       }
-    } else if (sectionId === 'numbering') {
-      if (!invoicePrefix.trim() || invoicePrefix.trim().length > 10) {
+    } else if (sectionId === 'numbering_quotations') {
+      if (!quotationPrefix.trim() || quotationPrefix.trim().length > 10) {
         Swal.fire({
           icon: 'warning',
-          title: 'Invalid Invoice Prefix',
-          text: 'Invoice Prefix is required (maximum 10 characters).',
+          title: 'Invalid Quotation Prefix',
+          text: 'Outward Quotation Prefix is required (maximum 10 characters).',
           confirmButtonColor: '#043486'
         })
         return
       }
 
-      if (!receiptPrefix.trim() || receiptPrefix.trim().length > 10) {
+      if (!quotationFinancialYear.trim() || quotationFinancialYear.trim().length > 7) {
         Swal.fire({
           icon: 'warning',
-          title: 'Invalid Receipt Prefix',
-          text: 'Receipt Prefix is required (maximum 10 characters).',
+          title: 'Invalid Financial Year',
+          text: 'Quotation Financial Year is required (maximum 7 characters, e.g. 2026-27).',
+          confirmButtonColor: '#043486'
+        })
+        return
+      }
+
+      const qtnStart = parseInt(quotationStartingNumber, 10)
+      if (isNaN(qtnStart) || qtnStart < 1 || qtnStart > 999999) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Invalid Starting Number',
+          text: 'Quotation starting number must be between 1 and 999999.',
+          confirmButtonColor: '#043486'
+        })
+        return
+      }
+
+      payload = {
+        quotation_prefix: quotationPrefix.trim(),
+        quotation_month: (quotationMonth && quotationMonth.trim()) ? quotationMonth.trim().toUpperCase() : 'AUTO',
+        quotation_financial_year: quotationFinancialYear.trim(),
+        quotation_starting_number: parseInt(quotationStartingNumber, 10) || 1,
+        quotation_padding_digits: parseInt(quotationPaddingDigits, 10) || 4,
+        quotation_separator: quotationSeparator || '/',
+        quotation_validity_days: quotationValidityDays !== '' && quotationValidityDays !== null ? parseInt(quotationValidityDays, 10) : 15,
+        service_quotation_prefix: serviceQuotationPrefix.trim(),
+        service_quotation_month: (serviceQuotationMonth && serviceQuotationMonth.trim()) ? serviceQuotationMonth.trim().toUpperCase() : 'AUTO',
+        service_quotation_financial_year: serviceQuotationFinancialYear.trim(),
+        service_quotation_starting_number: parseInt(serviceQuotationStartingNumber, 10) || 1,
+        service_quotation_padding_digits: parseInt(serviceQuotationPaddingDigits, 10) || 4,
+        service_quotation_separator: serviceQuotationSeparator || '/'
+      }
+    } else if (sectionId === 'numbering_invoices') {
+      if (!invoicePrefix.trim() || invoicePrefix.trim().length > 10) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Invalid Invoice Prefix',
+          text: 'Invoice Prefix is required (maximum 10 characters).',
           confirmButtonColor: '#043486'
         })
         return
@@ -568,16 +734,6 @@ export default function SystemSettingsPage() {
           icon: 'warning',
           title: 'Invalid Financial Year',
           text: 'Invoice Financial Year is required (maximum 7 characters, e.g. 2026-27).',
-          confirmButtonColor: '#043486'
-        })
-        return
-      }
-
-      if (!receiptFinancialYear.trim() || receiptFinancialYear.trim().length > 7) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Invalid Financial Year',
-          text: 'Receipt Financial Year is required (maximum 7 characters, e.g. 2026-27).',
           confirmButtonColor: '#043486'
         })
         return
@@ -604,17 +760,6 @@ export default function SystemSettingsPage() {
         return
       }
 
-      const recStart = parseInt(receiptStartingNumber, 10)
-      if (isNaN(recStart) || recStart < 1 || recStart > 999999) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Invalid Starting Number',
-          text: 'Receipt starting number must be between 1 and 999999.',
-          confirmButtonColor: '#043486'
-        })
-        return
-      }
-
       const srvStart = parseInt(serviceStartingNumber, 10)
       if (isNaN(srvStart) || srvStart < 1 || srvStart > 999999) {
         Swal.fire({
@@ -626,6 +771,68 @@ export default function SystemSettingsPage() {
         return
       }
 
+      payload = {
+        invoice_prefix: invoicePrefix.trim(),
+        invoice_month: (invoiceMonth && invoiceMonth.trim()) ? invoiceMonth.trim().toUpperCase() : 'AUTO',
+        invoice_financial_year: invoiceFinancialYear.trim(),
+        invoice_starting_number: parseInt(invoiceStartingNumber, 10) || 1,
+        invoice_padding_digits: parseInt(invoicePaddingDigits, 10) || 4,
+        invoice_separator: invoiceSeparator || '/',
+        due_date_days: dueDateDays !== '' && dueDateDays !== null ? parseInt(dueDateDays, 10) : 15,
+        service_prefix: servicePrefix.trim(),
+        service_month: (serviceMonth && serviceMonth.trim()) ? serviceMonth.trim().toUpperCase() : 'AUTO',
+        service_financial_year: serviceFinancialYear.trim(),
+        service_starting_number: parseInt(serviceStartingNumber, 10) || 1,
+        service_padding_digits: parseInt(servicePaddingDigits, 10) || 4,
+        service_separator: serviceSeparator || '/'
+      }
+    } else if (sectionId === 'numbering_receipts') {
+      if (!receiptPrefix.trim() || receiptPrefix.trim().length > 10) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Invalid Receipt Prefix',
+          text: 'Receipt Prefix is required (maximum 10 characters).',
+          confirmButtonColor: '#043486'
+        })
+        return
+      }
+
+      if (!receiptFinancialYear.trim() || receiptFinancialYear.trim().length > 7) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Invalid Financial Year',
+          text: 'Receipt Financial Year is required (maximum 7 characters, e.g. 2026-27).',
+          confirmButtonColor: '#043486'
+        })
+        return
+      }
+
+      const recStart = parseInt(receiptStartingNumber, 10)
+      if (isNaN(recStart) || recStart < 1 || recStart > 999999) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Invalid Starting Number',
+          text: 'Receipt starting number must be between 1 and 999999.',
+          confirmButtonColor: '#043486'
+        })
+        return
+      }
+
+      payload = {
+        receipt_prefix: receiptPrefix.trim(),
+        receipt_month: (receiptMonth && receiptMonth.trim()) ? receiptMonth.trim().toUpperCase() : 'AUTO',
+        receipt_financial_year: receiptFinancialYear.trim(),
+        receipt_starting_number: parseInt(receiptStartingNumber, 10) || 1,
+        receipt_padding_digits: parseInt(receiptPaddingDigits, 10) || 4,
+        receipt_separator: receiptSeparator || '/',
+        service_receipt_prefix: serviceReceiptPrefix.trim(),
+        service_receipt_month: (serviceReceiptMonth && serviceReceiptMonth.trim()) ? serviceReceiptMonth.trim().toUpperCase() : 'AUTO',
+        service_receipt_financial_year: serviceReceiptFinancialYear.trim(),
+        service_receipt_starting_number: parseInt(serviceReceiptStartingNumber, 10) || 1,
+        service_receipt_padding_digits: parseInt(serviceReceiptPaddingDigits, 10) || 4,
+        service_receipt_separator: serviceReceiptSeparator || '/'
+      }
+    } else if (sectionId === 'numbering_returns') {
       if (!returnPrefix.trim() || returnPrefix.trim().length > 10) {
         Swal.fire({
           icon: 'warning',
@@ -688,56 +895,7 @@ export default function SystemSettingsPage() {
         return
       }
 
-      if (!quotationPrefix.trim() || quotationPrefix.trim().length > 10) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Invalid Quotation Prefix',
-          text: 'Quotation Prefix is required (maximum 10 characters).',
-          confirmButtonColor: '#043486'
-        })
-        return
-      }
-
-      if (!quotationFinancialYear.trim() || quotationFinancialYear.trim().length > 7) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Invalid Financial Year',
-          text: 'Quotation Financial Year is required (maximum 7 characters, e.g. 2026-27).',
-          confirmButtonColor: '#043486'
-        })
-        return
-      }
-
-      const qtnStart = parseInt(quotationStartingNumber, 10)
-      if (isNaN(qtnStart) || qtnStart < 1 || qtnStart > 999999) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Invalid Starting Number',
-          text: 'Quotation starting number must be between 1 and 999999.',
-          confirmButtonColor: '#043486'
-        })
-        return
-      }
-
       payload = {
-        invoice_prefix: invoicePrefix.trim(),
-        invoice_month: (invoiceMonth && invoiceMonth.trim()) ? invoiceMonth.trim().toUpperCase() : 'AUTO',
-        invoice_financial_year: invoiceFinancialYear.trim(),
-        invoice_starting_number: parseInt(invoiceStartingNumber, 10) || 1,
-        invoice_padding_digits: parseInt(invoicePaddingDigits, 10) || 4,
-        invoice_separator: invoiceSeparator || '/',
-        receipt_prefix: receiptPrefix.trim(),
-        receipt_month: (receiptMonth && receiptMonth.trim()) ? receiptMonth.trim().toUpperCase() : 'AUTO',
-        receipt_financial_year: receiptFinancialYear.trim(),
-        receipt_starting_number: parseInt(receiptStartingNumber, 10) || 1,
-        receipt_padding_digits: parseInt(receiptPaddingDigits, 10) || 4,
-        receipt_separator: receiptSeparator || '/',
-        service_prefix: servicePrefix.trim(),
-        service_month: (serviceMonth && serviceMonth.trim()) ? serviceMonth.trim().toUpperCase() : 'AUTO',
-        service_financial_year: serviceFinancialYear.trim(),
-        service_starting_number: parseInt(serviceStartingNumber, 10) || 1,
-        service_padding_digits: parseInt(servicePaddingDigits, 10) || 4,
-        service_separator: serviceSeparator || '/',
         return_prefix: returnPrefix.trim(),
         return_month: (returnMonth && returnMonth.trim()) ? returnMonth.trim().toUpperCase() : 'AUTO',
         return_financial_year: returnFinancialYear.trim(),
@@ -749,15 +907,7 @@ export default function SystemSettingsPage() {
         credit_note_financial_year: creditNoteFinancialYear.trim(),
         credit_note_starting_number: parseInt(creditNoteStartingNumber, 10) || 1,
         credit_note_padding_digits: parseInt(creditNotePaddingDigits, 10) || 4,
-        credit_note_separator: creditNoteSeparator || '/',
-        quotation_prefix: quotationPrefix.trim(),
-        quotation_month: (quotationMonth && quotationMonth.trim()) ? quotationMonth.trim().toUpperCase() : 'AUTO',
-        quotation_financial_year: quotationFinancialYear.trim(),
-        quotation_starting_number: parseInt(quotationStartingNumber, 10) || 1,
-        quotation_padding_digits: parseInt(quotationPaddingDigits, 10) || 4,
-        quotation_separator: quotationSeparator || '/',
-        quotation_validity_days: quotationValidityDays !== '' && quotationValidityDays !== null ? parseInt(quotationValidityDays, 10) : 15,
-        due_date_days: dueDateDays !== '' && dueDateDays !== null ? parseInt(dueDateDays, 10) : 15
+        credit_note_separator: creditNoteSeparator || '/'
       }
     } else if (sectionId === 'bank') {
       if (ifscCode.trim() && ifscCode.trim().length !== 11) {
@@ -797,11 +947,42 @@ export default function SystemSettingsPage() {
         sgst_rate: sgst,
         igst_rate: igst
       }
-    } else if (sectionId === 'terms') {
+    } else if (sectionId === 'terms_quotations') {
       payload = {
+        quotation_terms: quotationTerms.filter(t => t && t.trim()),
+        service_quotation_terms: serviceQuotationTerms.filter(t => t && t.trim())
+      }
+    } else if (sectionId === 'terms_invoices') {
+      const cleanInvoice = invoiceTerms.filter(t => t && t.trim())
+      payload = {
+        invoice_terms: cleanInvoice,
+        terms_conditions: cleanInvoice,
+        service_terms: serviceTerms.filter(t => t && t.trim()),
         return_days: parseInt(returnDays, 10) || 0,
-        return_policy_clause: returnClause ? returnClause.trim() : null,
-        terms_conditions: terms.filter(t => t && t.trim())
+        return_policy_clause: returnClause ? returnClause.trim() : null
+      }
+    } else if (sectionId === 'terms_receipts') {
+      payload = {
+        receipt_terms: receiptTerms.filter(t => t && t.trim()),
+        service_receipt_terms: serviceReceiptTerms.filter(t => t && t.trim())
+      }
+    } else if (sectionId === 'terms_returns') {
+      payload = {
+        return_terms: returnTerms.filter(t => t && t.trim())
+      }
+    } else if (sectionId === 'terms') {
+      const cleanInvoice = invoiceTerms.filter(t => t && t.trim())
+      payload = {
+        quotation_terms: quotationTerms.filter(t => t && t.trim()),
+        service_quotation_terms: serviceQuotationTerms.filter(t => t && t.trim()),
+        invoice_terms: cleanInvoice,
+        terms_conditions: cleanInvoice.length > 0 ? cleanInvoice : terms.filter(t => t && t.trim()),
+        service_terms: serviceTerms.filter(t => t && t.trim()),
+        receipt_terms: receiptTerms.filter(t => t && t.trim()),
+        service_receipt_terms: serviceReceiptTerms.filter(t => t && t.trim()),
+        return_terms: returnTerms.filter(t => t && t.trim()),
+        return_days: parseInt(returnDays, 10) || 0,
+        return_policy_clause: returnClause ? returnClause.trim() : null
       }
     }
 
@@ -844,22 +1025,21 @@ export default function SystemSettingsPage() {
   }
 
   if (isLoading) {
-    return <SkeletonLoader type="form" className="max-w-6xl mx-auto pb-12" />
+    return <SkeletonLoader type="form" className="w-full space-y-6 pb-12" />
   }
 
-  const isCurrentTabEditing = activeTab === 'company' 
-    ? (editStates.company || editStates.numbering) 
-    : editStates[activeTab]
+  const isCurrentTabEditing = editStates[activeTab]
 
   const tabs = [
     { id: 'company', label: 'Company Profile', icon: Building2 },
     { id: 'taxes', label: 'Tax & GST Rates', icon: Percent },
     { id: 'bank', label: 'Bank Account', icon: Landmark },
+    { id: 'numbering', label: 'Numbering', icon: Hash },
     { id: 'terms', label: 'Terms & Conditions', icon: FileText, badge: terms.length }
   ]
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-12 font-['Poppins',sans-serif]">
+    <div className="w-full space-y-6 pb-12 font-['Poppins',sans-serif]">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-200/80 dark:border-slate-800 pb-3">
         <div>
@@ -881,7 +1061,7 @@ export default function SystemSettingsPage() {
       />
       <div className="space-y-6">
         
-        {/* ================= TAB 1: COMPANY PROFILE & NUMBERING ================= */}
+        {/* ================= TAB 1: COMPANY PROFILE ================= */}
         {activeTab === 'company' && (
           <div className="space-y-6">
             <CompanyProfileSection
@@ -912,13 +1092,63 @@ export default function SystemSettingsPage() {
               handleRemoveSignature={() => setSignatureUrl('')}
               setPreviewZoomImg={setPreviewZoomImg}
             />
+          </div>
+        )}
 
+        {/* ================= TAB 2: TAX & GST RATES ================= */}
+        {activeTab === 'taxes' && (
+          <TaxRatesSection
+            canEdit={canEdit}
+            isEditing={editStates.taxes}
+            onToggleEdit={(val) => toggleEditTab('taxes', val)}
+            onSave={() => handleSubmit(null, 'taxes')}
+            onCancel={() => handleCancelTab('taxes')}
+            isSaving={isSaving}
+            cgstRate={cgstRate}
+            setCgstRate={setCgstRate}
+            sgstRate={sgstRate}
+            setSgstRate={setSgstRate}
+            igstRate={igstRate}
+            setIgstRate={setIgstRate}
+          />
+        )}
+
+        {/* ================= TAB 3: BANK ACCOUNT ================= */}
+        {activeTab === 'bank' && (
+          <BankAccountSection
+            canEdit={canEdit}
+            isEditing={editStates.bank}
+            onToggleEdit={(val) => toggleEditTab('bank', val)}
+            onSave={() => handleSubmit(null, 'bank')}
+            onCancel={() => handleCancelTab('bank')}
+            isSaving={isSaving}
+            bankName={bankName}
+            setBankName={setBankName}
+            accountName={accountName}
+            setAccountName={setAccountName}
+            accountNo={accountNo}
+            setAccountNo={setAccountNo}
+            ifscCode={ifscCode}
+            setIfscCode={setIfscCode}
+            branch={branch}
+            setBranch={setBranch}
+            bankImageUrl={bankImageUrl}
+            setBankImageUrl={setBankImageUrl}
+            isUploadingBankImg={isUploadingBankImg}
+            handleUploadBankImage={handleUploadBankImage}
+            setPreviewZoomImg={setPreviewZoomImg}
+          />
+        )}
+
+        {/* ================= TAB 4: NUMBERING SCHEMES ================= */}
+        {activeTab === 'numbering' && (
+          <div className="space-y-6">
             <NumberingSchemesSection
               canEdit={canEdit}
-              isEditing={editStates.numbering}
-              onToggleEdit={(val) => toggleEditTab('numbering', val)}
-              onSave={() => handleSubmit(null, 'numbering')}
-              onCancel={() => handleCancelTab('numbering')}
+              editStates={editStates}
+              onToggleEdit={(subTab, val) => toggleEditTab(`numbering_${subTab}`, val)}
+              onSave={(subTab) => handleSubmit(null, `numbering_${subTab}`)}
+              onCancel={(subTab) => handleCancelTab(`numbering_${subTab}`)}
               onQuickReset={handleQuickResetNumbering}
               isSaving={isSaving}
               invoicePrefix={invoicePrefix}
@@ -991,75 +1221,62 @@ export default function SystemSettingsPage() {
               setQuotationSeparator={setQuotationSeparator}
               quotationValidityDays={quotationValidityDays}
               setQuotationValidityDays={setQuotationValidityDays}
+              serviceQuotationPrefix={serviceQuotationPrefix}
+              setServiceQuotationPrefix={setServiceQuotationPrefix}
+              serviceQuotationMonth={serviceQuotationMonth}
+              setServiceQuotationMonth={setServiceQuotationMonth}
+              serviceQuotationFinancialYear={serviceQuotationFinancialYear}
+              setServiceQuotationFinancialYear={setServiceQuotationFinancialYear}
+              serviceQuotationStartingNumber={serviceQuotationStartingNumber}
+              setServiceQuotationStartingNumber={setServiceQuotationStartingNumber}
+              serviceQuotationPaddingDigits={serviceQuotationPaddingDigits}
+              serviceQuotationSeparator={serviceQuotationSeparator}
+              setServiceQuotationSeparator={setServiceQuotationSeparator}
+              serviceReceiptPrefix={serviceReceiptPrefix}
+              setServiceReceiptPrefix={setServiceReceiptPrefix}
+              serviceReceiptMonth={serviceReceiptMonth}
+              setServiceReceiptMonth={setServiceReceiptMonth}
+              serviceReceiptFinancialYear={serviceReceiptFinancialYear}
+              setServiceReceiptFinancialYear={setServiceReceiptFinancialYear}
+              serviceReceiptStartingNumber={serviceReceiptStartingNumber}
+              setServiceReceiptStartingNumber={setServiceReceiptStartingNumber}
+              serviceReceiptPaddingDigits={serviceReceiptPaddingDigits}
+              serviceReceiptSeparator={serviceReceiptSeparator}
+              setServiceReceiptSeparator={setServiceReceiptSeparator}
             />
           </div>
         )}
 
-        {/* ================= TAB 2: TAX & GST RATES ================= */}
-        {activeTab === 'taxes' && (
-          <TaxRatesSection
-            canEdit={canEdit}
-            isEditing={editStates.taxes}
-            onToggleEdit={(val) => toggleEditTab('taxes', val)}
-            onSave={() => handleSubmit(null, 'taxes')}
-            onCancel={() => handleCancelTab('taxes')}
-            isSaving={isSaving}
-            cgstRate={cgstRate}
-            setCgstRate={setCgstRate}
-            sgstRate={sgstRate}
-            setSgstRate={setSgstRate}
-            igstRate={igstRate}
-            setIgstRate={setIgstRate}
-          />
-        )}
-
-        {/* ================= TAB 3: BANK ACCOUNT ================= */}
-        {activeTab === 'bank' && (
-          <BankAccountSection
-            canEdit={canEdit}
-            isEditing={editStates.bank}
-            onToggleEdit={(val) => toggleEditTab('bank', val)}
-            onSave={() => handleSubmit(null, 'bank')}
-            onCancel={() => handleCancelTab('bank')}
-            isSaving={isSaving}
-            bankName={bankName}
-            setBankName={setBankName}
-            accountName={accountName}
-            setAccountName={setAccountName}
-            accountNo={accountNo}
-            setAccountNo={setAccountNo}
-            ifscCode={ifscCode}
-            setIfscCode={setIfscCode}
-            branch={branch}
-            setBranch={setBranch}
-            bankImageUrl={bankImageUrl}
-            setBankImageUrl={setBankImageUrl}
-            isUploadingBankImg={isUploadingBankImg}
-            handleUploadBankImage={handleUploadBankImage}
-            setPreviewZoomImg={setPreviewZoomImg}
-          />
-        )}
-
         {/* ================= TAB 4: TERMS & CONDITIONS ================= */}
         {activeTab === 'terms' && (
-          <TermsConditionsSection
-            canEdit={canEdit}
-            isEditing={editStates.terms}
-            onToggleEdit={(val) => toggleEditTab('terms', val)}
-            onSave={() => handleSubmit(null, 'terms')}
-            onCancel={() => handleCancelTab('terms')}
-            isSaving={isSaving}
-            terms={terms}
-            handleTermChange={handleTermChange}
-            handleRemoveTerm={handleRemoveTerm}
-            newTermInput={newTermInput}
-            setNewTermInput={setNewTermInput}
-            handleAddTerm={handleAddTerm}
-            returnDays={returnDays}
-            setReturnDays={setReturnDays}
-            returnClause={returnClause}
-            setReturnClause={setReturnClause}
-          />
+          <div className="w-full">
+            <TermsConditionsSection
+              canEdit={canEdit}
+              editStates={editStates}
+              onToggleEdit={(subTab, val) => toggleEditTab(`terms_${subTab}`, val)}
+              onSave={(subTab) => handleSubmit(null, `terms_${subTab}`)}
+              onCancel={(subTab) => handleCancelTab(`terms_${subTab}`)}
+              isSaving={isSaving}
+              quotationTerms={quotationTerms}
+              setQuotationTerms={setQuotationTerms}
+              serviceQuotationTerms={serviceQuotationTerms}
+              setServiceQuotationTerms={setServiceQuotationTerms}
+              invoiceTerms={invoiceTerms}
+              setInvoiceTerms={setInvoiceTerms}
+              serviceTerms={serviceTerms}
+              setServiceTerms={setServiceTerms}
+              returnDays={returnDays}
+              setReturnDays={setReturnDays}
+              returnClause={returnClause}
+              setReturnClause={setReturnClause}
+              receiptTerms={receiptTerms}
+              setReceiptTerms={setReceiptTerms}
+              serviceReceiptTerms={serviceReceiptTerms}
+              setServiceReceiptTerms={setServiceReceiptTerms}
+              returnTerms={returnTerms}
+              setReturnTerms={setReturnTerms}
+            />
+          </div>
         )}
 
       </div>

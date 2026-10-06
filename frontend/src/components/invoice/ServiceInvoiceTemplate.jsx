@@ -83,7 +83,11 @@ export default function ServiceInvoiceTemplate({ service, bill, settings, compan
   const bankImageUrl = effectiveBank?.bank_image_url || effectiveBank?.bankImageUrl || data.bank_image_url || liveBankImg || ''
   const signatureUrl = effectiveSettings?.signature_url || effectiveSettings?.signatureUrl || data.signature_url || liveSignUrl || ''
   
-  const defaultTermsList = (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
+  const defaultTermsList = (Array.isArray(effectiveSettings?.service_terms) && effectiveSettings.service_terms.length > 0)
+    ? effectiveSettings.service_terms
+    : (Array.isArray(snapshot?.service_terms) && snapshot.service_terms.length > 0)
+    ? snapshot.service_terms
+    : (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
     ? effectiveSettings.terms_conditions
     : (Array.isArray(snapshot?.terms_conditions) && snapshot.terms_conditions.length > 0)
     ? snapshot.terms_conditions

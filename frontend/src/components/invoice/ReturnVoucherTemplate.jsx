@@ -90,11 +90,23 @@ export default function ReturnVoucherTemplate({ returnItem, settings, company })
   const grandTotal = parseFloat(returnItem.refund_amount || returnItem.total_amount || (unitRate * returnQty)) || 0
   const amountInWords = numberToWords(grandTotal)
 
+  const defaultReturnTerms = (Array.isArray(effectiveSettings?.return_terms) && effectiveSettings.return_terms.length > 0)
+    ? effectiveSettings.return_terms
+    : (Array.isArray(snapshot?.return_terms) && snapshot.return_terms.length > 0)
+    ? snapshot.return_terms
+    : (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
+    ? effectiveSettings.terms_conditions
+    : [
+      'Returns must be requested within the eligible return window from invoice date.',
+      'Items must be returned with original box, accessories, and packaging intact.',
+      'Defective items are subject to QC verification before replacement or credit note issuance.'
+    ]
+
   return (
     <div id="return-slip-printable-area" className="w-full">
       <TemplatePageShell pageIndex={1} totalPages={1}>
-        {/* Main Content Area */}
-        <div className="relative z-10 px-7 pt-6 pb-2 space-y-3.5 flex-1">
+        {/* Main Content Area: Natural sequential flow so Terms & Conditions sit directly below QC Card */}
+        <div className="relative z-10 px-7 pt-6 pb-2 space-y-3 flex-1">
           {/* Header with branding */}
           <TemplateHeader
             companyName={companyName}
@@ -106,15 +118,15 @@ export default function ReturnVoucherTemplate({ returnItem, settings, company })
 
           {/* Meta Bar */}
           <TemplateMetaBar
-            docNumberLabel={`${documentTitle} NUMBER:`}
+            docNumberLabel="RETURN NUMBER:"
             docNumber={documentNumber}
             dateLabel="DATE:"
             dateValue={formatDate(returnItem.return_date)}
             rightExtra={
               returnItem.bill_number ? (
-                <div className="flex items-center gap-1.5 pl-3 border-l border-gray-300">
-                  <span className="text-gray-600 uppercase font-semibold text-[10.5px]">AGAINST INVOICE:</span>
-                  <span className="text-[#043486] font-mono font-bold text-[11.5px]">{returnItem.bill_number}</span>
+                <div className="flex items-center gap-1.5 pl-3 border-l border-gray-300 shrink-0">
+                  <span className="text-gray-600 uppercase font-semibold text-[10px]">AGAINST INVOICE:</span>
+                  <span className="text-[#043486] font-mono font-bold text-[11px]">{returnItem.bill_number}</span>
                 </div>
               ) : null
             }
@@ -227,8 +239,8 @@ export default function ReturnVoucherTemplate({ returnItem, settings, company })
           </div>
 
           {/* --- QUALITY CHECK & RESOLUTION BOX --- */}
-          <div className="border border-gray-300 bg-white/90 p-3.5 space-y-2.5 text-[#292424]">
-            <div className="flex items-center justify-between pb-2 border-b border-gray-200">
+          <div className="border border-gray-300 bg-white/90 p-3 space-y-2 text-[#292424]">
+            <div className="flex items-center justify-between pb-1.5 border-b border-gray-200">
               <span className="text-[10.5px] font-black uppercase tracking-wider text-[#043486]">
                 Quality Check (QC) &amp; Resolution Summary
               </span>
@@ -256,7 +268,7 @@ export default function ReturnVoucherTemplate({ returnItem, settings, company })
                     : 'Restocked to Inventory'}
                 </span>
                 {returnItem.qc_notes && (
-                  <div className="text-[10px] text-gray-600 italic mt-1">
+                  <div className="text-[10px] text-gray-600 italic mt-0.5">
                     <strong>Remarks:</strong> "{returnItem.qc_notes}"
                   </div>
                 )}
@@ -274,7 +286,7 @@ export default function ReturnVoucherTemplate({ returnItem, settings, company })
 
             {/* Amount in words */}
             {amountInWords && (
-              <div className="pt-2 border-t border-gray-200 text-[9.5px] text-gray-700 leading-tight">
+              <div className="pt-1.5 border-t border-gray-200 text-[9.5px] text-gray-700 leading-tight">
                 <strong className="text-gray-800">Amount in Words: </strong>
                 <span className="italic text-[#292424] font-semibold capitalize">
                   {amountInWords}
@@ -283,23 +295,39 @@ export default function ReturnVoucherTemplate({ returnItem, settings, company })
             )}
           </div>
 
-          {/* --- SIGNATURE SECTION --- */}
-          <div className="pt-6 flex justify-end">
-            <div className="w-56 text-center space-y-0.5">
+          {/* --- TERMS & CONDITIONS AND SIGNATURE SECTION (Directly below QC Box) --- */}
+          <div className="pt-3 border-t border-gray-200 grid grid-cols-12 gap-4 items-end">
+            {/* Left: Return Terms & Conditions */}
+            <div className="col-span-8 space-y-1">
+              <h4 className="text-[10px] font-bold text-[#043486] uppercase tracking-wider">
+                Terms &amp; Conditions:
+              </h4>
+              <ol className="list-decimal list-inside text-[9px] text-gray-700 space-y-0.5 leading-relaxed font-medium">
+                {defaultReturnTerms.map((term, idx) => (
+                  <li key={idx}>{term}</li>
+                ))}
+              </ol>
+            </div>
+
+            {/* Right: Signature Box */}
+            <div className="col-span-4 text-center space-y-0.5">
               {signatureUrl ? (
                 <div className="flex justify-center items-center h-12 mb-1">
                   <img
                     src={signatureUrl}
                     alt="Authorized Signatory Signature / Seal"
-                    className="max-h-12 max-w-[150px] object-contain"
+                    className="max-h-12 max-w-[140px] object-contain"
                   />
                 </div>
               ) : (
                 <div className="h-10"></div>
               )}
               <div className="w-full border-t border-dashed border-gray-400 pt-1">
-                <p className="text-[10px] font-bold text-[#043486] uppercase tracking-wide">
-                  For {companyName} (Authorized Signatory)
+                <p className="text-[9.5px] font-bold text-[#043486] uppercase tracking-wide">
+                  For {companyName}
+                </p>
+                <p className="text-[8.5px] text-gray-500 font-semibold uppercase">
+                  (Authorized Signatory)
                 </p>
               </div>
             </div>

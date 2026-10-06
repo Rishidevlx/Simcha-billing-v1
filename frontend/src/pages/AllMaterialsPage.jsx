@@ -383,13 +383,17 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
         />
         <ListKpiCard
           label="Total Stock Units"
-          value={materials.reduce((acc, m) => acc + (parseInt(m.opening_stock, 10) || 0), 0).toLocaleString('en-IN')}
+          value={materials.reduce((acc, m) => acc + (parseFloat(m.current_stock ?? m.opening_stock ?? 0) || 0), 0).toLocaleString('en-IN')}
           icon={Layers}
           variant="emerald"
         />
         <ListKpiCard
           label="Low Stock Items"
-          value={materials.filter(m => (parseInt(m.opening_stock, 10) || 0) <= (parseInt(m.reorder_level, 10) || 0)).length}
+          value={materials.filter(m => {
+            const cur = parseFloat(m.current_stock ?? m.opening_stock ?? 0) || 0
+            const reorder = parseFloat(m.reorder_level || 0)
+            return reorder > 0 && cur <= reorder && cur > 0
+          }).length}
           icon={AlertTriangle}
           variant="amber"
         />
@@ -644,11 +648,13 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
                       {/* Stock */}
                       <td className="py-3.5 px-3.5 text-center">
                         <span className={`px-2 py-0.5 rounded-xs text-[11px] font-bold ${
-                          (mat.opening_stock || 0) <= (mat.reorder_level || 0)
+                          (parseFloat(mat.current_stock ?? mat.opening_stock ?? 0)) <= 0
+                            ? 'bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 border border-red-300/60'
+                            : (parseFloat(mat.current_stock ?? mat.opening_stock ?? 0)) <= (parseFloat(mat.reorder_level) || 0)
                             ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300/60'
                             : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
                         }`}>
-                          {mat.opening_stock || 0} {mat.unit}
+                          {parseFloat(mat.current_stock ?? mat.opening_stock ?? 0)} {mat.unit}
                         </span>
                       </td>
 

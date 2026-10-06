@@ -71,29 +71,24 @@ export default function ReceiptTemplate({ bill, settings, company }) {
   const companyAddress = effectiveCompany?.address || ''
   const signatureUrl = effectiveSettings?.signature_url || effectiveSettings?.signatureUrl || bill.signature_url || liveSignUrl || null
 
-  const defaultTermsList = (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
+  const defaultTermsList = (Array.isArray(effectiveSettings?.receipt_terms) && effectiveSettings.receipt_terms.length > 0)
+    ? effectiveSettings.receipt_terms
+    : (Array.isArray(snapshot?.receipt_terms) && snapshot.receipt_terms.length > 0)
+    ? snapshot.receipt_terms
+    : (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
     ? effectiveSettings.terms_conditions
     : (Array.isArray(snapshot?.terms_conditions) && snapshot.terms_conditions.length > 0)
     ? snapshot.terms_conditions
     : (liveTerms && liveTerms.length > 0)
     ? liveTerms
     : [
-      'Warranty as per manufacturer’s norms & should be claimed directly.',
-      'Warranty claim takes 1 to 8 weeks.',
-      'Please carry receipt copy for warranty.',
-      'Goods Once Sold will not be taken back or exchanged.'
+      'Payment received subject to realization of cheque / online transfer.',
+      'This is an official computer generated payment acknowledgement.',
+      'Please preserve this receipt for all warranty claims and audit purposes.'
     ]
 
-  const items = Array.isArray(bill.items) ? bill.items : []
-  const hasReturnableItems = items.some(it => it.return_policy === true || it.return_policy === 1 || it.return_policy === '1')
-  const returnDays = settings?.return_days || 7
-  const returnClause = settings?.return_policy_clause
-    ? settings.return_policy_clause.replace('{days}', `${returnDays} days`)
-    : `Products eligible for return must be returned within ${returnDays} days of purchase with original invoice copy.`
-
-  const termsList = hasReturnableItems
-    ? [returnClause, ...defaultTermsList.filter(t => !t.toLowerCase().includes('will not be taken back'))]
-    : defaultTermsList
+  const termsList = defaultTermsList
+  const items = Array.isArray(bill?.items) ? bill.items : []
   const isGstInvoice = bill.invoice_type === 'GST' || (!bill.invoice_type && parseFloat(bill.total_tax || 0) > 0)
   const isIntraState = !bill.place_of_supply || bill.place_of_supply.includes('33') || bill.place_of_supply.toLowerCase().includes('tamil nadu')
 

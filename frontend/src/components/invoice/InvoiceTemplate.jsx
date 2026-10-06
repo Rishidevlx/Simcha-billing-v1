@@ -82,7 +82,11 @@ export default function InvoiceTemplate({ bill, settings, company }) {
   const bankImageUrl = effectiveBank?.bank_image_url || effectiveBank?.bankImageUrl || bill.bank_image_url || liveBankImg || ''
   const signatureUrl = effectiveSettings?.signature_url || effectiveSettings?.signatureUrl || bill.signature_url || liveSignUrl || ''
   
-  const defaultTermsList = (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
+  const defaultTermsList = (Array.isArray(effectiveSettings?.invoice_terms) && effectiveSettings.invoice_terms.length > 0)
+    ? effectiveSettings.invoice_terms
+    : (Array.isArray(snapshot?.invoice_terms) && snapshot.invoice_terms.length > 0)
+    ? snapshot.invoice_terms
+    : (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
     ? effectiveSettings.terms_conditions
     : (Array.isArray(snapshot?.terms_conditions) && snapshot.terms_conditions.length > 0)
     ? snapshot.terms_conditions

@@ -241,7 +241,8 @@ export default function OutwardLineItems({
                       const isDuplicate = trimmed !== '' && duplicateSerials.has(trimmed)
                       const dbStatus = trimmed ? verifiedSerials[trimmed] : null
                       const isNotFound = dbStatus && dbStatus.found === false
-                      const isVerified = dbStatus && dbStatus.found === true
+                      const isSoldOrUnavailable = dbStatus && dbStatus.found === true && dbStatus.status && dbStatus.status.toLowerCase() !== 'available'
+                      const isVerified = dbStatus && dbStatus.found === true && (!dbStatus.status || dbStatus.status.toLowerCase() === 'available')
                       const isSuggestOpen =
                         activeSerialSuggest?.itemIndex === index && activeSerialSuggest?.serialIndex === sIdx
                       const availableStockSerials = availableSerialsMap[item.material_id] || []
@@ -277,7 +278,7 @@ export default function OutwardLineItems({
                               }}
                               placeholder={`Serial #${sIdx + 1}`}
                               className={`w-full pl-9 pr-14 py-2.5 text-xs sm:text-sm font-mono text-[#292424] dark:text-white rounded-none focus:outline-none transition-colors ${
-                                isDuplicate || isNotFound
+                                isDuplicate || isNotFound || isSoldOrUnavailable
                                   ? 'bg-red-50 dark:bg-red-950/40 border-2 border-red-500 text-red-700 dark:text-red-300 focus:border-red-600'
                                   : isVerified
                                   ? 'bg-emerald-50/60 dark:bg-emerald-950/40 border-2 border-emerald-500 text-emerald-800 dark:text-emerald-300'
@@ -289,6 +290,8 @@ export default function OutwardLineItems({
                                 <AlertCircle size={15} className="text-red-500" title="Duplicate serial in bill" />
                               ) : isNotFound ? (
                                 <AlertCircle size={15} className="text-red-500" title="Not found in stock DB" />
+                              ) : isSoldOrUnavailable ? (
+                                <AlertCircle size={15} className="text-red-500" title={`Serial number is already ${dbStatus.status} in inventory`} />
                               ) : isVerified ? (
                                 <CheckCircle2
                                   size={15}
@@ -403,9 +406,13 @@ export default function OutwardLineItems({
                                 <span className="text-red-600 dark:text-red-400 font-bold">Duplicate in bill</span>
                               ) : isNotFound ? (
                                 <span className="text-red-600 dark:text-red-400 font-bold">Not in registered stock</span>
+                              ) : isSoldOrUnavailable ? (
+                                <span className="text-red-600 dark:text-red-400 font-bold">
+                                  Already {dbStatus.status} (Cannot bill)
+                                </span>
                               ) : isVerified ? (
                                 <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                                  Verified ({dbStatus.status})
+                                  Verified (In Stock)
                                 </span>
                               ) : (
                                 <span className="text-gray-400">Verifying...</span>
