@@ -53,6 +53,7 @@ export const API_ENDPOINTS = {
   SERVICE_STATUS_UPDATE: (id) => `${API_BASE_URL}/api/services/${id}/status`,
   SERVICE_SEND_RECEIPT: (id) => `${API_BASE_URL}/api/services/${id}/send-receipt`,
   SERVICE_SEND_QUOTATION: (id) => `${API_BASE_URL}/api/services/${id}/send-quotation`,
+  SERVICE_SEND_INVOICE: (id) => `${API_BASE_URL}/api/services/${id}/send-invoice`,
   RETURNS: `${API_BASE_URL}/api/returns`,
   RETURN_BY_ID: (id) => `${API_BASE_URL}/api/returns/${id}`,
   NEXT_RETURN_NUMBER: `${API_BASE_URL}/api/returns/meta/next-number`,

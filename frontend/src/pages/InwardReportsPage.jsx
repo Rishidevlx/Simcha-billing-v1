@@ -393,16 +393,16 @@ export default function InwardReportsPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
           {canDownload && (
             <Button
               variant="export"
               icon={Download}
               onClick={handleExportExcel}
-              className="text-xs font-semibold"
+              className="w-full justify-center text-[11px] sm:text-xs font-semibold px-2 sm:px-4 py-2"
               title={selectedIds.length > 0 ? `Export ${selectedIds.length} Selected Record(s)` : 'Export All Filtered Records'}
             >
-              {selectedIds.length > 0 ? `EXPORT SELECTED (${selectedIds.length})` : 'EXPORT TO EXCEL'}
+              <span className="truncate">{selectedIds.length > 0 ? `EXPORT (${selectedIds.length})` : 'EXPORT TO EXCEL'}</span>
             </Button>
           )}
           {canAdd && (
@@ -413,9 +413,9 @@ export default function InwardReportsPage() {
                 if (setActiveRoute) setActiveRoute('inward')
                 navigate('/inward')
               }}
-              className="text-xs font-semibold"
+              className="w-full justify-center text-[11px] sm:text-xs font-semibold px-2 sm:px-4 py-2"
             >
-              CREATE NEW INWARD
+              <span className="truncate">CREATE NEW INWARD</span>
             </Button>
           )}
         </div>
@@ -444,11 +444,11 @@ export default function InwardReportsPage() {
       </div>
 
       {/* 3. Advanced Multi-Filter Bar & Date Range Filtering */}
-      <div className="bg-white dark:bg-slate-900 p-5 rounded-none border border-gray-200 dark:border-slate-800 shadow-xs space-y-4 transition-colors">
+      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-none border border-gray-200 dark:border-slate-800 shadow-xs space-y-4 transition-colors">
 
         {/* Top Search & Action Row */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="w-full sm:w-96 max-w-md">
+          <div className="w-full flex-1">
             <SearchInput
               value={searchTerm}
               onChange={(e) => {
@@ -463,7 +463,7 @@ export default function InwardReportsPage() {
             />
           </div>
 
-          <div>
+          <div className="w-full sm:w-auto">
             <button
               type="button"
               onClick={() => {
@@ -471,9 +471,10 @@ export default function InwardReportsPage() {
                 fetchInwardData()
               }}
               title="Reload Inward Data"
-              className="p-2 text-gray-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors shadow-xs cursor-pointer"
+              className="w-full sm:w-auto p-2.5 text-gray-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
             >
               <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+              <span className="sm:hidden text-xs font-semibold">Reset Filters</span>
             </button>
           </div>
         </div>

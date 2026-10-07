@@ -29,7 +29,7 @@ export default function BankAccountSection({
     <SettingSectionCard
       icon={Landmark}
       title="Bank Account Information"
-      subtitle="Settlement bank details and UPI QR code printed at the bottom of outward tax invoices."
+      subtitle="Bank details and UPI QR code printed at the bottom invoices."
       actions={
         canEdit && (
           !isEditing ? (

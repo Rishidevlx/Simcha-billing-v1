@@ -348,6 +348,13 @@ export async function createBill(req, res) {
     }
     const finalInvoiceTerms = parsedInvoiceTerms.length > 0 ? parsedInvoiceTerms : parsedTerms
 
+    let parsedReturnTerms = []
+    if (typeof currentSettings.return_terms === 'string') {
+      try { parsedReturnTerms = JSON.parse(currentSettings.return_terms) } catch { parsedReturnTerms = [] }
+    } else if (Array.isArray(currentSettings.return_terms)) {
+      parsedReturnTerms = currentSettings.return_terms
+    }
+
     const companySnapshot = JSON.stringify({
       company_name: currentSettings.company_name || 'SIMCHA INFO SOLUTIONS',
       address: currentSettings.address || '',
@@ -363,7 +370,11 @@ export async function createBill(req, res) {
       signature_url: currentSettings.signature_url || '',
       invoice_terms: finalInvoiceTerms,
       receipt_terms: parsedReceiptTerms,
-      terms_conditions: finalInvoiceTerms
+      return_terms: parsedReturnTerms,
+      terms_conditions: finalInvoiceTerms,
+      return_days: currentSettings.return_days !== undefined && currentSettings.return_days !== null ? currentSettings.return_days : 0,
+      return_policy_clause: currentSettings.return_policy_clause || '',
+      due_date_days: currentSettings.due_date_days !== undefined && currentSettings.due_date_days !== null ? currentSettings.due_date_days : 15
     })
 
     // Insert into bills table
@@ -597,7 +608,7 @@ export async function getBillById(req, res) {
     const { id } = req.params
     const pool = getPool()
 
-    const [bills] = await pool.query('SELECT * FROM bills WHERE id = ?', [id])
+    const [bills] = await pool.query('SELECT * FROM bills WHERE id = ? OR invoice_number = ?', [id, id])
     if (bills.length === 0) {
       return res.status(404).json({
         success: false,
@@ -605,6 +616,7 @@ export async function getBillById(req, res) {
       })
     }
 
+    const bill = bills[0]
     const [items] = await pool.query(`
       SELECT 
         bi.*, 
@@ -619,12 +631,12 @@ export async function getBillById(req, res) {
       LEFT JOIN materials m ON bi.material_id = m.id
       WHERE bi.bill_id = ?
       ORDER BY bi.id ASC
-    `, [id])
+    `, [bill.id])
 
     return res.status(200).json({
       success: true,
       bill: {
-        ...bills[0],
+        ...bill,
         items
       }
     })
@@ -653,8 +665,8 @@ export async function deleteBill(req, res) {
 
     const invoiceNo = existing[0].invoice_number
 
-    // 1. Restore stock for all items
-    const [items] = await pool.query('SELECT material_id, quantity FROM bill_items WHERE bill_id = ?', [id])
+    // 1. Restore stock and serials for all items
+    const [items] = await pool.query('SELECT material_id, quantity, serial_number FROM bill_items WHERE bill_id = ?', [id])
     for (const item of items) {
       if (item.material_id) {
         try {
@@ -682,6 +694,21 @@ export async function deleteBill(req, res) {
         } catch (restoreErr) {
           console.error('Error restoring stock on bill delete:', restoreErr)
         }
+
+        // Restore serial numbers to Available
+        if (item.serial_number && String(item.serial_number).trim()) {
+          const serials = String(item.serial_number).split(',').map(s => s.trim()).filter(Boolean)
+          for (const sn of serials) {
+            try {
+              await pool.query(
+                'UPDATE inventory_serials SET status = "Available", updated_at = NOW() WHERE material_id = ? AND LOWER(serial_number) = LOWER(?)',
+                [item.material_id, sn]
+              )
+            } catch (snErr) {
+              console.error('Error freeing serial on bill delete:', snErr)
+            }
+          }
+        }
       }
     }
 
@@ -705,8 +732,19 @@ export async function deleteBill(req, res) {
 export async function updateBillPayment(req, res) {
   try {
     const { id } = req.params
-    const { payment_mode, payment_status } = req.body
+    const { payment_mode, payment_status, cancellation_reason } = req.body
     const pool = getPool()
+
+    const [oldBillRows] = await pool.query('SELECT * FROM bills WHERE id = ?', [id])
+    if (oldBillRows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Bill not found.'
+      })
+    }
+
+    const oldBill = oldBillRows[0]
+    const oldStatus = oldBill.payment_status || 'Pending'
 
     const fields = []
     const values = []
@@ -718,7 +756,18 @@ export async function updateBillPayment(req, res) {
     if (payment_status !== undefined) {
       fields.push('payment_status = ?')
       values.push(payment_status)
+      const isCancelling = String(payment_status).trim().toLowerCase() === 'cancelled' || String(payment_status).trim().toLowerCase() === 'cancel'
+      if (isCancelling) {
+        fields.push('cancelled_at = NOW()')
+      } else {
+        fields.push('cancelled_at = NULL')
+      }
     }
+    if (cancellation_reason !== undefined) {
+      fields.push('cancellation_reason = ?')
+      values.push(cancellation_reason)
+    }
+    fields.push('updated_at = NOW()')
 
     if (fields.length === 0) {
       return res.status(400).json({
@@ -730,11 +779,108 @@ export async function updateBillPayment(req, res) {
     values.push(id)
     const [result] = await pool.query(`UPDATE bills SET ${fields.join(', ')} WHERE id = ?`, values)
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Bill not found.'
-      })
+    // Handle Stock & Serial Number Restoration on Cancellation / Re-activation
+    if (payment_status !== undefined && String(payment_status).trim().toLowerCase() !== String(oldStatus).trim().toLowerCase()) {
+      const isNewCancelled = String(payment_status).trim().toLowerCase() === 'cancelled' || String(payment_status).trim().toLowerCase() === 'cancel'
+      const isOldCancelled = String(oldStatus).trim().toLowerCase() === 'cancelled' || String(oldStatus).trim().toLowerCase() === 'cancel'
+
+      if (isNewCancelled && !isOldCancelled) {
+        // Bill is being Cancelled -> Restore Stock & Free Serials
+        const [items] = await pool.query('SELECT material_id, quantity, serial_number FROM bill_items WHERE bill_id = ?', [id])
+        for (const item of items) {
+          const matId = item.material_id ? parseInt(item.material_id, 10) : null
+          const qtyVal = parseFloat(item.quantity) || 1
+
+          if (matId) {
+            try {
+              const [matRows] = await pool.query('SELECT current_stock, opening_stock FROM materials WHERE id = ?', [matId])
+              if (matRows.length > 0) {
+                const currentStock = parseFloat(matRows[0].current_stock ?? matRows[0].opening_stock ?? 0)
+                const newStock = currentStock + qtyVal
+                await pool.query('UPDATE materials SET current_stock = ?, updated_at = NOW() WHERE id = ?', [newStock, matId])
+
+                await pool.query(`
+                  INSERT INTO stock_ledger (
+                    material_id, movement_type, reference_number,
+                    quantity_change, balance_stock, notes
+                  ) VALUES (?, 'OUTWARD_REVERSAL', ?, ?, ?, ?)
+                `, [
+                  matId,
+                  oldBill.invoice_number,
+                  qtyVal,
+                  newStock,
+                  `Cancelled Outward Bill #${oldBill.invoice_number} (${oldBill.customer_name})${cancellation_reason ? ` - Reason: ${cancellation_reason}` : ''}`
+                ])
+              }
+            } catch (stockErr) {
+              console.error('Error restoring stock on bill cancel:', stockErr)
+            }
+
+            // Restore Serials to Available
+            if (item.serial_number && String(item.serial_number).trim()) {
+              const serials = String(item.serial_number).split(',').map(s => s.trim()).filter(Boolean)
+              for (const sn of serials) {
+                try {
+                  await pool.query(
+                    'UPDATE inventory_serials SET status = "Available", updated_at = NOW() WHERE material_id = ? AND LOWER(serial_number) = LOWER(?)',
+                    [matId, sn]
+                  )
+                } catch (snErr) {
+                  console.error('Error freeing serial on bill cancel:', snErr)
+                }
+              }
+            }
+          }
+        }
+      } else if (!isNewCancelled && isOldCancelled) {
+        // Bill is being Re-activated from Cancelled -> Deduct Stock & Re-mark Serials as Sold
+        const [items] = await pool.query('SELECT material_id, quantity, serial_number FROM bill_items WHERE bill_id = ?', [id])
+        for (const item of items) {
+          const matId = item.material_id ? parseInt(item.material_id, 10) : null
+          const qtyVal = parseFloat(item.quantity) || 1
+
+          if (matId) {
+            try {
+              const [matRows] = await pool.query('SELECT current_stock, opening_stock FROM materials WHERE id = ?', [matId])
+              if (matRows.length > 0) {
+                const currentStock = parseFloat(matRows[0].current_stock ?? matRows[0].opening_stock ?? 0)
+                const newStock = Math.max(0, currentStock - qtyVal)
+                await pool.query('UPDATE materials SET current_stock = ?, updated_at = NOW() WHERE id = ?', [newStock, matId])
+
+                await pool.query(`
+                  INSERT INTO stock_ledger (
+                    material_id, movement_type, reference_number,
+                    quantity_change, balance_stock, notes
+                  ) VALUES (?, 'OUTWARD_SALE', ?, ?, ?, ?)
+                `, [
+                  matId,
+                  oldBill.invoice_number,
+                  -qtyVal,
+                  newStock,
+                  `Re-activated Outward Bill #${oldBill.invoice_number} (${oldBill.customer_name})`
+                ])
+              }
+            } catch (stockErr) {
+              console.error('Error re-deducting stock on bill reactivate:', stockErr)
+            }
+
+            // Mark Serials as Sold
+            if (item.serial_number && String(item.serial_number).trim()) {
+              const serials = String(item.serial_number).split(',').map(s => s.trim()).filter(Boolean)
+              for (const sn of serials) {
+                try {
+                  await pool.query(
+                    'UPDATE inventory_serials SET status = "Sold", updated_at = NOW() WHERE material_id = ? AND LOWER(serial_number) = LOWER(?)',
+                    [matId, sn]
+                  )
+                } catch (snErr) {
+                  console.error('Error remarking serial to Sold:', snErr)
+                }
+              }
+            }
+          }
+        }
+      }
     }
 
     return res.status(200).json({

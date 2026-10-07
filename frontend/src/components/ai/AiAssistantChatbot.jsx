@@ -292,18 +292,18 @@ export default function AiAssistantChatbot({ user, onNavigate }) {
     <>
       {/* 1. FLOATING LAUNCHER BUTTON (Bottom Right - Clean Flow Icon Button) */}
       <div
-        className={`fixed bottom-20 right-6 z-50 transition-all duration-300 transform ${
+        className={`fixed bottom-4 sm:bottom-6 right-3 sm:right-6 z-50 transition-all duration-300 transform ${
           isOpen ? 'scale-0 opacity-0 pointer-events-none' : 'scale-100 opacity-100'
         }`}
       >
         <button
           onClick={() => setIsOpen(true)}
-          className="group flex items-center justify-center w-12 h-12 bg-[#0248BC] hover:bg-[#043486] text-white rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 active:scale-95 cursor-pointer font-['Poppins',sans-serif]"
+          className="group flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 bg-[#0248BC] hover:bg-[#043486] text-white rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 active:scale-95 cursor-pointer font-['Poppins',sans-serif]"
           title="Ask Simcha AI"
           aria-label="Ask Simcha AI Assistant"
         >
           <div className="relative flex items-center justify-center">
-            <Bot size={22} className="text-white transition-transform group-hover:scale-110" />
+            <Bot size={20} className="text-white transition-transform group-hover:scale-110 sm:scale-110" />
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full ring-2 ring-[#0248BC]" />
           </div>
         </button>
@@ -314,9 +314,9 @@ export default function AiAssistantChatbot({ user, onNavigate }) {
         <div
           ref={chatWindowRef}
           style={{
-            transform: `translate(${position.x}px, ${position.y}px)`
+            transform: typeof window !== 'undefined' && window.innerWidth < 640 ? 'none' : `translate(${position.x}px, ${position.y}px)`
           }}
-          className={`fixed z-50 bottom-20 right-6 w-[92vw] sm:w-[380px] md:w-[410px] h-[580px] max-h-[85vh] flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden font-['Poppins',sans-serif] ${
+          className={`fixed z-50 bottom-3 sm:bottom-6 right-2 sm:right-6 left-2 sm:left-auto w-[calc(100vw-16px)] sm:w-[380px] md:w-[410px] h-[540px] sm:h-[580px] max-h-[88vh] flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden font-['Poppins',sans-serif] ${
             isDragging ? 'select-none transition-none shadow-3xl ring-2 ring-[#0248BC]/40' : 'transition-transform duration-75'
           } ${
             isOpen ? 'opacity-100 scale-100 transition-opacity transition-transform duration-200 ease-out' : 'opacity-0 scale-95 transition-opacity transition-transform duration-200 ease-in pointer-events-none'

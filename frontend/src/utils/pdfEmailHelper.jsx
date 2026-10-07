@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import html2canvas from 'html2canvas-pro'
 import jsPDF from 'jspdf'
 import InvoiceTemplate from '../components/invoice/InvoiceTemplate'
+import ServiceInvoiceTemplate from '../components/invoice/ServiceInvoiceTemplate'
 import ReceiptTemplate from '../components/receipt/ReceiptTemplate'
 import QuotationTemplate from '../components/quotation/QuotationTemplate'
 import ServiceReceiptTemplate from '../components/receipt/ServiceReceiptTemplate'
@@ -127,6 +128,18 @@ export async function generateQuotationPdfBase64(quotation, settings = {}) {
 }
 
 /**
+ * Generate Base64 PDF for Service Invoice
+ */
+export async function generateServiceInvoicePdfBase64(service, settings = {}) {
+  return generatePdfBase64FromComponent(ServiceInvoiceTemplate, {
+    service,
+    items: service.items || [],
+    settings,
+    company: settings
+  })
+}
+
+/**
  * Generate Base64 PDF for Service Payment Receipt
  */
 export async function generateServiceReceiptPdfBase64(service, settings = {}) {
@@ -137,6 +150,20 @@ export async function generateServiceReceiptPdfBase64(service, settings = {}) {
  * Generate Base64 PDF for Service Quotation
  */
 export async function generateServiceQuotationPdfBase64(service, settings = {}) {
+  let snapshot = service.company_snapshot
+  if (typeof snapshot === 'string') {
+    try { snapshot = JSON.parse(snapshot) } catch { snapshot = null }
+  }
+
+  let parsedServiceQtnTerms = []
+  if (Array.isArray(snapshot?.service_quotation_terms) && snapshot.service_quotation_terms.length > 0) {
+    parsedServiceQtnTerms = snapshot.service_quotation_terms
+  } else if (Array.isArray(settings?.service_quotation_terms) && settings.service_quotation_terms.length > 0) {
+    parsedServiceQtnTerms = settings.service_quotation_terms
+  } else if (typeof settings?.service_quotation_terms === 'string') {
+    try { parsedServiceQtnTerms = JSON.parse(settings.service_quotation_terms) } catch { parsedServiceQtnTerms = [] }
+  }
+
   const mappedItems = (service.items || []).map((it) => ({
     ...it,
     item_name: it.product_name || it.item_name || 'Service Item',
@@ -151,10 +178,23 @@ export async function generateServiceQuotationPdfBase64(service, settings = {}) 
     serial_number: it.serial_number || it.brand_model || ''
   }))
 
+  const cleanSnapshot = snapshot ? {
+    ...snapshot,
+    service_quotation_terms: parsedServiceQtnTerms.length > 0 ? parsedServiceQtnTerms : undefined,
+    quotation_terms: parsedServiceQtnTerms.length > 0 ? parsedServiceQtnTerms : undefined,
+    terms_conditions: parsedServiceQtnTerms.length > 0 ? parsedServiceQtnTerms : undefined,
+    service_terms: undefined
+  } : null
+
   const quotationData = {
     ...service,
-    quotation_number: service.service_number,
+    company_snapshot: cleanSnapshot,
+    is_service: true,
+    quotation_number: service.quotation_number || service.service_quotation_number || service.service_number,
     quotation_date: service.service_date,
+    service_quotation_terms: parsedServiceQtnTerms.length > 0 ? parsedServiceQtnTerms : undefined,
+    quotation_terms: parsedServiceQtnTerms.length > 0 ? parsedServiceQtnTerms : undefined,
+    terms_conditions: parsedServiceQtnTerms.length > 0 ? parsedServiceQtnTerms : undefined,
     valid_until: null,
     items: mappedItems
   }

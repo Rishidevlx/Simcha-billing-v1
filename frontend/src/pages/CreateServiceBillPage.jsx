@@ -113,7 +113,7 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
       quantity: 1,
       unit: 'NOS',
       rate: 0,
-      hsn_code: '9987',
+      hsn_code: '',
       tax_rate: 18.0,
       tax_amount: 0,
       amount: 0,
@@ -182,7 +182,7 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
                   quantity: parseFloat(it.quantity) || 1,
                   unit: it.unit || 'NOS',
                   rate: parseFloat(it.rate) || 0,
-                  hsn_code: it.hsn_code || '9987',
+                  hsn_code: it.hsn_code || '',
                   tax_rate: parseFloat(it.tax_rate) || 18.0,
                   tax_amount: parseFloat(it.tax_amount) || 0,
                   amount: parseFloat(it.amount) || 0,
@@ -386,7 +386,7 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
         quantity: 1,
         unit: 'NOS',
         rate: 0,
-        hsn_code: '9987',
+        hsn_code: '',
         tax_rate: serviceType === 'GST' ? activeTaxRate : 0,
         tax_amount: 0,
         amount: 0,
@@ -541,7 +541,7 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
         quantity: 1,
         unit: 'NOS',
         rate: 0,
-        hsn_code: '9987',
+        hsn_code: '',
         tax_rate: serviceType === 'GST' ? activeTaxRate : 0,
         tax_amount: 0,
         amount: 0,
@@ -747,7 +747,7 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
           {/* ================= LEFT MAIN COLUMN (8 COLS) ================= */}
           <div className="lg:col-span-8 space-y-6">
             {/* Card 1: Service Specifications */}
-            <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-6 shadow-sm space-y-4 transition-colors">
+            <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-4 sm:p-6 shadow-sm space-y-4 transition-colors">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200 dark:border-slate-800">
                 <div className="flex items-center gap-2">
                   <FileDigit size={16} className="text-[#043486] dark:text-blue-400" />
@@ -757,11 +757,11 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
                 </div>
 
                 {/* Non-GST / GST Toggle */}
-                <div className="flex items-center bg-gray-100 dark:bg-slate-800 p-1 rounded-none border border-gray-200 dark:border-slate-700">
+                <div className="grid grid-cols-2 sm:flex items-center bg-gray-100 dark:bg-slate-800 p-1 rounded-none border border-gray-200 dark:border-slate-700 w-full sm:w-auto">
                   <button
                     type="button"
                     onClick={() => handleToggleServiceType('NON_GST')}
-                    className={`px-3 py-1 text-xs font-semibold rounded-none transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 text-center text-xs font-semibold rounded-none transition-all cursor-pointer ${
                       serviceType === 'NON_GST'
                         ? 'bg-[#043486] text-white shadow-xs'
                         : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
@@ -772,7 +772,7 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
                   <button
                     type="button"
                     onClick={() => handleToggleServiceType('GST')}
-                    className={`px-3 py-1 text-xs font-semibold rounded-none transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 text-center text-xs font-semibold rounded-none transition-all cursor-pointer ${
                       serviceType === 'GST'
                         ? 'bg-[#043486] text-white shadow-xs'
                         : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
@@ -954,6 +954,20 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
                 </div>
               </div>
             </div>
+
+            {/* ================= SERVICE LINE ITEMS ================= */}
+            <ServiceLineItems
+              items={items}
+              serviceType={serviceType}
+              duplicateSerials={duplicateSerials}
+              onItemChange={handleItemChange}
+              onToggleSerial={handleToggleSerial}
+              onSerialNumberChange={handleSerialNumberChange}
+              onAddItem={handleAddItem}
+              onDuplicateItem={handleDuplicateItem}
+              onRemoveItem={handleRemoveItem}
+            />
+
           </div>
 
           {/* ================= RIGHT SUMMARY COLUMN (4 COLS) ================= */}
@@ -985,18 +999,6 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
           </div>
         </div>
 
-        {/* ================= MIDDLE SECTION: CUSTOM SERVICE PRODUCTS & REPAIR TABLE ================= */}
-        <ServiceLineItems
-          items={items}
-          serviceType={serviceType}
-          duplicateSerials={duplicateSerials}
-          onItemChange={handleItemChange}
-          onToggleSerial={handleToggleSerial}
-          onSerialNumberChange={handleSerialNumberChange}
-          onAddItem={handleAddItem}
-          onDuplicateItem={handleDuplicateItem}
-          onRemoveItem={handleRemoveItem}
-        />
       </form>
 
       {/* Direct Printable Service Invoice Portal to document.body for reliable print without blank page */}

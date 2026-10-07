@@ -975,36 +975,26 @@ export default function InwardBillPage() {
               </div>
             </div>
 
+            {/* ================= INWARD MATERIALS / LINE ITEMS ================= */}
+            <InwardLineItems
+              items={items}
+              materialOptions={materialOptions}
+              duplicateSerials={duplicateSerials}
+              onMaterialSelect={handleMaterialSelect}
+              onItemChange={handleItemChange}
+              onToggleSerial={handleToggleSerial}
+              onSerialNumberChange={handleSerialNumberChange}
+              onAddItem={handleAddItem}
+              onDuplicateItem={handleDuplicateItem}
+              onRemoveItem={handleRemoveItem}
+            />
+
           </div>
 
           {/* ================= RIGHT COLUMN: LIVE SUMMARY & HARDCOPY UPLOAD (4 COLS) ================= */}
           <div className="lg:col-span-4 lg:sticky lg:top-20 space-y-5">
 
-            {/* 1. Inward Summary Card */}
-            <BillSummaryCard
-              title="Inward Summary"
-              billNumber={inwardNumber}
-              itemsBreakdown={items}
-              totalItemsCount={items.length}
-              totalQuantity={totalQuantity}
-              taxableAmount={totalTaxableAmount}
-              isIntraState={isIntraState}
-              cgstRate={defaultCgst}
-              cgstAmount={cgstAmount}
-              sgstRate={defaultSgst}
-              sgstAmount={sgstAmount}
-              igstRate={defaultIgst}
-              igstAmount={igstAmount}
-              totalTax={totalTaxAmount}
-              grandTotal={grandTotalAmount}
-              isSaving={isSaving}
-              isEditMode={isEditMode}
-              saveButtonText={isSaving ? (isEditMode ? 'Updating...' : 'Saving...') : (isEditMode ? 'Update Inward' : 'Save')}
-              onSave={handleSubmit}
-              onReset={handleReset}
-            />
-
-            {/* 2. Upload Hardcopy / Purchase Bill (Compact Sleek Dropzone) */}
+            {/* 1. Upload Hardcopy / Purchase Bill (Placed above summary) */}
             <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-4 shadow-sm space-y-2.5 transition-colors">
               <div className="flex items-center justify-between pb-2 border-b border-gray-200 dark:border-slate-800">
                 <h2 className="text-sm font-bold text-[#043486] dark:text-blue-400 tracking-wide uppercase flex items-center gap-1.5">
@@ -1096,23 +1086,33 @@ export default function InwardBillPage() {
               )}
             </div>
 
+            {/* 2. Inward Summary Card (Last / Bottom) */}
+            <BillSummaryCard
+              title="Inward Summary"
+              billNumber={inwardNumber}
+              itemsBreakdown={items}
+              totalItemsCount={items.length}
+              totalQuantity={totalQuantity}
+              taxableAmount={totalTaxableAmount}
+              isIntraState={isIntraState}
+              cgstRate={defaultCgst}
+              cgstAmount={cgstAmount}
+              sgstRate={defaultSgst}
+              sgstAmount={sgstAmount}
+              igstRate={defaultIgst}
+              igstAmount={igstAmount}
+              totalTax={totalTaxAmount}
+              grandTotal={grandTotalAmount}
+              isSaving={isSaving}
+              isEditMode={isEditMode}
+              saveButtonText={isSaving ? (isEditMode ? 'Updating...' : 'Saving...') : (isEditMode ? 'Update Inward' : 'Save')}
+              onSave={handleSubmit}
+              onReset={handleReset}
+            />
+
           </div>
 
         </div>
-
-        {/* ================= MIDDLE SECTION: 100% FULL WIDTH INWARD MATERIALS / LINE ITEMS ================= */}
-        <InwardLineItems
-          items={items}
-          materialOptions={materialOptions}
-          duplicateSerials={duplicateSerials}
-          onMaterialSelect={handleMaterialSelect}
-          onItemChange={handleItemChange}
-          onToggleSerial={handleToggleSerial}
-          onSerialNumberChange={handleSerialNumberChange}
-          onAddItem={handleAddItem}
-          onDuplicateItem={handleDuplicateItem}
-          onRemoveItem={handleRemoveItem}
-        />
 
       </form>
     </div>

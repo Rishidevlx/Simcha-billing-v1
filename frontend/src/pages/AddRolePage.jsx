@@ -20,6 +20,8 @@ const PERMISSIONS_DATA = [
         subMenus: [
           { id: 'inward', name: 'Inward', actions: ['Add', 'View', 'Edit', 'Delete'] },
           { id: 'inward_list', name: 'Inward List', actions: ['View', 'Edit', 'Delete', 'Download'] },
+          { id: 'quotations', name: 'Quotations', actions: ['Add', 'View', 'Edit', 'Delete'] },
+          { id: 'quotations_list', name: 'Quotations List', actions: ['View', 'Edit', 'Delete', 'Download'] },
           { id: 'outward', name: 'Outward', actions: ['Add', 'View', 'Edit', 'Delete'] },
           { id: 'outward_list', name: 'Outward List', actions: ['View', 'Edit', 'Delete', 'Download'] }
         ]

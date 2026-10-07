@@ -179,7 +179,7 @@ export default function NumberingSchemesSection({
       label: 'Quotation Numbering',
       icon: FileText,
       title: 'Quotation Numbering Settings',
-      subtitle: 'Customize prefixes, financial year formats, auto-increment sequences, and delimiter styles for Quotations.',
+      subtitle: 'Customize prefixes, financial year, auto-increment sequences for Quotations.',
       editLabel: 'Edit Quotations',
       saveLabel: 'Save Quotations',
       isEditing: isQuotationsEditing
@@ -189,7 +189,7 @@ export default function NumberingSchemesSection({
       label: 'Invoice Numbering',
       icon: Hash,
       title: 'Invoice Numbering Settings',
-      subtitle: 'Customize prefixes, financial year formats, auto-increment sequences, and delimiter styles for Invoices & Service Tickets.',
+      subtitle: 'Customize prefixes, financial year, auto-increment sequences for Invoices & Service Tickets.',
       editLabel: 'Edit Invoices',
       saveLabel: 'Save Invoices',
       isEditing: isInvoicesEditing
@@ -199,7 +199,7 @@ export default function NumberingSchemesSection({
       label: 'Receipt Numbering',
       icon: Receipt,
       title: 'Receipt Numbering Settings',
-      subtitle: 'Customize prefixes, financial year formats, auto-increment sequences, and delimiter styles for Receipts.',
+      subtitle: 'Customize prefixes, financial year, auto-increment sequences for Receipts.',
       editLabel: 'Edit Receipts',
       saveLabel: 'Save Receipts',
       isEditing: isReceiptsEditing
@@ -209,7 +209,7 @@ export default function NumberingSchemesSection({
       label: 'Return Numbering',
       icon: ReturnIcon,
       title: 'Return Numbering Settings',
-      subtitle: 'Customize prefixes, financial year formats, auto-increment sequences, and delimiter styles for Returns & Credit Notes.',
+      subtitle: 'Customize prefixes, financial year, auto-increment sequences for Returns & Credit Notes.',
       editLabel: 'Edit Returns',
       saveLabel: 'Save Returns',
       isEditing: isReturnsEditing

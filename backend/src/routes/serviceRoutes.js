@@ -8,7 +8,8 @@ import {
   updateServiceStatus,
   deleteServiceBill,
   sendServiceReceiptEmail,
-  sendServiceQuotationEmailController
+  sendServiceQuotationEmailController,
+  sendServiceInvoiceEmailController
 } from '../controllers/serviceController.js'
 
 const router = express.Router()
@@ -22,6 +23,7 @@ router.patch('/:id/status', updateServiceStatus)
 router.delete('/:id', deleteServiceBill)
 router.post('/:id/send-receipt', sendServiceReceiptEmail)
 router.post('/:id/send-quotation', sendServiceQuotationEmailController)
+router.post('/:id/send-invoice', sendServiceInvoiceEmailController)
 router.post('/:id/send-email', sendServiceQuotationEmailController)
 
 export default router

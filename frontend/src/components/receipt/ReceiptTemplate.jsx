@@ -71,21 +71,17 @@ export default function ReceiptTemplate({ bill, settings, company }) {
   const companyAddress = effectiveCompany?.address || ''
   const signatureUrl = effectiveSettings?.signature_url || effectiveSettings?.signatureUrl || bill.signature_url || liveSignUrl || null
 
-  const defaultTermsList = (Array.isArray(effectiveSettings?.receipt_terms) && effectiveSettings.receipt_terms.length > 0)
-    ? effectiveSettings.receipt_terms
-    : (Array.isArray(snapshot?.receipt_terms) && snapshot.receipt_terms.length > 0)
+  const defaultTermsList = (Array.isArray(snapshot?.receipt_terms) && snapshot.receipt_terms.length > 0)
     ? snapshot.receipt_terms
-    : (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
-    ? effectiveSettings.terms_conditions
     : (Array.isArray(snapshot?.terms_conditions) && snapshot.terms_conditions.length > 0)
     ? snapshot.terms_conditions
+    : (Array.isArray(effectiveSettings?.receipt_terms) && effectiveSettings.receipt_terms.length > 0)
+    ? effectiveSettings.receipt_terms
+    : (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
+    ? effectiveSettings.terms_conditions
     : (liveTerms && liveTerms.length > 0)
     ? liveTerms
-    : [
-      'Payment received subject to realization of cheque / online transfer.',
-      'This is an official computer generated payment acknowledgement.',
-      'Please preserve this receipt for all warranty claims and audit purposes.'
-    ]
+    : []
 
   const termsList = defaultTermsList
   const items = Array.isArray(bill?.items) ? bill.items : []
@@ -254,16 +250,18 @@ export default function ReceiptTemplate({ bill, settings, company }) {
               <div className="grid grid-cols-12 gap-6 pt-2 text-[#292424]">
                 {/* Left Column: Terms & Conditions & Payment Mode */}
                 <div className="col-span-6 space-y-2">
-                  <div className="space-y-0.5 text-[9.5px]">
-                    <span className="font-black text-[#292424] uppercase tracking-wider block text-[10px] mb-0.5">
-                      TERMS &amp; CONDITIONS
-                    </span>
-                    <ol className="list-decimal list-inside space-y-1 text-gray-700 leading-snug">
-                      {termsList.map((t, idx) => (
-                        <li key={idx} className="leading-tight">{t}</li>
-                      ))}
-                    </ol>
-                  </div>
+                  {termsList && termsList.length > 0 && (
+                    <div className="space-y-0.5 text-[9.5px]">
+                      <span className="font-black text-[#292424] uppercase tracking-wider block text-[10px] mb-0.5">
+                        TERMS &amp; CONDITIONS
+                      </span>
+                      <ol className="list-decimal list-inside space-y-1 text-gray-700 leading-snug">
+                        {termsList.map((t, idx) => (
+                          <li key={idx} className="leading-tight">{t}</li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
 
                   <div className="p-2.5 bg-gray-50 border border-gray-200 text-[10px] text-gray-600 rounded-none mt-3">
                     <p><strong>Payment Mode:</strong> {bill.payment_mode || 'Cash'}</p>

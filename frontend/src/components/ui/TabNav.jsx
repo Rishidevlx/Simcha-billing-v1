@@ -58,8 +58,8 @@ export function TabNav({ children, className = '' }) {
   const childrenArray = React.Children.toArray(children).filter(Boolean)
 
   return (
-    <div className={`overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${className}`}>
-      <div className="inline-flex items-stretch bg-white dark:bg-slate-900 rounded-none border border-gray-200/90 dark:border-slate-800 shadow-2xs font-['Poppins',sans-serif]">
+    <div className={`w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${className}`}>
+      <div className="inline-flex min-w-full sm:min-w-0 items-stretch bg-white dark:bg-slate-900 rounded-none border border-gray-200/90 dark:border-slate-800 shadow-2xs font-['Poppins',sans-serif]">
         {childrenArray.map((child, idx) => {
           const isLast = idx === childrenArray.length - 1
           const isActive = Boolean(child.props.active)
@@ -69,7 +69,7 @@ export function TabNav({ children, className = '' }) {
           return (
             <div
               key={idx}
-              className="relative flex items-stretch group"
+              className="relative shrink-0 flex items-stretch group"
               style={{ zIndex: childrenArray.length - idx }}
             >
               {React.cloneElement(child, {
@@ -122,7 +122,7 @@ export function TabButton({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`py-2.5 px-4 sm:px-5 text-xs sm:text-[12.5px] transition-all cursor-pointer flex items-center justify-center gap-2 select-none relative whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${
+      className={`py-2 sm:py-2.5 px-3 sm:px-5 text-[11.5px] sm:text-[12.5px] transition-all cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 select-none relative whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto ${
         active
           ? styleConfig.activeBg
           : 'bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 font-medium hover:bg-gray-100/70 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white'
@@ -130,7 +130,7 @@ export function TabButton({
     >
       {Icon && (
         <Icon
-          size={14}
+          size={13}
           className={`shrink-0 ${
             active ? styleConfig.iconActive : 'text-gray-400 dark:text-slate-500'
           }`}
@@ -139,7 +139,7 @@ export function TabButton({
       {content && <span className="truncate">{content}</span>}
       {badge !== undefined && badge !== null && (
         <span
-          className={`ml-1 px-1.5 py-0.2 text-[10px] font-bold rounded-full ${
+          className={`ml-0.5 sm:ml-1 px-1.5 py-0.2 text-[9.5px] sm:text-[10px] font-bold rounded-full ${
             active
               ? styleConfig.badgeActive
               : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700'

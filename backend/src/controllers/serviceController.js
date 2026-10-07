@@ -1,5 +1,5 @@
 import { getPool } from '../config/db.js'
-import { sendReceiptEmail, sendServiceQuotationEmail } from '../services/emailService.js'
+import { sendReceiptEmail, sendServiceQuotationEmail, sendServiceInvoiceEmail } from '../services/emailService.js'
 
 const MONTH_NAMES = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
 
@@ -262,7 +262,33 @@ export async function createServiceBill(req, res) {
     } else if (Array.isArray(currentSettings.service_receipt_terms)) {
       parsedServiceReceiptTerms = currentSettings.service_receipt_terms
     }
-    const finalServiceTerms = parsedServiceTerms.length > 0 ? parsedServiceTerms : parsedTerms
+    let parsedServiceQuotationTerms = []
+    if (typeof currentSettings.service_quotation_terms === 'string') {
+      try { parsedServiceQuotationTerms = JSON.parse(currentSettings.service_quotation_terms) } catch { parsedServiceQuotationTerms = [] }
+    } else if (Array.isArray(currentSettings.service_quotation_terms)) {
+      parsedServiceQuotationTerms = currentSettings.service_quotation_terms
+    }
+
+    const finalServiceTerms = parsedServiceTerms.length > 0 ? parsedServiceTerms : (parsedTerms.length > 0 ? parsedTerms : [])
+
+    // Determine service quotation number based on service quotation numbering settings
+    let finalQuotationNumber = (req.body.quotation_number || '').trim()
+    if (!finalQuotationNumber) {
+      const hasServiceQtn = (currentSettings.service_quotation_prefix !== undefined && currentSettings.service_quotation_prefix !== null && String(currentSettings.service_quotation_prefix).trim() !== '')
+      const prefix = hasServiceQtn 
+        ? String(currentSettings.service_quotation_prefix).trim() 
+        : 'SIS-QTN-S'
+      const month = currentSettings.service_quotation_month
+      const fy = currentSettings.service_quotation_financial_year
+      const startNum = parseInt(currentSettings.service_quotation_starting_number, 10) || 1
+      const padding = parseInt(currentSettings.service_quotation_padding_digits, 10) || 4
+      const sep = (currentSettings.service_quotation_separator !== undefined && currentSettings.service_quotation_separator !== null) ? currentSettings.service_quotation_separator : '/'
+
+      const effectiveDate = await getEffectiveIstDate(pool, service_date)
+      const match = service_number.match(/(\d+)$/)
+      const seq = match ? parseInt(match[1], 10) : startNum
+      finalQuotationNumber = buildDynamicNumber(prefix, sep, month, fy, seq, padding, service_date, effectiveDate)
+    }
 
     const companySnapshot = JSON.stringify({
       company_name: currentSettings.company_name || 'SIMCHA INFO SOLUTIONS',
@@ -279,21 +305,25 @@ export async function createServiceBill(req, res) {
       signature_url: currentSettings.signature_url || '',
       service_terms: finalServiceTerms,
       service_receipt_terms: parsedServiceReceiptTerms,
-      terms_conditions: finalServiceTerms
+      service_quotation_terms: parsedServiceQuotationTerms,
+      terms_conditions: finalServiceTerms,
+      return_days: currentSettings.return_days !== undefined && currentSettings.return_days !== null ? currentSettings.return_days : 0,
+      return_policy_clause: currentSettings.return_policy_clause || ''
     })
 
     // Insert into service_bills table
     const [billResult] = await pool.query(`
       INSERT INTO service_bills (
-        service_number, receipt_number, service_date, service_type, copy_type,
+        service_number, quotation_number, receipt_number, service_date, service_type, copy_type,
         customer_name, customer_type, customer_phone, customer_email, customer_address, customer_gstin,
         place_of_supply, taxable_amount, cgst_rate, cgst_amount,
         sgst_rate, sgst_amount, igst_rate, igst_amount,
         total_tax, round_off, total_amount, amount_in_words,
         payment_mode, service_status, notes, company_snapshot
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       service_number.trim(),
+      finalQuotationNumber,
       finalReceiptNumber,
       service_date || new Date().toISOString().split('T')[0],
       service_type,
@@ -348,7 +378,7 @@ export async function createServiceBill(req, res) {
         serialsStr,
         serialsJson,
         item.has_serial ? 1 : 0,
-        item.hsn_code ? item.hsn_code.trim() : '9987',
+        item.hsn_code ? item.hsn_code.trim() : null,
         parseFloat(item.quantity) || 1,
         item.unit || 'NOS',
         parseFloat(item.rate) || 0,
@@ -502,7 +532,7 @@ export async function updateServiceBill(req, res) {
         serialsStr,
         serialsJson,
         item.has_serial ? 1 : 0,
-        item.hsn_code ? item.hsn_code.trim() : '9987',
+        item.hsn_code ? item.hsn_code.trim() : null,
         parseFloat(item.quantity) || 1,
         item.unit || 'NOS',
         parseFloat(item.rate) || 0,
@@ -555,10 +585,28 @@ export async function getServiceBills(req, res) {
       itemsByServiceId[item.service_bill_id].push(item)
     })
 
-    const servicesWithItems = services.map(srv => ({
-      ...srv,
-      items: itemsByServiceId[srv.id] || []
-    }))
+    const [settingRows] = await pool.query('SELECT * FROM settings WHERE id = 1')
+    const s = settingRows.length > 0 ? settingRows[0] : {}
+    const prefix = (s.service_quotation_prefix !== undefined && s.service_quotation_prefix !== null && String(s.service_quotation_prefix).trim() !== '') ? String(s.service_quotation_prefix).trim() : 'SIS-QTN-S'
+    const month = s.service_quotation_month
+    const fy = s.service_quotation_financial_year
+    const startNum = parseInt(s.service_quotation_starting_number, 10) || 1
+    const padding = parseInt(s.service_quotation_padding_digits, 10) || 4
+    const sep = (s.service_quotation_separator !== undefined && s.service_quotation_separator !== null) ? s.service_quotation_separator : '/'
+
+    const servicesWithItems = services.map(srv => {
+      let qNum = srv.quotation_number
+      if (!qNum && srv.service_number) {
+        const match = srv.service_number.match(/(\d+)$/)
+        const seq = match ? parseInt(match[1], 10) : startNum
+        qNum = buildDynamicNumber(prefix, sep, month, fy, seq, padding, srv.service_date, srv.created_at)
+      }
+      return {
+        ...srv,
+        quotation_number: qNum || srv.service_number,
+        items: itemsByServiceId[srv.id] || []
+      }
+    })
 
     const totalValue = services.reduce((acc, s) => acc + (parseFloat(s.total_amount) || 0), 0)
     const completedCount = services.filter(s => s.service_status === 'Ready' || s.service_status === 'Delivered').length
@@ -600,12 +648,29 @@ export async function getServiceBillById(req, res) {
       })
     }
 
+    const srv = services[0]
+    let qNum = srv.quotation_number
+    if (!qNum && srv.service_number) {
+      const [settingRows] = await pool.query('SELECT * FROM settings WHERE id = 1')
+      const s = settingRows.length > 0 ? settingRows[0] : {}
+      const prefix = (s.service_quotation_prefix !== undefined && s.service_quotation_prefix !== null && String(s.service_quotation_prefix).trim() !== '') ? String(s.service_quotation_prefix).trim() : 'SIS-QTN-S'
+      const month = s.service_quotation_month
+      const fy = s.service_quotation_financial_year
+      const startNum = parseInt(s.service_quotation_starting_number, 10) || 1
+      const padding = parseInt(s.service_quotation_padding_digits, 10) || 4
+      const sep = (s.service_quotation_separator !== undefined && s.service_quotation_separator !== null) ? s.service_quotation_separator : '/'
+      const match = srv.service_number.match(/(\d+)$/)
+      const seq = match ? parseInt(match[1], 10) : startNum
+      qNum = buildDynamicNumber(prefix, sep, month, fy, seq, padding, srv.service_date, srv.created_at)
+    }
+
     const [items] = await pool.query('SELECT * FROM service_bill_items WHERE service_bill_id = ? ORDER BY id ASC', [id])
 
     return res.status(200).json({
       success: true,
       service: {
-        ...services[0],
+        ...srv,
+        quotation_number: qNum || srv.service_number,
         items
       }
     })
@@ -622,7 +687,7 @@ export async function getServiceBillById(req, res) {
 export async function updateServiceStatus(req, res) {
   try {
     const { id } = req.params
-    const { service_status, payment_mode } = req.body
+    const { service_status, payment_mode, cancellation_reason } = req.body
 
     const pool = getPool()
     const updates = []
@@ -631,6 +696,15 @@ export async function updateServiceStatus(req, res) {
     if (service_status !== undefined) {
       updates.push('service_status = ?')
       params.push(service_status)
+
+      if (service_status === 'Cancelled' || service_status === 'Cancel') {
+        updates.push('cancelled_at = NOW()')
+      }
+    }
+
+    if (cancellation_reason !== undefined) {
+      updates.push('cancellation_reason = ?')
+      params.push(cancellation_reason)
     }
 
     if (payment_mode !== undefined) {
@@ -777,6 +851,28 @@ export async function sendServiceQuotationEmailController(req, res) {
     return res.status(500).json({
       success: false,
       message: error.message || 'Failed to dispatch service quotation email.'
+    })
+  }
+}
+
+// Send Service Invoice Email
+export async function sendServiceInvoiceEmailController(req, res) {
+  try {
+    const { id } = req.params
+    const { recipient_email, email, recipient, pdf_base64, pdfBase64 } = req.body || {}
+    const targetEmail = recipient_email || email || recipient
+
+    const result = await sendServiceInvoiceEmail(id, targetEmail, pdf_base64 || pdfBase64)
+    if (!result.success) {
+      return res.status(500).json(result)
+    }
+
+    return res.status(200).json(result)
+  } catch (error) {
+    console.error('Error dispatching service invoice email:', error)
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to dispatch service invoice email.'
     })
   }
 }

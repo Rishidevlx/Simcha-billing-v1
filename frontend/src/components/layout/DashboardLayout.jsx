@@ -167,8 +167,8 @@ export default function DashboardLayout({
           {children || <Outlet context={{ setActiveRoute, user, onUpdateUser }} />}
         </main>
 
-        {/* Velzon-style Footer */}
-        <footer className="h-14 bg-white dark:bg-slate-900 border-t border-gray-200/80 dark:border-slate-800 px-6 flex items-center justify-between text-xs text-gray-500 dark:text-slate-400 transition-colors">
+        {/* Responsive Footer */}
+        <footer className="min-h-12 py-3 bg-white dark:bg-slate-900 border-t border-gray-200/80 dark:border-slate-800 px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between text-center sm:text-left gap-1.5 text-xs text-gray-500 dark:text-slate-400 transition-colors">
           <span>{new Date().getFullYear()} © {companyName || 'Simcha'}.</span>
           <span>
             Design &amp; Developed by{' '}

@@ -30,7 +30,7 @@ export default function CompanyProfileSection({
     <SettingSectionCard
       icon={Building2}
       title="Company Profile & Billing Header"
-      subtitle="Official business information that appears on tax invoices, delivery challans, and customer receipts."
+      subtitle="Official business information that appears on all documents."
       actions={
         canEdit && (
           !isEditing ? (

@@ -81,22 +81,49 @@ export default function QuotationTemplate({ quotation, settings, company }) {
   const bankImageUrl = effectiveBank?.bank_image_url || effectiveBank?.bankImageUrl || quotation.bank_image_url || liveBankImg || ''
   const signatureUrl = effectiveSettings?.signature_url || effectiveSettings?.signatureUrl || quotation.signature_url || liveSignUrl || ''
   
-  const defaultTermsList = (Array.isArray(effectiveSettings?.quotation_terms) && effectiveSettings.quotation_terms.length > 0)
-    ? effectiveSettings.quotation_terms
-    : (Array.isArray(snapshot?.quotation_terms) && snapshot.quotation_terms.length > 0)
-    ? snapshot.quotation_terms
-    : (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
-    ? effectiveSettings.terms_conditions
-    : (Array.isArray(snapshot?.terms_conditions) && snapshot.terms_conditions.length > 0)
-    ? snapshot.terms_conditions
-    : (liveTerms && liveTerms.length > 0)
-    ? liveTerms
-    : [
-      'Quotation valid for 15 days from the date of issue unless specified otherwise.',
-      'Prices are inclusive of standard applicable taxes where mentioned.',
-      'Warranty as per manufacturer norms & directly claimable with authorized service centers.',
-      'Delivery timeline subject to stock availability upon confirmation.'
-    ]
+  const isServiceQuotation = quotation.is_service || !!quotation.service_number || (typeof quotation.quotation_number === 'string' && (quotation.quotation_number.includes('SIS-QTN-S') || quotation.quotation_number.includes('SIS-SR')))
+  
+  let resolvedTerms = null
+  if (isServiceQuotation) {
+    if (Array.isArray(quotation.service_quotation_terms) && quotation.service_quotation_terms.length > 0) {
+      resolvedTerms = quotation.service_quotation_terms
+    } else if (Array.isArray(snapshot?.service_quotation_terms) && snapshot.service_quotation_terms.length > 0) {
+      resolvedTerms = snapshot.service_quotation_terms
+    } else if (Array.isArray(settings?.service_quotation_terms) && settings.service_quotation_terms.length > 0) {
+      resolvedTerms = settings.service_quotation_terms
+    } else if (Array.isArray(liveSettings?.service_quotation_terms) && liveSettings.service_quotation_terms.length > 0) {
+      resolvedTerms = liveSettings.service_quotation_terms
+    } else if (typeof liveSettings?.service_quotation_terms === 'string') {
+      try {
+        const parsed = JSON.parse(liveSettings.service_quotation_terms)
+        if (Array.isArray(parsed) && parsed.length > 0) resolvedTerms = parsed
+      } catch {}
+    } else if (typeof settings?.service_quotation_terms === 'string') {
+      try {
+        const parsed = JSON.parse(settings.service_quotation_terms)
+        if (Array.isArray(parsed) && parsed.length > 0) resolvedTerms = parsed
+      } catch {}
+    }
+  } else {
+    // Normal Sales Quotation
+    if (Array.isArray(quotation.quotation_terms) && quotation.quotation_terms.length > 0) {
+      resolvedTerms = quotation.quotation_terms
+    } else if (Array.isArray(snapshot?.quotation_terms) && snapshot.quotation_terms.length > 0) {
+      resolvedTerms = snapshot.quotation_terms
+    } else if (Array.isArray(settings?.quotation_terms) && settings.quotation_terms.length > 0) {
+      resolvedTerms = settings.quotation_terms
+    } else if (Array.isArray(liveSettings?.quotation_terms) && liveSettings.quotation_terms.length > 0) {
+      resolvedTerms = liveSettings.quotation_terms
+    } else if (Array.isArray(snapshot?.terms_conditions) && snapshot.terms_conditions.length > 0) {
+      resolvedTerms = snapshot.terms_conditions
+    } else if (Array.isArray(settings?.terms_conditions) && settings.terms_conditions.length > 0) {
+      resolvedTerms = settings.terms_conditions
+    } else if (liveTerms && liveTerms.length > 0) {
+      resolvedTerms = liveTerms
+    }
+  }
+
+  const defaultTermsList = resolvedTerms || []
 
   const items = Array.isArray(quotation.items) ? quotation.items : []
   const isGstQuotation = quotation.quotation_type === 'GST' || (!quotation.quotation_type && parseFloat(quotation.total_tax || 0) > 0)
@@ -171,13 +198,19 @@ export default function QuotationTemplate({ quotation, settings, company }) {
                 <thead>
                   <tr className="bg-[#f3f4f6] border-b border-gray-300 text-[9.5px] font-black uppercase text-[#292424]">
                     <th className="py-1.5 px-2 border-r border-gray-300 text-center w-[5%]">S.NO</th>
-                    <th className="py-1.5 px-2.5 border-r border-gray-300 w-[33%]">ITEMS</th>
-                    <th className="py-1.5 px-2 border-r border-gray-300 text-center w-[11%]">HSN/SAC</th>
-                    <th className="py-1.5 px-2 border-r border-gray-300 text-center w-[9%]">QTY</th>
-                    <th className="py-1.5 px-2 border-r border-gray-300 text-center w-[8%]">DISC (%)</th>
-                    <th className="py-1.5 px-2 border-r border-gray-300 text-right w-[12%]">RATE (₹)</th>
-                    <th className="py-1.5 px-2 border-r border-gray-300 text-right w-[10%]">TAX</th>
-                    <th className="py-1.5 px-2.5 text-right w-[12%]">AMOUNT (₹)</th>
+                    <th className={`py-1.5 px-2.5 border-r border-gray-300 ${isServiceQuotation ? 'w-[45%]' : 'w-[33%]'}`}>
+                      {isServiceQuotation ? 'ITEMS / SERVICES' : 'ITEMS'}
+                    </th>
+                    {!isServiceQuotation && (
+                      <th className="py-1.5 px-2 border-r border-gray-300 text-center w-[11%]">HSN/SAC</th>
+                    )}
+                    <th className={`py-1.5 px-2 border-r border-gray-300 text-center ${isServiceQuotation ? 'w-[12%]' : 'w-[9%]'}`}>QTY</th>
+                    {!isServiceQuotation && (
+                      <th className="py-1.5 px-2 border-r border-gray-300 text-center w-[8%]">DISC (%)</th>
+                    )}
+                    <th className={`py-1.5 px-2 border-r border-gray-300 text-right ${isServiceQuotation ? 'w-[12%]' : 'w-[12%]'}`}>RATE (₹)</th>
+                    <th className={`py-1.5 px-2 border-r border-gray-300 text-right ${isServiceQuotation ? 'w-[12%]' : 'w-[10%]'}`}>TAX</th>
+                    <th className={`py-1.5 px-2.5 text-right ${isServiceQuotation ? 'w-[14%]' : 'w-[12%]'}`}>AMOUNT (₹)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 text-[#292424]">
@@ -195,7 +228,12 @@ export default function QuotationTemplate({ quotation, settings, company }) {
                             </span>
                           )}
                         </div>
-                        {item.category_name && (
+                        {item.reported_issue && (
+                          <div className="text-[9.5px] text-gray-500 font-medium">
+                            Issue: {item.reported_issue}
+                          </div>
+                        )}
+                        {item.category_name && !item.reported_issue && (
                           <div className="text-[9.5px] text-gray-500 font-medium">
                             [{item.category_name}]
                           </div>
@@ -206,21 +244,25 @@ export default function QuotationTemplate({ quotation, settings, company }) {
                           </div>
                         )}
                       </td>
-                      <td className="py-2 px-2 border-r border-gray-300 text-center font-mono align-top text-gray-700">
-                        {item.hsn_code || '-'}
-                      </td>
+                      {!isServiceQuotation && (
+                        <td className="py-2 px-2 border-r border-gray-300 text-center font-mono align-top text-gray-700">
+                          {item.hsn_code || '-'}
+                        </td>
+                      )}
                       <td className="py-2 px-2 border-r border-gray-300 text-center font-semibold align-top text-[#292424]">
                         {formatQty(item.quantity)} Unit
                       </td>
-                      <td className="py-2 px-2 border-r border-gray-300 text-center font-mono align-top">
-                        {(item.has_discount || parseFloat(item.discount_percent || 0) > 0) ? (
-                          <span className="font-bold text-emerald-700">
-                            {parseFloat(item.discount_percent || 0)}%
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">—</span>
-                        )}
-                      </td>
+                      {!isServiceQuotation && (
+                        <td className="py-2 px-2 border-r border-gray-300 text-center font-mono align-top">
+                          {(item.has_discount || parseFloat(item.discount_percent || 0) > 0) ? (
+                            <span className="font-bold text-emerald-700">
+                              {parseFloat(item.discount_percent || 0)}%
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                      )}
                       <td className="py-2 px-2 border-r border-gray-300 text-right font-mono align-top text-[#292424]">
                         <div>₹ {parseFloat(item.rate || item.original_rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         {(item.has_discount || parseFloat(item.discount_percent || 0) > 0) && (
@@ -249,19 +291,33 @@ export default function QuotationTemplate({ quotation, settings, company }) {
                 {/* Table Subtotal Bar on Last Page */}
                 {page.showSummary && (
                   <tfoot>
-                    <tr className="bg-[#f3f4f6] border-t border-gray-300 font-bold text-[10.5px] text-[#292424]">
-                      <td colSpan={2} className="py-1.5 px-2.5 border-r border-gray-300 uppercase text-[#292424]">SUB TOTAL</td>
-                      <td className="border-r border-gray-300" />
-                      <td className="py-1.5 px-2 border-r border-gray-300 text-center font-mono text-[#292424]">{formatQty(totalQty)} Unit</td>
-                      <td className="border-r border-gray-300" />
-                      <td className="border-r border-gray-300" />
-                      <td className="py-1.5 px-2 border-r border-gray-300 text-right font-mono text-gray-800">
-                        ₹ {totalTaxAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                      <td className="py-1.5 px-2.5 text-right font-mono text-[#292424] font-black">
-                        ₹ {totalGrossAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                    </tr>
+                    {isServiceQuotation ? (
+                      <tr className="bg-[#f3f4f6] border-t border-gray-300 font-bold text-[10.5px] text-[#292424]">
+                        <td colSpan={2} className="py-1.5 px-2.5 border-r border-gray-300 uppercase text-[#292424]">SUB TOTAL</td>
+                        <td className="py-1.5 px-2 border-r border-gray-300 text-center font-mono text-[#292424]">{formatQty(totalQty)} Unit</td>
+                        <td className="border-r border-gray-300" />
+                        <td className="py-1.5 px-2 border-r border-gray-300 text-right font-mono text-gray-800">
+                          ₹ {totalTaxAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-1.5 px-2.5 text-right font-mono text-[#292424] font-black">
+                          ₹ {totalGrossAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr className="bg-[#f3f4f6] border-t border-gray-300 font-bold text-[10.5px] text-[#292424]">
+                        <td colSpan={2} className="py-1.5 px-2.5 border-r border-gray-300 uppercase text-[#292424]">SUB TOTAL</td>
+                        <td className="border-r border-gray-300" />
+                        <td className="py-1.5 px-2 border-r border-gray-300 text-center font-mono text-[#292424]">{formatQty(totalQty)} Unit</td>
+                        <td className="border-r border-gray-300" />
+                        <td className="border-r border-gray-300" />
+                        <td className="py-1.5 px-2 border-r border-gray-300 text-right font-mono text-gray-800">
+                          ₹ {totalTaxAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-1.5 px-2.5 text-right font-mono text-[#292424] font-black">
+                          ₹ {totalGrossAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                    )}
                   </tfoot>
                 )}
               </table>

@@ -15,9 +15,9 @@ export default function InwardLineItems({
   onRemoveItem
 }) {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-6 shadow-sm space-y-4 transition-colors w-full">
+    <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-4 sm:p-6 shadow-sm space-y-4 transition-colors w-full">
       {/* Line Items Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-gray-200 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <Boxes size={18} className="text-[#043486] dark:text-blue-400" />
           <h2 className="text-sm font-bold text-[#043486] dark:text-blue-400 tracking-wide uppercase">
@@ -28,7 +28,7 @@ export default function InwardLineItems({
         <button
           type="button"
           onClick={onAddItem}
-          className="flex items-center gap-1.5 px-4 py-2.5 bg-[#043486] hover:bg-[#0248BC] text-white font-semibold text-xs rounded-none shadow-sm hover:shadow transition-all cursor-pointer"
+          className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#043486] hover:bg-[#0248BC] text-white font-semibold text-xs rounded-none shadow-sm hover:shadow transition-all cursor-pointer w-full sm:w-auto"
         >
           <Plus size={15} />
           <span>Add Material (Alt+A)</span>
@@ -44,19 +44,49 @@ export default function InwardLineItems({
           return (
             <div
               key={index}
-              className="p-4 rounded-none border border-gray-300 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-950/60 hover:border-blue-300 dark:hover:border-blue-800 transition-all space-y-3"
+              className="p-3.5 sm:p-4 rounded-none border border-gray-300 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-950/60 hover:border-blue-300 dark:hover:border-blue-800 transition-all space-y-3"
             >
-              {/* Row 1: S.No + Item Name Select + HSN/SAC + Qty (Max 25) + Unit (Auto) + Rate (Auto) + Amount + Actions */}
+              {/* Mobile Item Card Header (S.No + Duplicate/Delete) */}
+              <div className="flex items-center justify-between pb-2 border-b border-gray-200/80 dark:border-slate-800/80 md:hidden">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-none bg-[#043486] text-white text-[11px] font-bold flex items-center justify-center">
+                    {index + 1}
+                  </span>
+                  <span className="text-xs font-bold text-gray-700 dark:text-slate-200">
+                    Material #{index + 1}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onDuplicateItem(index)}
+                    title="Duplicate material"
+                    className="p-1.5 text-gray-500 hover:text-[#043486] dark:hover:text-blue-400 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none cursor-pointer"
+                  >
+                    <Copy size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveItem(index)}
+                    title="Delete material"
+                    className="p-1.5 text-gray-500 hover:text-red-600 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-none cursor-pointer"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Row 1: S.No + Item Name Select + HSN/SAC + Qty (Max 25) + Unit (Auto) + Rate (Auto) + Amount + Desktop Actions */}
               <div className="flex flex-col md:flex-row items-stretch md:items-end gap-3">
-                {/* S.No */}
-                <div className="shrink-0">
+                {/* S.No (Desktop only) */}
+                <div className="hidden md:block shrink-0">
                   <span className="w-9 h-[41px] rounded-none bg-[#043486] text-white text-xs font-bold flex items-center justify-center shrink-0">
                     {index + 1}
                   </span>
                 </div>
 
                 {/* 1. Item Name / Material Search & Select */}
-                <div className="flex-1 min-w-[220px]">
+                <div className="flex-1 min-w-[200px]">
                   <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
                     Item Name <span className="text-red-500 font-bold">*</span>
                   </label>
@@ -68,79 +98,82 @@ export default function InwardLineItems({
                   />
                 </div>
 
-                {/* 2. HSN / SAC Code (Auto fetched & Non-editable) */}
-                <div className="w-full sm:w-28 shrink-0">
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
-                    HSN / SAC
-                  </label>
-                  <input
-                    type="text"
-                    value={item.hsn_code || ''}
-                    readOnly
-                    placeholder="HSN"
-                    className="w-full px-3 py-2.5 text-sm font-mono text-center text-[#292424] dark:text-white bg-gray-100 dark:bg-slate-800/80 border border-gray-300 dark:border-slate-700 rounded-none cursor-not-allowed select-none font-medium h-[41px]"
-                  />
-                </div>
+                {/* Grid for Numbers on Mobile (HSN, Qty, Unit, Rate, Amount) */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 md:flex md:items-end gap-3">
+                  {/* 2. HSN / SAC Code */}
+                  <div className="col-span-1 md:w-24 shrink-0">
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
+                      HSN / SAC
+                    </label>
+                    <input
+                      type="text"
+                      value={item.hsn_code || ''}
+                      readOnly
+                      placeholder="HSN"
+                      className="w-full px-2 sm:px-3 py-2.5 text-xs sm:text-sm font-mono text-center text-[#292424] dark:text-white bg-gray-100 dark:bg-slate-800/80 border border-gray-300 dark:border-slate-700 rounded-none cursor-not-allowed select-none font-medium h-[41px]"
+                    />
+                  </div>
 
-                {/* 3. Quantity (Max 25) */}
-                <div className="w-full sm:w-24 shrink-0">
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
-                    Qty <span className="text-[10px] text-gray-400 font-normal">(Max 25)</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="25"
-                    step="1"
-                    value={item.quantity}
-                    onChange={(e) => onItemChange(index, 'quantity', e.target.value)}
-                    title="Quantity (Max 25)"
-                    placeholder="Qty"
-                    className="w-full px-2 py-2.5 text-sm text-center font-medium text-[#292424] dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 h-[41px]"
-                  />
-                </div>
+                  {/* 3. Quantity (Max 25) */}
+                  <div className="col-span-1 md:w-20 shrink-0">
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
+                      Qty <span className="text-[10px] text-gray-400 font-normal">(≤25)</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="25"
+                      step="1"
+                      value={item.quantity}
+                      onChange={(e) => onItemChange(index, 'quantity', e.target.value)}
+                      title="Quantity (Max 25)"
+                      placeholder="Qty"
+                      className="w-full px-2 py-2.5 text-xs sm:text-sm text-center font-bold text-[#292424] dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 h-[41px]"
+                    />
+                  </div>
 
-                {/* 4. Unit Type (Auto fetched & Non-editable) */}
-                <div className="w-full sm:w-24 shrink-0">
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
-                    Unit
-                  </label>
-                  <input
-                    type="text"
-                    value={item.unit || 'NOS'}
-                    readOnly
-                    className="w-full px-2 py-2.5 text-sm text-center uppercase font-medium text-[#292424] dark:text-white bg-gray-100 dark:bg-slate-800/80 border border-gray-300 dark:border-slate-700 rounded-none cursor-not-allowed select-none h-[41px]"
-                  />
-                </div>
+                  {/* 4. Unit Type */}
+                  <div className="col-span-1 md:w-20 shrink-0">
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
+                      Unit
+                    </label>
+                    <input
+                      type="text"
+                      value={item.unit || 'NOS'}
+                      readOnly
+                      className="w-full px-2 py-2.5 text-xs sm:text-sm text-center uppercase font-semibold text-[#292424] dark:text-white bg-gray-100 dark:bg-slate-800/80 border border-gray-300 dark:border-slate-700 rounded-none cursor-not-allowed select-none h-[41px]"
+                    />
+                  </div>
 
-                {/* 5. Rate (₹) (Editable) */}
-                <div className="w-full sm:w-28 shrink-0">
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
-                    Rate (₹)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="any"
-                    value={item.rate !== undefined ? item.rate : ''}
-                    onChange={(e) => onItemChange(index, 'rate', e.target.value)}
-                    placeholder="0.00"
-                    className="w-full px-3 py-2.5 text-sm font-medium text-right font-mono text-[#292424] dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 h-[41px]"
-                  />
-                </div>
+                  {/* 5. Rate (₹) */}
+                  <div className="col-span-1 md:w-28 shrink-0">
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
+                      Rate (₹)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={item.rate !== undefined ? item.rate : ''}
+                      onChange={(e) => onItemChange(index, 'rate', e.target.value)}
+                      placeholder="0.00"
+                      className="w-full px-2 sm:px-3 py-2.5 text-xs sm:text-sm font-medium text-right font-mono text-[#292424] dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 h-[41px]"
+                    />
+                  </div>
 
-                {/* 6. Amount (₹) */}
-                <div className="w-full sm:w-32 shrink-0">
-                  <label className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">
-                    Amount (₹)
-                  </label>
-                  <div className="px-3 py-2.5 text-sm font-bold font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 rounded-none flex items-center justify-end h-[41px]">
-                    ₹ {Number(item.amount || 0).toFixed(2)}
+                  {/* 6. Amount (₹) */}
+                  <div className="col-span-2 sm:col-span-1 md:w-32 shrink-0">
+                    <label className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">
+                      Amount (₹)
+                    </label>
+                    <div className="px-3 py-2.5 text-xs sm:text-sm font-bold font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 rounded-none flex items-center justify-end h-[41px]">
+                      ₹ {Number(item.amount || 0).toFixed(2)}
+                    </div>
                   </div>
                 </div>
 
-                {/* Actions */}
-                <div className="shrink-0 self-end md:self-end">
+                {/* Desktop Actions */}
+                <div className="hidden md:block shrink-0 self-end">
                   <div className="flex items-center gap-1 h-[41px]">
                     <button
                       type="button"

@@ -90,10 +90,10 @@ export default function ReturnVoucherTemplate({ returnItem, settings, company })
   const grandTotal = parseFloat(returnItem.refund_amount || returnItem.total_amount || (unitRate * returnQty)) || 0
   const amountInWords = numberToWords(grandTotal)
 
-  const defaultReturnTerms = (Array.isArray(effectiveSettings?.return_terms) && effectiveSettings.return_terms.length > 0)
-    ? effectiveSettings.return_terms
-    : (Array.isArray(snapshot?.return_terms) && snapshot.return_terms.length > 0)
+  const defaultReturnTerms = (Array.isArray(snapshot?.return_terms) && snapshot.return_terms.length > 0)
     ? snapshot.return_terms
+    : (Array.isArray(effectiveSettings?.return_terms) && effectiveSettings.return_terms.length > 0)
+    ? effectiveSettings.return_terms
     : (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
     ? effectiveSettings.terms_conditions
     : [

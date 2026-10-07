@@ -44,13 +44,14 @@ import html2canvas from 'html2canvas-pro'
 import jsPDF from 'jspdf'
 import ServiceInvoiceTemplate from '../components/invoice/ServiceInvoiceTemplate'
 import ServiceReceiptTemplate from '../components/receipt/ServiceReceiptTemplate'
+import QuotationTemplate from '../components/quotation/QuotationTemplate'
 import ListPageHeader from '../components/common/ListPageHeader'
 import ListKpiCard from '../components/common/ListKpiCard'
 import ListDateRangeFilter from '../components/common/ListDateRangeFilter'
-import { Button, ActionButton, SearchInput, DataTable, Pagination, TabNav, TabButton } from '../components/ui'
+import { Button, ActionButton, SearchInput, DataTable, Pagination, TabNav, TabButton, StatusPill } from '../components/ui'
 import { API_ENDPOINTS } from '../config/api'
 import { getUserPermissions } from '../utils/access'
-import { generateServiceQuotationPdfBase64, generateServiceReceiptPdfBase64 } from '../utils/pdfEmailHelper'
+import { generateServiceQuotationPdfBase64, generateServiceInvoicePdfBase64, generateServiceReceiptPdfBase64 } from '../utils/pdfEmailHelper'
 
 
 // Local Date Helper to eliminate timezone UTC discrepancy (e.g. 2026-10-02T18:30:00Z -> 2026-10-03 in local IST)
@@ -91,14 +92,14 @@ export const SERVICE_TABS = [
     label: 'Quotation & approval',
     description: 'Received, Quotations & Customer Approval',
     statuses: ['Received', 'Quotation', 'Quotations', 'Customer Approval', 'Draft'],
-    allowedTransitions: ['Ready', 'Quotations', 'Approved', 'Cancel']
+    allowedTransitions: ['Received', 'Quotations', 'Approved', 'Cancel']
   },
   {
     id: 'repair_ready',
     label: 'Repair & ready',
-    description: 'Approved, Repair In-Progress & Ready',
+    description: 'Approved, Repair In-Progress, Ready & Payment Received',
     statuses: ['Approved', 'Repair In-Progress', 'Ready', 'Payment Received'],
-    allowedTransitions: ['Approved', 'Repair In-Progress', 'Ready', 'Delivered', 'Cancel']
+    allowedTransitions: ['Approved', 'Repair In-Progress', 'Ready', 'Payment Received', 'Delivered', 'Cancel']
   },
   {
     id: 'delivered',
@@ -261,6 +262,60 @@ export default function AllServicesPage({ setActiveRoute }) {
     }
   }
 
+  // Format Quotation Object for Service Quotation Preview
+  const selectedServiceQuotationData = useMemo(() => {
+    if (!selectedService) return null
+    let snapshot = selectedService.company_snapshot
+    if (typeof snapshot === 'string') {
+      try { snapshot = JSON.parse(snapshot) } catch { snapshot = null }
+    }
+
+    let parsedServiceQtnTerms = []
+    if (Array.isArray(snapshot?.service_quotation_terms) && snapshot.service_quotation_terms.length > 0) {
+      parsedServiceQtnTerms = snapshot.service_quotation_terms
+    } else if (Array.isArray(settings?.service_quotation_terms) && settings.service_quotation_terms.length > 0) {
+      parsedServiceQtnTerms = settings.service_quotation_terms
+    } else if (typeof settings?.service_quotation_terms === 'string') {
+      try { parsedServiceQtnTerms = JSON.parse(settings.service_quotation_terms) } catch { parsedServiceQtnTerms = [] }
+    }
+
+    const mappedItems = (selectedService.items || []).map((it) => ({
+      ...it,
+      item_name: it.product_name || it.item_name || 'Service Item',
+      name: it.product_name || it.item_name || 'Service Item',
+      quantity: parseFloat(it.quantity) || 1,
+      unit: it.unit || 'NOS',
+      rate: parseFloat(it.rate) || 0,
+      amount: parseFloat(it.amount) || 0,
+      tax_rate: parseFloat(it.tax_rate) || 18,
+      tax_amount: parseFloat(it.tax_amount) || 0,
+      hsn_code: it.hsn_code || '9987',
+      serial_number: it.serial_number || it.brand_model || ''
+    }))
+
+    // Build clean snapshot specifically for service quotation preview (no invoice terms)
+    const cleanSnapshot = snapshot ? {
+      ...snapshot,
+      service_quotation_terms: parsedServiceQtnTerms.length > 0 ? parsedServiceQtnTerms : undefined,
+      quotation_terms: parsedServiceQtnTerms.length > 0 ? parsedServiceQtnTerms : undefined,
+      terms_conditions: parsedServiceQtnTerms.length > 0 ? parsedServiceQtnTerms : undefined,
+      service_terms: undefined
+    } : null
+
+    return {
+      ...selectedService,
+      company_snapshot: cleanSnapshot,
+      is_service: true,
+      quotation_number: selectedService.quotation_number || selectedService.service_number,
+      quotation_date: selectedService.service_date,
+      service_quotation_terms: parsedServiceQtnTerms.length > 0 ? parsedServiceQtnTerms : undefined,
+      quotation_terms: parsedServiceQtnTerms.length > 0 ? parsedServiceQtnTerms : undefined,
+      terms_conditions: parsedServiceQtnTerms.length > 0 ? parsedServiceQtnTerms : undefined,
+      valid_until: null,
+      items: mappedItems
+    }
+  }, [selectedService, settings])
+
   // Direct Print / Preview Service Receipt
   const handlePrintReceipt = async (serviceId) => {
     try {
@@ -385,7 +440,59 @@ export default function AllServicesPage({ setActiveRoute }) {
   }
 
   // Quick Status Update (Smooth & Optimistic with Race-Condition Guard)
-  const handleStatusChange = async (serviceId, newStatus) => {
+  const handleStatusChange = async (serviceId, newStatus, currentPaymentMode) => {
+    const targetService = services.find(s => s.id === serviceId)
+    const effectivePaymentMode = currentPaymentMode !== undefined ? currentPaymentMode : targetService?.payment_mode
+
+    // 0. Validation: Changing to 'Payment Received' requires a selected payment_mode
+    if (newStatus === 'Payment Received') {
+      if (!effectivePaymentMode || effectivePaymentMode === 'Select' || String(effectivePaymentMode).trim() === '') {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Payment Type Required',
+          text: 'Please select a Payment Type (Cash, UPI, etc.) before changing status to Payment Received.',
+          confirmButtonColor: '#043486'
+        })
+        return
+      }
+    }
+
+    // 0.1 Prompt for Cancellation Reason if cancelling
+    let cancellationReason = null
+    if (newStatus === 'Cancelled' || newStatus === 'Cancel') {
+      const promptResult = await Swal.fire({
+        title: 'Cancel Service Request?',
+        html: `
+          <p style="font-size:13px; color:#475569; text-align:left; margin-bottom:10px;">
+            Are you sure you want to cancel Service Request <strong>#${targetService?.service_number || ''}</strong>?
+          </p>
+          <p style="font-size:12px; color:#64748b; text-align:left; margin-bottom:6px; font-weight:600;">
+            Reason for cancellation: <span style="color:#e11d48;">*</span>
+          </p>
+        `,
+        input: 'textarea',
+        inputPlaceholder: 'Please enter reason for cancellation...',
+        inputAttributes: {
+          'aria-label': 'Cancellation Reason'
+        },
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Yes, Cancel Service',
+        cancelButtonText: 'Close',
+        inputValidator: (val) => {
+          if (!val || !val.trim()) {
+            return 'Cancellation reason is mandatory!'
+          }
+        }
+      })
+
+      if (!promptResult.isConfirmed || !promptResult.value) {
+        return
+      }
+      cancellationReason = promptResult.value.trim()
+    }
+
     // 1. Abort any previous pending status request for THIS specific service row
     if (activeStatusControllers.current.has(serviceId)) {
       try {
@@ -398,15 +505,41 @@ export default function AllServicesPage({ setActiveRoute }) {
     activeStatusControllers.current.set(serviceId, controller)
 
     // 3. Instant Optimistic Local Update (0ms lag, smooth transition)
+    const nowIso = new Date().toISOString()
     setServices(prev =>
-      prev.map(s => (s.id === serviceId ? { ...s, service_status: newStatus } : s))
+      prev.map(s => (s.id === serviceId ? { 
+        ...s, 
+        service_status: newStatus,
+        cancellation_reason: cancellationReason || s.cancellation_reason,
+        cancelled_at: (newStatus === 'Cancelled' || newStatus === 'Cancel') ? nowIso : s.cancelled_at
+      } : s))
     )
 
+    // Automatically switch active tab to match the new status
+    if (['Approved', 'Repair In-Progress', 'Ready', 'Payment Received'].includes(newStatus)) {
+      setActiveTab('repair_ready')
+      setCurrentPage(1)
+    } else if (['Cancelled', 'Cancel'].includes(newStatus)) {
+      setActiveTab('cancelled')
+      setCurrentPage(1)
+    } else if (newStatus === 'Delivered') {
+      setActiveTab('delivered')
+      setCurrentPage(1)
+    } else if (['Received', 'Quotation', 'Quotations', 'Customer Approval', 'Draft'].includes(newStatus)) {
+      setActiveTab('quotation_approval')
+      setCurrentPage(1)
+    }
+
     try {
+      const payload = { service_status: newStatus }
+      if (cancellationReason) {
+        payload.cancellation_reason = cancellationReason
+      }
+
       const res = await fetch(API_ENDPOINTS.SERVICE_STATUS_UPDATE(serviceId), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ service_status: newStatus }),
+        body: JSON.stringify(payload),
         signal: controller.signal
       })
       const data = await res.json()
@@ -450,6 +583,76 @@ export default function AllServicesPage({ setActiveRoute }) {
     }
   }
 
+  // Show Cancellation Reason Modal Popup
+  const handleShowCancellationReason = (service) => {
+    const rawDate = service.cancelled_at || service.updated_at || service.created_at
+    const formattedCancelDate = rawDate
+      ? new Date(rawDate).toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        })
+      : '-'
+
+    Swal.fire({
+      title: 'Cancellation Reason',
+      html: `
+        <div style="text-align:left; font-size:13px; color:#334155;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #e2e8f0;">
+            <div><strong>Service:</strong> <span style="font-family:monospace; color:#043486; font-weight:700;">#${service.service_number}</span></div>
+            <div><strong>Cancelled Date:</strong> <span style="font-weight:600; color:#dc2626;">${formattedCancelDate}</span></div>
+          </div>
+          <p style="margin-bottom:10px;"><strong>Customer:</strong> ${service.customer_name}</p>
+          <div style="background:#fff1f2; border:1px solid #fecdd3; border-radius:6px; padding:12px; margin-top:8px; color:#9f1239;">
+            <div style="font-weight:700; font-size:12px; text-transform:uppercase; margin-bottom:4px; letter-spacing:0.5px;">Reason:</div>
+            <div style="font-size:13px; line-height:1.5;">${service.cancellation_reason || 'No cancellation reason specified.'}</div>
+          </div>
+        </div>
+      `,
+      icon: 'info',
+      confirmButtonText: 'Close',
+      confirmButtonColor: '#043486'
+    })
+  }
+
+  // Inline change Payment Mode for Service Record
+  const handleUpdatePaymentMode = async (serviceId, newMode) => {
+    // 1. Instant optimistic local update so validation immediately reflects
+    setServices(prev => prev.map(s => (s.id === serviceId ? { ...s, payment_mode: newMode } : s)))
+
+    try {
+      const res = await fetch(API_ENDPOINTS.SERVICE_STATUS_UPDATE(serviceId), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payment_mode: newMode })
+      })
+      const data = await res.json()
+      if (data.success) {
+        Swal.mixin({
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 2000,
+          timerProgressBar: true
+        }).fire({
+          icon: 'success',
+          title: `Payment type updated to ${newMode || 'None'}`
+        })
+      } else {
+        throw new Error(data.message || 'Failed to update payment type')
+      }
+    } catch (err) {
+      console.error('Error updating payment mode:', err)
+      fetchInitialData(true)
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: err.message || 'Could not update payment mode.',
+        confirmButtonColor: '#043486'
+      })
+    }
+  }
+
   // Send Quotation Email to Customer & Automatically Move Status to 'Quotations'
   const handleSendQuotationEmail = async (service) => {
     // 1. Obtain & confirm recipient email
@@ -477,7 +680,7 @@ export default function AllServicesPage({ setActiveRoute }) {
     } else {
       const confirmResult = await Swal.fire({
         title: 'Send Service Quotation?',
-        html: `<p class="text-sm text-gray-600 dark:text-slate-300">Send official service quotation PDF for <b>${service.service_number}</b> to <b>${targetEmail}</b>?</p>`,
+        html: `<p class="text-sm text-gray-600 dark:text-slate-300">Send official service quotation PDF for <b>${service.quotation_number || service.service_number}</b> to <b>${targetEmail}</b>?</p>`,
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#043486',
@@ -556,6 +759,149 @@ export default function AllServicesPage({ setActiveRoute }) {
         icon: 'error',
         title: 'Failed to Send Quotation',
         text: err.message || 'Error occurred while sending quotation email.',
+        confirmButtonColor: '#043486'
+      })
+    }
+  }
+
+  // Send Service Invoice Email to Customer (Active ONLY when status is 'Ready', one-time send only)
+  const handleSendInvoiceEmail = async (service) => {
+    // 1. Validate status is 'Ready'
+    if (service.service_status !== 'Ready') {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Invoice Not Ready',
+        text: 'Service Invoice can only be emailed once the service status is marked as "Ready".',
+        confirmButtonColor: '#043486'
+      })
+      return
+    }
+
+    // 2. Check if already sent (One-time send protection)
+    const isSent = service.invoice_email_sent === 1 || service.invoice_email_sent === true
+    if (isSent) {
+      const sentDate = service.invoice_email_sent_at
+        ? new Date(service.invoice_email_sent_at).toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        : 'an earlier date'
+
+      Swal.fire({
+        icon: 'info',
+        title: 'Invoice Already Sent',
+        html: `<p class="text-sm text-gray-600 dark:text-slate-300">Service Invoice for <b>${service.service_number}</b> was already emailed to the customer on <b>${sentDate}</b>.</p><p class="text-xs text-gray-400 mt-2">To prevent duplicate emails, invoices can only be sent once.</p>`,
+        confirmButtonColor: '#043486'
+      })
+      return
+    }
+
+    // 3. Obtain & confirm recipient email
+    let targetEmail = (service.customer_email || '').trim()
+
+    if (!targetEmail) {
+      const promptResult = await Swal.fire({
+        title: 'Send Service Invoice',
+        text: `Customer email is missing for "${service.customer_name}". Please enter recipient email:`,
+        input: 'email',
+        inputPlaceholder: 'customer@example.com',
+        showCancelButton: true,
+        confirmButtonColor: '#043486',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Send Invoice PDF',
+        inputValidator: (val) => {
+          if (!val || !val.trim()) {
+            return 'Please enter a valid email address!'
+          }
+        }
+      })
+
+      if (!promptResult.isConfirmed || !promptResult.value) return
+      targetEmail = promptResult.value.trim()
+    } else {
+      const confirmResult = await Swal.fire({
+        title: 'Send Service Invoice?',
+        html: `<p class="text-sm text-gray-600 dark:text-slate-300">Send official service invoice PDF for <b>${service.service_number}</b> to <b>${targetEmail}</b>?</p>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#043486',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, Send Invoice'
+      })
+
+      if (!confirmResult.isConfirmed) return
+    }
+
+    // 4. Dispatch Email API
+    try {
+      Swal.fire({
+        title: 'Sending Invoice...',
+        text: 'Generating PDF and sending service invoice email...',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading()
+        }
+      })
+
+      // Fetch full service details if needed
+      let fullService = service
+      if (!fullService.items || fullService.items.length === 0) {
+        try {
+          const detailRes = await fetch(API_ENDPOINTS.SERVICE_BY_ID(service.id))
+          const detailData = await detailRes.json()
+          if (detailData.success && detailData.service) {
+            fullService = detailData.service
+          }
+        } catch (e) {}
+      }
+
+      // Generate Base64 PDF directly on the frontend
+      let pdfBase64 = null
+      try {
+        pdfBase64 = await generateServiceInvoicePdfBase64(fullService, settings)
+      } catch (pdfErr) {
+        console.warn('Frontend Service Invoice PDF generation fallback note:', pdfErr)
+      }
+
+      const res = await fetch(API_ENDPOINTS.SERVICE_SEND_INVOICE(service.id), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: targetEmail, recipient_email: targetEmail, pdf_base64: pdfBase64 })
+      })
+      const data = await res.json()
+
+      if (data.success) {
+        setServices(prev =>
+          prev.map(s =>
+            s.id === service.id
+              ? {
+                  ...s,
+                  invoice_email_sent: 1,
+                  invoice_email_sent_at: new Date().toISOString()
+                }
+              : s
+          )
+        )
+        fetchInitialData(true)
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Invoice Sent Successfully!',
+          text: `Service Invoice PDF has been emailed to ${targetEmail}.`,
+          confirmButtonColor: '#043486'
+        })
+      } else {
+        throw new Error(data.message || 'Failed to dispatch service invoice email.')
+      }
+    } catch (err) {
+      console.error('Error sending service invoice email:', err)
+      Swal.fire({
+        icon: 'error',
+        title: 'Failed to Send',
+        text: err.message || 'Error occurred while sending service invoice email.',
         confirmButtonColor: '#043486'
       })
     }
@@ -805,7 +1151,11 @@ export default function AllServicesPage({ setActiveRoute }) {
 
       // 3. Payment Mode filter
       const matchesPaymentMode =
-        paymentModeFilter === 'ALL' || service.payment_mode === paymentModeFilter
+        paymentModeFilter === 'ALL' ||
+        service.payment_mode === paymentModeFilter ||
+        (paymentModeFilter === 'UPI' && (service.payment_mode === 'UPI' || service.payment_mode === 'UPI / Online')) ||
+        (paymentModeFilter === 'Online / Net Banking' && (service.payment_mode === 'Online / Net Banking' || service.payment_mode === 'Bank Transfer (NEFT/RTGS)')) ||
+        (paymentModeFilter === 'Credit' && (service.payment_mode === 'Credit' || service.payment_mode === 'Credit / Debit Card'))
 
       // 4. Date Range filter
       if (startDate || endDate) {
@@ -922,10 +1272,13 @@ export default function AllServicesPage({ setActiveRoute }) {
   const serviceTableColumns = useMemo(
     () => [
       {
-        header: 'Service ID',
+        header: activeTab === 'quotation_approval' ? 'QUOTATION ID' : 'SERVICE ID',
         key: 'service_number',
+        headerClassName: '!px-2.5',
+        className: '!px-2.5 whitespace-nowrap',
         render: (val, row) => {
           const isCancelled = ['Cancelled', 'Cancel'].includes(row.service_status)
+          const displayId = activeTab === 'quotation_approval' ? (row.quotation_number || val) : val
           return (
             <button
               type="button"
@@ -935,17 +1288,43 @@ export default function AllServicesPage({ setActiveRoute }) {
                   ? 'line-through text-slate-500 dark:text-slate-400'
                   : 'text-[#043486] dark:text-blue-400'
               }`}
-              title="Click to view Service Bill"
+              title={activeTab === 'quotation_approval' ? 'Click to view Service Quotation' : 'Click to view Service Bill'}
             >
-              {val}
+              {displayId}
             </button>
           )
         }
       },
+      ...(activeTab === 'delivered'
+        ? [
+            {
+              header: 'QUOTATION ID',
+              key: 'quotation_number',
+              headerClassName: '!px-2 text-[#043486] dark:text-blue-400',
+              className: '!px-2 whitespace-nowrap',
+              render: (val, row) => {
+                const qId = val || row.quotation_number
+                return qId ? (
+                  <button
+                    type="button"
+                    onClick={() => handleViewService(row.id)}
+                    className="font-semibold font-mono whitespace-nowrap hover:underline cursor-pointer inline-flex items-center text-left text-[#043486] dark:text-blue-400"
+                    title="Click to view Service Quotation"
+                  >
+                    {qId}
+                  </button>
+                ) : (
+                  <span className="text-gray-400 dark:text-slate-600 font-mono text-xs">-</span>
+                )
+              }
+            }
+          ]
+        : []),
       {
         header: 'Date',
         key: 'service_date',
-        className: 'whitespace-nowrap',
+        headerClassName: '!px-2',
+        className: '!px-2 whitespace-nowrap',
         render: (val, row) => {
           const isCancelled = ['Cancelled', 'Cancel'].includes(row.service_status)
           const formatted = val
@@ -965,45 +1344,53 @@ export default function AllServicesPage({ setActiveRoute }) {
       {
         header: 'Customer',
         key: 'customer_name',
-        className: 'min-w-[140px]',
+        headerClassName: '!px-2',
+        className: '!px-2',
         render: (val, row) => {
           const isCancelled = ['Cancelled', 'Cancel'].includes(row.service_status)
           return (
-            <span
-              className={`font-semibold ${
-                isCancelled
-                  ? 'line-through text-slate-500 dark:text-slate-400'
-                  : 'text-slate-800 dark:text-slate-200'
-              }`}
-            >
-              {val}
-            </span>
+            <div className={isCancelled ? 'line-through text-slate-500 dark:text-slate-400' : ''}>
+              <span className="font-semibold text-slate-800 dark:text-slate-200 block">
+                {val}
+              </span>
+              {activeTab === 'repair_ready' && row.customer_phone && (
+                <span className="text-[11px] font-mono font-medium text-slate-500 dark:text-slate-400 block mt-0.5">
+                  {row.customer_phone}
+                </span>
+              )}
+            </div>
           )
         }
       },
-      {
-        header: 'Mobile Number',
-        key: 'customer_phone',
-        className: 'whitespace-nowrap',
-        render: (val, row) => {
-          const isCancelled = ['Cancelled', 'Cancel'].includes(row.service_status)
-          return (
-            <span
-              className={`font-mono font-medium ${
-                isCancelled
-                  ? 'line-through text-slate-500 dark:text-slate-400'
-                  : 'text-slate-700 dark:text-slate-300'
-              }`}
-            >
-              {val || '-'}
-            </span>
-          )
-        }
-      },
+      ...(activeTab !== 'repair_ready'
+        ? [
+            {
+              header: 'Mobile Number',
+              key: 'customer_phone',
+              headerClassName: '!px-2',
+              className: '!px-2 whitespace-nowrap',
+              render: (val, row) => {
+                const isCancelled = ['Cancelled', 'Cancel'].includes(row.service_status)
+                return (
+                  <span
+                    className={`font-mono font-medium ${
+                      isCancelled
+                        ? 'line-through text-slate-500 dark:text-slate-400'
+                        : 'text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    {val || '-'}
+                  </span>
+                )
+              }
+            }
+          ]
+        : []),
       {
         header: 'Product & QTY',
         key: 'items',
-        className: 'min-w-[160px]',
+        headerClassName: '!px-2',
+        className: '!px-2',
         render: (_, row) => {
           const isCancelled = ['Cancelled', 'Cancel'].includes(row.service_status)
           const itemsList = row.items || []
@@ -1042,7 +1429,8 @@ export default function AllServicesPage({ setActiveRoute }) {
       {
         header: 'Total',
         align: 'right',
-        className: 'whitespace-nowrap',
+        headerClassName: '!px-2',
+        className: '!px-2 whitespace-nowrap',
         render: (_, row) => {
           const isCancelled = ['Cancelled', 'Cancel'].includes(row.service_status)
           return (
@@ -1061,21 +1449,64 @@ export default function AllServicesPage({ setActiveRoute }) {
           )
         }
       },
+      ...(activeTab === 'repair_ready'
+        ? [
+            {
+              header: 'PAYMENT TYPE',
+              key: 'payment_mode',
+              align: 'center',
+              headerClassName: '!px-1.5 text-center',
+              className: '!px-1.5 whitespace-nowrap text-center',
+              render: (_, row) => {
+                const isCancelled = ['Cancelled', 'Cancel'].includes(row.service_status)
+                return (
+                  <select
+                    value={row.payment_mode || ''}
+                    disabled={isCancelled}
+                    onChange={(e) => handleUpdatePaymentMode(row.id, e.target.value)}
+                    className={`w-[110px] px-2 py-1 text-xs font-semibold text-gray-700 dark:text-slate-200 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] transition-colors cursor-pointer hover:border-gray-400 ${
+                      isCancelled ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    <option value="">Select</option>
+                    <option value="Cash">Cash</option>
+                    <option value="UPI">UPI</option>
+                    <option value="Online / Net Banking">Online / Net Banking</option>
+                    <option value="Cheque">Cheque</option>
+                    <option value="Credit">Credit</option>
+                  </select>
+                )
+              }
+            }
+          ]
+        : []),
       {
         header: 'Status',
         align: 'center',
-        className: 'whitespace-nowrap',
+        headerClassName: '!px-1.5 text-center',
+        className: '!px-1.5 whitespace-nowrap text-center',
         render: (_, row) => {
+          if (activeTab === 'delivered') {
+            return <StatusPill status="Delivered" size="sm" />
+          }
+          if (activeTab === 'cancelled') {
+            return <StatusPill status="Cancelled" size="sm" />
+          }
+
           const currentTabConfig = SERVICE_TABS.find(t => t.id === activeTab) || SERVICE_TABS[0]
-          const options = Array.from(
-            new Set([...currentTabConfig.allowedTransitions, row.service_status])
-          )
+          
+          let options = currentTabConfig.allowedTransitions
+          if (activeTab === 'quotation_approval') {
+            options = ['Received', 'Quotations', 'Approved', 'Cancel']
+          }
+
+          const currentVal = (row.service_status === 'Quotation' ? 'Quotations' : (row.service_status === 'Cancelled' ? 'Cancel' : row.service_status))
 
           return (
             <select
-              value={row.service_status}
-              onChange={(e) => handleStatusChange(row.id, e.target.value)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-none border focus:outline-none cursor-pointer transition-colors shadow-2xs ${getStatusBadgeClass(
+              value={currentVal}
+              onChange={(e) => handleStatusChange(row.id, e.target.value, row.payment_mode)}
+              className={`w-[125px] px-2 py-1 text-xs font-semibold rounded-none border focus:outline-none cursor-pointer transition-colors shadow-2xs ${getStatusBadgeClass(
                 row.service_status
               )}`}
             >
@@ -1088,124 +1519,171 @@ export default function AllServicesPage({ setActiveRoute }) {
           )
         }
       },
-      {
-        header: 'Actions',
-        align: 'center',
-        className: 'whitespace-nowrap',
-        render: (_, service) => {
-          const isCancelled = ['Cancelled', 'Cancel'].includes(service.service_status)
-          const isQuotationTab = activeTab === 'quotation_approval'
-          const isQuotationSent = service.quotation_email_sent === 1 || service.quotation_email_sent === true
+      ...(activeTab === 'cancelled'
+        ? [
+            {
+              header: 'Reason',
+              align: 'center',
+              headerClassName: '!px-1.5 text-center',
+              className: '!px-1.5 whitespace-nowrap text-center',
+              render: (_, row) => (
+                <div className="flex items-center justify-center">
+                  <ActionButton
+                    icon={FileText}
+                    onClick={() => handleShowCancellationReason(row)}
+                    className="!text-[#043486] dark:!text-blue-400 hover:!bg-blue-50 dark:hover:!bg-slate-800"
+                    title="View Cancellation Reason"
+                  />
+                </div>
+              )
+            }
+          ]
+        : []),
+      ...(activeTab !== 'delivered' && activeTab !== 'cancelled'
+        ? [
+            {
+              header: 'Actions',
+              align: 'center',
+              headerClassName: '!px-1.5 text-center',
+              className: '!px-1.5 whitespace-nowrap text-center',
+              render: (_, service) => {
+                const isCancelled = ['Cancelled', 'Cancel'].includes(service.service_status)
+                const isQuotationTab = activeTab === 'quotation_approval'
+                const isRepairReadyTab = activeTab === 'repair_ready'
+                const isQuotationSent = service.quotation_email_sent === 1 || service.quotation_email_sent === true
+                const isInvoiceSent = service.invoice_email_sent === 1 || service.invoice_email_sent === true
+                const isReceiptSent = service.receipt_email_sent === 1 || service.receipt_email_sent === true
 
-          const isReceiptActive =
-            !isCancelled &&
-            [
-              'Payment Received',
-              'Repair In-Progress',
-              'Ready',
-              'Delivered'
-            ].includes(service.service_status)
-          const isReceiptSent =
-            service.receipt_email_sent === 1 || service.receipt_email_sent === true
+                const isReady = service.service_status === 'Ready'
+                const isPaymentReceived = service.service_status === 'Payment Received'
 
-          return (
-            <div className="flex items-center justify-center gap-1.5">
-              {/* 1. Direct Print / View Receipt Modal (When active from Payment Received onwards) */}
-              <ActionButton
-                icon={FileCheck}
-                onClick={() => handlePrintReceipt(service.id)}
-                disabled={!isReceiptActive}
-                className={
-                  isReceiptActive
-                    ? '!text-purple-600 dark:!text-purple-400 hover:!bg-purple-50 dark:hover:!bg-slate-800'
-                    : '!text-gray-300 dark:!text-slate-700 opacity-40'
-                }
-                title={
-                  isReceiptActive
-                    ? 'Print / View Service Payment Receipt'
-                    : 'Receipt available from Payment Received stage onwards'
-                }
-              />
+                return (
+                  <div className="flex items-center justify-center gap-1.5">
+                    {/* 1. Direct Print / View Receipt Modal (Purple color when enabled) */}
+                    <ActionButton
+                      icon={FileCheck}
+                      onClick={() => {
+                        if (!isPaymentReceived) return
+                        handlePrintReceipt(service.id)
+                      }}
+                      disabled={!isPaymentReceived || isCancelled}
+                      className={
+                        !isPaymentReceived || isCancelled
+                          ? '!text-gray-300 dark:!text-slate-700 opacity-40 cursor-not-allowed'
+                          : '!text-purple-600 dark:!text-purple-400 hover:!bg-purple-50 dark:hover:!bg-slate-800'
+                      }
+                      title={
+                        !isPaymentReceived
+                          ? 'Receipt available when status is "Payment Received"'
+                          : 'Print / View Service Payment Receipt'
+                      }
+                    />
 
-              {/* 2. Send Action Icon */}
-              {isQuotationTab ? (
-                /* Quotation Tab: Send Quotation Email (Active by default!) */
-                <ActionButton
-                  icon={Send}
-                  disabled={isCancelled}
-                  onClick={() => handleSendQuotationEmail(service)}
-                  title={
-                    isCancelled
-                      ? 'Cannot send quotation for cancelled service'
-                      : isQuotationSent
-                      ? 'Quotation Email Sent (Click to resend)'
-                      : 'Send Service Quotation via Email (Auto-updates status to Quotations)'
-                  }
-                  className={
-                    isCancelled
-                      ? '!text-gray-300 dark:!text-slate-700 opacity-40'
-                      : isQuotationSent
-                      ? '!text-red-500 hover:!bg-red-50 dark:hover:!bg-slate-800'
-                      : '!text-indigo-600 dark:!text-indigo-400 hover:!bg-indigo-50 dark:hover:!bg-slate-800'
-                  }
-                />
-              ) : (
-                /* Other Tabs: Send Receipt Email */
-                <ActionButton
-                  icon={Send}
-                  disabled={!isReceiptActive}
-                  onClick={() => handleSendReceiptEmail(service)}
-                  title={
-                    !isReceiptActive
-                      ? 'Receipt email available from Payment Received stage onwards'
-                      : isReceiptSent
-                      ? 'Receipt Email Sent'
-                      : 'Send Receipt PDF via Email'
-                  }
-                  className={
-                    !isReceiptActive
-                      ? '!text-gray-300 dark:!text-slate-700 opacity-40'
-                      : isReceiptSent
-                      ? '!text-red-500 hover:!bg-red-50 dark:hover:!bg-slate-800'
-                      : '!text-indigo-600 dark:!text-indigo-400 hover:!bg-indigo-50 dark:hover:!bg-slate-800'
-                  }
-                />
-              )}
+                    {/* 2. Send Action Icon */}
+                    {isQuotationTab ? (
+                      /* Quotation Tab: Send Quotation Email (Blue brand color at all times) */
+                      <ActionButton
+                        icon={Send}
+                        disabled={isCancelled}
+                        onClick={() => handleSendQuotationEmail(service)}
+                        title={
+                          isCancelled
+                            ? 'Cannot send quotation for cancelled service'
+                            : isQuotationSent
+                            ? 'Quotation Email Sent (Click to resend)'
+                            : 'Send Service Quotation via Email (Auto-updates status to Quotations)'
+                        }
+                        className={
+                          isCancelled
+                            ? '!text-gray-300 dark:!text-slate-700 opacity-40'
+                            : '!text-[#043486] dark:text-blue-400 hover:!bg-blue-50 dark:hover:!bg-slate-800'
+                        }
+                      />
+                    ) : isRepairReadyTab ? (
+                      /* Repair & ready Tab: Dynamic Action based on Ready vs Payment Received */
+                      isPaymentReceived ? (
+                        /* When Payment Received: Send Receipt Email (Green Icon) */
+                        <ActionButton
+                          icon={Send}
+                          disabled={isCancelled}
+                          onClick={() => handleSendReceiptEmail(service)}
+                          title={
+                            isCancelled
+                              ? 'Cannot send receipt for cancelled service'
+                              : isReceiptSent
+                              ? 'Payment Receipt already sent (Click for details)'
+                              : 'Send Payment Receipt PDF via Email'
+                          }
+                          className={
+                            isCancelled
+                              ? '!text-gray-300 dark:!text-slate-700 opacity-40'
+                              : isReceiptSent
+                              ? '!text-red-500 hover:!bg-red-50 dark:hover:!bg-slate-800'
+                              : '!text-emerald-600 dark:!text-emerald-400 hover:!bg-emerald-50 dark:hover:!bg-slate-800'
+                          }
+                        />
+                      ) : (
+                        /* When Ready or In-Progress: Send Service Invoice Email (Active ONLY in Ready) */
+                        <ActionButton
+                          icon={Send}
+                          disabled={isCancelled || !isReady}
+                          onClick={() => handleSendInvoiceEmail(service)}
+                          title={
+                            isCancelled
+                              ? 'Cannot send invoice for cancelled service'
+                              : !isReady
+                              ? 'Service Invoice email available only when status is "Ready"'
+                              : isInvoiceSent
+                              ? 'Service Invoice already emailed (Click for details)'
+                              : 'Send Service Invoice PDF via Email'
+                          }
+                          className={
+                            isCancelled || !isReady
+                              ? '!text-gray-300 dark:!text-slate-700 opacity-40 cursor-not-allowed'
+                              : isInvoiceSent
+                              ? '!text-red-500 hover:!bg-red-50 dark:hover:!bg-slate-800'
+                              : '!text-[#043486] dark:!text-blue-400 hover:!bg-blue-50 dark:hover:!bg-slate-800'
+                          }
+                        />
+                      )
+                    ) : null}
 
-              {/* 3. Edit Service Record */}
-              {canEdit && (
-                <ActionButton
-                  type="edit"
-                  disabled={isCancelled}
-                  onClick={() => {
-                    if (isCancelled) return
-                    if (setActiveRoute) setActiveRoute('new-service')
-                    navigate(`/services/new?editId=${service.id}`)
-                  }}
-                  title={isCancelled ? 'Cannot edit cancelled service' : 'Edit Service Request'}
-                  className={
-                    isCancelled
-                      ? '!text-gray-300 dark:!text-slate-700 opacity-40 cursor-not-allowed'
-                      : '!text-amber-600 dark:!text-amber-400 hover:!bg-amber-50 dark:hover:!bg-slate-800'
-                  }
-                />
-              )}
+                    {/* 3. Edit Service Record (Hidden in Repair & Ready Tab) */}
+                    {canEdit && !isRepairReadyTab && (
+                      <ActionButton
+                        type="edit"
+                        disabled={isCancelled}
+                        onClick={() => {
+                          if (isCancelled) return
+                          if (setActiveRoute) setActiveRoute('new-service')
+                          navigate(`/services/new?editId=${service.id}`)
+                        }}
+                        title={isCancelled ? 'Cannot edit cancelled service' : 'Edit Service Request'}
+                        className={
+                          isCancelled
+                            ? '!text-gray-300 dark:!text-slate-700 opacity-40 cursor-not-allowed'
+                            : '!text-amber-600 dark:!text-amber-400 hover:!bg-amber-50 dark:hover:!bg-slate-800'
+                        }
+                      />
+                    )}
 
-              {/* 4. Delete Service Record */}
-              {canDelete && (
-                <ActionButton
-                  type="delete"
-                  onClick={() => handleDeleteService(service.id, service.service_number)}
-                  title="Delete Service Record"
-                  className="!text-gray-400 hover:!text-red-600 hover:!bg-red-50 dark:hover:!bg-slate-800"
-                />
-              )}
-            </div>
-          )
-        }
-      }
+                    {/* 4. Delete Service Record (Hidden in Repair & Ready Tab) */}
+                    {canDelete && !isRepairReadyTab && (
+                      <ActionButton
+                        type="delete"
+                        onClick={() => handleDeleteService(service.id, service.service_number)}
+                        title="Delete Service Record"
+                        className="!text-gray-400 hover:!text-red-600 hover:!bg-red-50 dark:hover:!bg-slate-800"
+                      />
+                    )}
+                  </div>
+                )
+              }
+            }
+          ]
+        : [])
     ],
-    [activeTab, canEdit, canDelete]
+    [activeTab, canEdit, canDelete, services]
   )
 
   const currentTabStages = useMemo(() => {
@@ -1228,16 +1706,16 @@ export default function AllServicesPage({ setActiveRoute }) {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
           {canDownload && (
             <Button
               variant="export"
               icon={Download}
               onClick={handleExportExcel}
-              className="text-xs font-semibold"
+              className="w-full justify-center text-[11px] sm:text-xs font-semibold px-2 sm:px-4 py-2"
               title={selectedServiceIds.length > 0 ? `Export ${selectedServiceIds.length} Selected Record(s)` : 'Export All Filtered Records'}
             >
-              {selectedServiceIds.length > 0 ? `EXPORT SELECTED (${selectedServiceIds.length})` : 'EXPORT TO EXCEL'}
+              <span className="truncate">{selectedServiceIds.length > 0 ? `EXPORT (${selectedServiceIds.length})` : 'EXPORT TO EXCEL'}</span>
             </Button>
           )}
           {canAdd && (
@@ -1248,9 +1726,9 @@ export default function AllServicesPage({ setActiveRoute }) {
                 if (setActiveRoute) setActiveRoute('new-service')
                 navigate('/services/new')
               }}
-              className="text-xs font-semibold"
+              className="w-full justify-center text-[11px] sm:text-xs font-semibold px-2 sm:px-4 py-2"
             >
-              NEW REQUEST
+              <span className="truncate">NEW REQUEST</span>
             </Button>
           )}
         </div>
@@ -1289,9 +1767,9 @@ export default function AllServicesPage({ setActiveRoute }) {
 
       {/* 3. Search & Filter Bar */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-4 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
           {/* Search Box */}
-          <div className="md:col-span-5">
+          <div className="sm:col-span-2 lg:col-span-5">
             <SearchInput
               value={searchTerm}
               onChange={(e) => {
@@ -1307,14 +1785,14 @@ export default function AllServicesPage({ setActiveRoute }) {
           </div>
 
           {/* Sub-status Filter within Active Tab */}
-          <div className="md:col-span-3">
+          <div className="col-span-1 lg:col-span-3">
             <select
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value)
                 setCurrentPage(1)
               }}
-              className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#043486] transition-colors"
+              className="w-full px-3 py-2.5 text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#043486] transition-colors cursor-pointer"
             >
               <option value="ALL">All Stages in Tab ({currentTabStages.length})</option>
               {currentTabStages.map((st) => (
@@ -1326,26 +1804,26 @@ export default function AllServicesPage({ setActiveRoute }) {
           </div>
 
           {/* Payment Mode Filter */}
-          <div className="md:col-span-3">
+          <div className="col-span-1 lg:col-span-3">
             <select
               value={paymentModeFilter}
               onChange={(e) => {
                 setPaymentModeFilter(e.target.value)
                 setCurrentPage(1)
               }}
-              className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#043486] transition-colors"
+              className="w-full px-3 py-2.5 text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#043486] transition-colors cursor-pointer"
             >
               <option value="ALL">All Payment Modes</option>
               <option value="Cash">Cash</option>
-              <option value="UPI / Online">UPI / Online</option>
-              <option value="Bank Transfer (NEFT/RTGS)">Bank Transfer (NEFT/RTGS)</option>
-              <option value="Credit / Debit Card">Credit / Debit Card</option>
+              <option value="UPI">UPI</option>
+              <option value="Online / Net Banking">Online / Net Banking</option>
               <option value="Cheque">Cheque</option>
+              <option value="Credit">Credit</option>
             </select>
           </div>
 
           {/* Reset & Reload Filters */}
-          <div className="md:col-span-1 flex justify-center">
+          <div className="col-span-1 sm:col-span-2 lg:col-span-1 flex justify-center">
             <button
               type="button"
               onClick={() => {
@@ -1353,9 +1831,10 @@ export default function AllServicesPage({ setActiveRoute }) {
                 fetchInitialData()
               }}
               title="Reload Service Records"
-              className="p-2 text-gray-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors shadow-xs cursor-pointer"
+              className="w-full lg:w-auto p-2.5 text-gray-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
             >
               <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+              <span className="lg:hidden text-xs font-semibold">Reset Filters</span>
             </button>
           </div>
         </div>
@@ -1469,7 +1948,7 @@ export default function AllServicesPage({ setActiveRoute }) {
         />
       </div>
 
-      {/* 6. Printable Service Invoice Modal */}
+      {/* 6. Printable Service Quotation / Service Invoice Modal */}
       {selectedService &&
         createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto print:hidden">
@@ -1477,9 +1956,15 @@ export default function AllServicesPage({ setActiveRoute }) {
               {/* Modal Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
                 <div className="flex items-center gap-2">
-                  <Wrench className="w-5 h-5 text-[#043486]" />
+                  {activeTab === 'quotation_approval' ? (
+                    <FileText className="w-5 h-5 text-[#043486] dark:text-blue-400" />
+                  ) : (
+                    <Wrench className="w-5 h-5 text-[#043486]" />
+                  )}
                   <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">
-                    Service Invoice Preview — {selectedService.service_number}
+                    {activeTab === 'quotation_approval'
+                      ? `Service Quotation Preview — ${selectedService.quotation_number || selectedService.service_number}`
+                      : `Service Invoice Preview — ${selectedService.service_number}`}
                   </h3>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1493,7 +1978,7 @@ export default function AllServicesPage({ setActiveRoute }) {
                     }}
                     className="px-3 py-1.5 text-xs font-semibold text-white bg-[#043486] hover:bg-[#032560] flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Printer className="w-3.5 h-3.5" /> Print Invoice
+                    <Printer className="w-3.5 h-3.5" /> {activeTab === 'quotation_approval' ? 'Print Quotation' : 'Print Invoice'}
                   </button>
                   <button
                     type="button"
@@ -1508,12 +1993,20 @@ export default function AllServicesPage({ setActiveRoute }) {
               {/* Printable Template Container */}
               <div className="p-6 overflow-y-auto flex-1 bg-slate-100 dark:bg-slate-950/50">
                 <div className="max-w-[800px] mx-auto bg-white shadow-md">
-                  <ServiceInvoiceTemplate
-                    service={selectedService}
-                    items={selectedService.items || []}
-                    settings={settings}
-                    company={settings}
-                  />
+                  {activeTab === 'quotation_approval' ? (
+                    <QuotationTemplate
+                      quotation={selectedServiceQuotationData}
+                      settings={settings}
+                      company={settings}
+                    />
+                  ) : (
+                    <ServiceInvoiceTemplate
+                      service={selectedService}
+                      items={selectedService.items || []}
+                      settings={settings}
+                      company={settings}
+                    />
+                  )}
                 </div>
               </div>
             </div>
@@ -1711,12 +2204,42 @@ export default function AllServicesPage({ setActiveRoute }) {
           document.body
         )}
 
-      {/* 9. Direct Printable Invoice Portal for instant table action window.print() */}
+      {/* 9. Direct Printable Invoice / Quotation Portal for instant table action window.print() */}
       {directPrintService &&
         typeof document !== 'undefined' &&
         createPortal(
           <div id="invoice-print-wrapper">
-            <ServiceInvoiceTemplate service={directPrintService} settings={settings} company={settings} />
+            {activeTab === 'quotation_approval' ? (
+              <QuotationTemplate
+                quotation={{
+                  ...directPrintService,
+                  is_service: true,
+                  quotation_number: directPrintService.quotation_number || directPrintService.service_number,
+                  quotation_date: directPrintService.service_date,
+                  service_quotation_terms: (Array.isArray(settings?.service_quotation_terms) && settings.service_quotation_terms.length > 0)
+                    ? settings.service_quotation_terms
+                    : undefined,
+                  valid_until: null,
+                  items: (directPrintService.items || []).map((it) => ({
+                    ...it,
+                    item_name: it.product_name || it.item_name || 'Service Item',
+                    name: it.product_name || it.item_name || 'Service Item',
+                    quantity: parseFloat(it.quantity) || 1,
+                    unit: it.unit || 'NOS',
+                    rate: parseFloat(it.rate) || 0,
+                    amount: parseFloat(it.amount) || 0,
+                    tax_rate: parseFloat(it.tax_rate) || 18,
+                    tax_amount: parseFloat(it.tax_amount) || 0,
+                    hsn_code: it.hsn_code || '9987',
+                    serial_number: it.serial_number || it.brand_model || ''
+                  }))
+                }}
+                settings={settings}
+                company={settings}
+              />
+            ) : (
+              <ServiceInvoiceTemplate service={directPrintService} settings={settings} company={settings} />
+            )}
           </div>,
           document.body
         )}

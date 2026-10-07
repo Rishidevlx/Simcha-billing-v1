@@ -497,12 +497,13 @@ export default function AddMaterialPage({ editMaterialId = null, onSaved, setAct
               </div>
 
               {/* Tab 1 Footer: Reset on Left, Next Button on Right (No Save button on Tab 1) */}
-              <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-sm p-4 shadow-xs flex items-center justify-between">
+              <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-sm p-4 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <Button
                   type="button"
                   variant="secondary"
                   icon={RotateCcw}
                   onClick={handleClear}
+                  className="w-full sm:w-auto justify-center"
                 >
                   Reset Form
                 </Button>
@@ -513,7 +514,7 @@ export default function AddMaterialPage({ editMaterialId = null, onSaved, setAct
                   icon={ArrowRight}
                   iconPosition="right"
                   onClick={handleNextTab}
-                  className="px-6"
+                  className="w-full sm:w-auto justify-center px-6"
                 >
                   Next: Pricing &amp; GST
                 </Button>
@@ -672,15 +673,16 @@ export default function AddMaterialPage({ editMaterialId = null, onSaved, setAct
               </div>
 
               {/* Tab 2 Footer: Back to Details & Reset on Left, Save Material on Right */}
-              <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-sm p-4 shadow-xs flex items-center justify-between">
-                <div className="flex items-center gap-2">
+              <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-sm p-4 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
                   <Button
                     type="button"
                     variant="secondary"
                     icon={ArrowLeft}
                     onClick={() => setActiveTab('details')}
+                    className="w-full justify-center text-xs px-2 sm:px-3"
                   >
-                    Back to Details
+                    <span className="truncate">Back to Details</span>
                   </Button>
 
                   <Button
@@ -688,18 +690,19 @@ export default function AddMaterialPage({ editMaterialId = null, onSaved, setAct
                     variant="secondary"
                     icon={RotateCcw}
                     onClick={handleClear}
+                    className="w-full justify-center text-xs px-2 sm:px-3"
                   >
-                    Reset Form
+                    <span className="truncate">Reset Form</span>
                   </Button>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
                   <Button
                     type="submit"
                     variant="primary"
                     isLoading={isSubmitting}
                     icon={editMaterialId ? CheckCircle2 : PlusCircle}
-                    className="px-6"
+                    className="w-full sm:w-auto justify-center px-6"
                   >
                     {editMaterialId ? 'Update Material' : 'Save Material'}
                   </Button>

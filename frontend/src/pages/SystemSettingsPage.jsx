@@ -1035,7 +1035,7 @@ export default function SystemSettingsPage() {
     { id: 'taxes', label: 'Tax & GST Rates', icon: Percent },
     { id: 'bank', label: 'Bank Account', icon: Landmark },
     { id: 'numbering', label: 'Numbering', icon: Hash },
-    { id: 'terms', label: 'Terms & Conditions', icon: FileText, badge: terms.length }
+    { id: 'terms', label: 'Terms & Conditions', icon: FileText }
   ]
 
   return (

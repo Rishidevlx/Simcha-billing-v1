@@ -26,7 +26,7 @@ import Swal from 'sweetalert2'
 import { API_ENDPOINTS } from '../config/api'
 import { getUserPermissions } from '../utils/access'
 import ListKpiCard from '../components/common/ListKpiCard'
-import { Button, ActionButton, StatusPill, SearchInput, Checkbox } from '../components/ui'
+import { Button, ActionButton, StatusPill, SearchInput, Checkbox, Pagination } from '../components/ui'
 
 export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, onEditMaterial }) {
   const { can, hasAny } = getUserPermissions()
@@ -713,81 +713,19 @@ export default function AllMaterialsPage({ setActiveRoute: setActiveRouteProp, o
           </table>
         </div>
 
-        {/* Exact Pagination Bar matching AllBillsPage */}
+        {/* Pagination Bar */}
         {!isLoading && (
-          <div className="px-6 py-3 bg-[#f8fafc] dark:bg-slate-950 border-t border-gray-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-medium text-gray-600 dark:text-slate-300">
-            
-            {/* Items Per Page Selector */}
-            <div className="flex items-center gap-2">
-              <span>Items per page:</span>
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value))
-                  setCurrentPage(1)
-                }}
-                className="px-2 py-1 font-semibold text-xs text-[#292424] dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] cursor-pointer"
-              >
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-              </select>
-            </div>
-
-            {/* Item Count Summary (e.g. 1-10 of 100 items) */}
-            <div className="text-gray-500 dark:text-slate-400 font-mono text-xs">
-              {totalItems === 0 ? (
-                '0 of 0 items'
-              ) : (
-                <span>{startIndex + 1}-{endIndex} of {totalItems} items</span>
-              )}
-            </div>
-
-            {/* Page Selector & Prev / Next Arrows */}
-            <div className="flex items-center gap-3">
-              
-              {/* Page Select Dropdown */}
-              <div className="flex items-center gap-1.5">
-                <span>Page</span>
-                <select
-                  value={safeCurrentPage}
-                  onChange={(e) => setCurrentPage(Number(e.target.value))}
-                  className="px-2 py-1 font-semibold text-xs text-[#292424] dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] cursor-pointer"
-                >
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
-                <span>of {totalPages} pages</span>
-              </div>
-
-              {/* Prev / Next Arrows */}
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={safeCurrentPage <= 1}
-                  className="p-1 border border-gray-300 dark:border-slate-700 rounded-none hover:bg-gray-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors text-gray-700 dark:text-slate-300"
-                  title="Previous Page"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <button
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={safeCurrentPage >= totalPages}
-                  className="p-1 border border-gray-300 dark:border-slate-700 rounded-none hover:bg-gray-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors text-gray-700 dark:text-slate-300"
-                  title="Next Page"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-
-            </div>
-
-          </div>
+          <Pagination
+            currentPage={safeCurrentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageSizeChange={(val) => {
+              setPageSize(val)
+              setCurrentPage(1)
+            }}
+            onPageChange={(p) => setCurrentPage(p)}
+          />
         )}
 
       </div>

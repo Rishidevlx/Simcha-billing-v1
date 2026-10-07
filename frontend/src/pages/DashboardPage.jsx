@@ -439,49 +439,55 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
     <div className="space-y-6 animate-in fade-in duration-200 pb-12 font-['Poppins',sans-serif]">
 
       {/* 1. Executive Header & Live System Status */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200/90 dark:border-slate-800 shadow-xs transition-colors">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border border-gray-200/90 dark:border-slate-800 shadow-xs transition-colors">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-[#292424] dark:text-white uppercase">
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight text-[#292424] dark:text-white uppercase">
             Executive Dashboard
           </h1>
-          <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
             Real-time sales, inventory, and GST overview.
           </p>
         </div>
 
         {/* Action Shortcuts & Date Range Filter */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <DashboardDateRangePicker
-            dateRange={dateRange}
-            setDateRange={setDateRange}
-          />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full md:w-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+            <div className="flex-1 sm:flex-none">
+              <DashboardDateRangePicker
+                dateRange={dateRange}
+                setDateRange={setDateRange}
+              />
+            </div>
 
-          <button
-            type="button"
-            onClick={handleRefreshDashboard}
-            title="Refresh & Reset Dashboard"
-            className="px-2.5 py-2 text-gray-600 dark:text-slate-300 hover:text-[#043486] bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-none transition-colors cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center h-[37px]"
-          >
-            <RotateCcw size={15} className={isLoading ? 'animate-spin' : ''} />
-          </button>
+            <button
+              type="button"
+              onClick={handleRefreshDashboard}
+              title="Refresh & Reset Dashboard"
+              className="px-2.5 py-2 text-gray-600 dark:text-slate-300 hover:text-[#043486] bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-none transition-colors cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center h-[37px] shrink-0"
+            >
+              <RotateCcw size={15} className={isLoading ? 'animate-spin' : ''} />
+            </button>
+          </div>
 
-          <Button
-            variant="primary"
-            icon={Plus}
-            onClick={() => setActiveRoute('inward')}
-            className="text-xs font-semibold"
-          >
-            CREATE NEW INWARD
-          </Button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full sm:w-auto">
+            <Button
+              variant="primary"
+              icon={Plus}
+              onClick={() => setActiveRoute('inward')}
+              className="text-xs font-semibold justify-center py-2"
+            >
+              CREATE NEW INWARD
+            </Button>
 
-          <Button
-            variant="primary"
-            icon={Plus}
-            onClick={() => setActiveRoute('create-bill')}
-            className="text-xs font-semibold"
-          >
-            CREATE OUTWARD BILL
-          </Button>
+            <Button
+              variant="primary"
+              icon={Plus}
+              onClick={() => setActiveRoute('create-bill')}
+              className="text-xs font-semibold justify-center py-2"
+            >
+              CREATE OUTWARD BILL
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -540,12 +546,12 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
         {/* Main Chart (8 Cols): Monthly Sales vs Inward Purchase Flow */}
-        <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200/90 dark:border-slate-800 shadow-xs space-y-4">
+        <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border border-gray-200/90 dark:border-slate-800 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-slate-800">
-            <div>
+            <div className="min-w-0">
               <h2 className="text-sm font-bold text-[#043486] dark:text-blue-400 uppercase tracking-wide flex items-center gap-2">
-                <TrendingUp size={16} />
-                <span>Monthly Inward vs Outward Movement</span>
+                <TrendingUp size={16} className="shrink-0" />
+                <span className="truncate">Monthly Inward vs Outward Movement</span>
               </h2>
               <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">
                 Financial comparison between customer sales revenue and supplier inventory expenditure.
@@ -553,35 +559,37 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
             </div>
 
             {/* Chart Type Toggle */}
-            <div className="flex items-center bg-gray-100 dark:bg-slate-800 p-1 border border-gray-200 dark:border-slate-700 rounded-xl">
+            <div className="flex items-center bg-gray-100 dark:bg-slate-800 p-1 border border-gray-200 dark:border-slate-700 rounded-xl w-full sm:w-auto shrink-0">
               <button
                 type="button"
                 onClick={() => setChartViewTab('sales_vs_purchase')}
-                className={`px-3 py-1 text-xs font-bold transition-all cursor-pointer rounded-lg ${chartViewTab === 'sales_vs_purchase'
+                className={`flex-1 sm:flex-none px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer rounded-lg text-center ${
+                  chartViewTab === 'sales_vs_purchase'
                     ? 'bg-[#043486] text-white shadow-xs'
                     : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
-                  }`}
+                }`}
               >
                 Area Trend
               </button>
               <button
                 type="button"
                 onClick={() => setChartViewTab('monthly_growth')}
-                className={`px-3 py-1 text-xs font-bold transition-all cursor-pointer rounded-lg ${chartViewTab === 'monthly_growth'
+                className={`flex-1 sm:flex-none px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer rounded-lg text-center ${
+                  chartViewTab === 'monthly_growth'
                     ? 'bg-[#043486] text-white shadow-xs'
                     : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
-                  }`}
+                }`}
               >
                 Bar Compare
               </button>
             </div>
           </div>
 
-          {/* Chart Rendering */}
-          <div className="h-[280px] w-full pt-2">
+          {/* Chart Rendering with Bottom Legend to prevent wave overlap */}
+          <div className="h-[300px] w-full pt-1">
             <ResponsiveContainer width="100%" height="100%">
               {chartViewTab === 'sales_vs_purchase' ? (
-                <AreaChart data={monthlyChartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <AreaChart data={monthlyChartData} margin={{ top: 10, right: 10, left: -15, bottom: 5 }}>
                   <defs>
                     <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#043486" stopOpacity={0.4} />
@@ -607,10 +615,11 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
                     ]}
                   />
                   <Legend
-                    verticalAlign="top"
-                    height={30}
+                    verticalAlign="bottom"
+                    align="center"
                     iconType="circle"
                     iconSize={8}
+                    wrapperStyle={{ paddingTop: '10px', fontSize: '11.5px', fontWeight: 500 }}
                     formatter={(val) =>
                       val === 'sales'
                         ? 'Outward Sales (₹)'
@@ -624,7 +633,7 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
                   <Area type="monotone" dataKey="returns" stroke="#e11d48" strokeWidth={2} fillOpacity={1} fill="url(#returnsGrad)" name="returns" />
                 </AreaChart>
               ) : (
-                <BarChart data={monthlyChartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <BarChart data={monthlyChartData} margin={{ top: 10, right: 10, left: -15, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="month" stroke="#94a3b8" fontSize={11} tickLine={false} />
                   <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} tickFormatter={(val) => `₹${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`} />
@@ -636,10 +645,11 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
                     ]}
                   />
                   <Legend
-                    verticalAlign="top"
-                    height={30}
+                    verticalAlign="bottom"
+                    align="center"
                     iconType="square"
                     iconSize={8}
+                    wrapperStyle={{ paddingTop: '10px', fontSize: '11.5px', fontWeight: 500 }}
                     formatter={(val) =>
                       val === 'sales'
                         ? 'Outward Sales (₹)'
@@ -658,16 +668,16 @@ export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
         </div>
 
         {/* Donut Chart (4 Cols): Customer Type & Payment Breakdowns */}
-        <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200/90 dark:border-slate-800 shadow-xs flex flex-col justify-between space-y-4">
+        <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border border-gray-200/90 dark:border-slate-800 shadow-xs flex flex-col justify-between space-y-4">
           <div>
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-slate-800">
+            <div className="flex items-center justify-between gap-2 pb-3 border-b border-gray-100 dark:border-slate-800">
               <h2 className="text-sm font-bold text-[#043486] dark:text-blue-400 uppercase tracking-wide flex items-center gap-2">
-                <Users size={16} />
-                <span>Segment Ratio</span>
+                <Users size={16} className="shrink-0" />
+                <span className="truncate">Segment Ratio</span>
               </h2>
 
               {/* Toggle Tab */}
-              <div className="flex items-center text-[10px] font-bold bg-gray-100 dark:bg-slate-800 p-0.5 border border-gray-200 dark:border-slate-700 rounded-lg">
+              <div className="flex items-center text-[10px] font-bold bg-gray-100 dark:bg-slate-800 p-0.5 border border-gray-200 dark:border-slate-700 rounded-lg shrink-0">
                 <button
                   type="button"
                   onClick={() => setPieTab('customer_type')}

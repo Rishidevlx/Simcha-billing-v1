@@ -3025,7 +3025,7 @@ export async function sendServiceQuotationEmail(serviceId, customRecipient = nul
       amount: parseFloat(it.amount) || 0,
       tax_rate: parseFloat(it.tax_rate) || 18,
       tax_amount: parseFloat(it.tax_amount) || 0,
-      hsn_code: it.hsn_code || '9987'
+      hsn_code: it.hsn_code || null
     }))
 
     const quotationData = {
@@ -3157,6 +3157,158 @@ export async function sendServiceQuotationEmail(serviceId, customRecipient = nul
     }
   }
 }
+
+/**
+ * Send Service Invoice PDF Email via configured SMTP
+ */
+export async function sendServiceInvoiceEmail(serviceId, customRecipient = null, customPdfBase64 = null) {
+  try {
+    const pool = getPool()
+
+    // 1. Fetch Email Config
+    const [configRows] = await pool.query('SELECT * FROM email_configs WHERE id = 1')
+    if (configRows.length === 0) {
+      return { success: false, message: 'Email configurations not found.' }
+    }
+    const config = configRows[0]
+
+    if (!config.smtp_user || !config.smtp_pass) {
+      return { success: false, message: 'SMTP credentials not configured in Settings.' }
+    }
+
+    // 2. Fetch Service Details & Settings
+    const [serviceRows] = await pool.query('SELECT * FROM service_bills WHERE id = ?', [serviceId])
+    if (serviceRows.length === 0) {
+      return { success: false, message: 'Service record not found.' }
+    }
+    const service = serviceRows[0]
+
+    const [settingsRows] = await pool.query('SELECT * FROM settings WHERE id = 1')
+    const settings = settingsRows.length > 0 ? settingsRows[0] : {}
+
+    // 3. Setup Nodemailer Transporter
+    const transporter = nodemailer.createTransport({
+      host: config.smtp_host || 'smtp.gmail.com',
+      port: parseInt(config.smtp_port, 10) || 465,
+      secure: config.smtp_port === 465 || config.smtp_secure === 1 || config.smtp_secure === true,
+      auth: {
+        user: config.smtp_user.trim(),
+        pass: config.smtp_pass.trim()
+      }
+    })
+
+    const formattedDate = new Date(service.service_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    const formattedTotal = `₹ ${parseFloat(service.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+
+    const companyDisplayName = settings.company_name || config.sender_name || 'Simcha Info Solutions'
+    const companyDisplayAddress = settings.address || ''
+    const companyDisplayPhone = settings.phone || ''
+    const companyDisplayEmail = settings.email || config.sender_email || config.smtp_user || 'simchainfosolutions@gmail.com'
+
+    const getHtmlBody = (greetingName) => `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 620px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden;">
+        <div style="background-color: #043486; padding: 22px 28px; text-align: left;">
+          <h2 style="color: #ffffff; margin: 0; font-size: 20px; letter-spacing: 0.5px;">${companyDisplayName}</h2>
+          <p style="color: #93c5fd; margin: 4px 0 0 0; font-size: 12px;">Official Service Tax Invoice</p>
+        </div>
+
+        <div style="padding: 26px 28px;">
+          <p style="font-size: 14px; color: #334155; margin-top: 0;">Dear <strong>${greetingName}</strong>,</p>
+          <p style="font-size: 13.5px; color: #475569; line-height: 1.6;">
+            Your device service and repair work has been completed and is ready for delivery. Please find attached your official Service Tax Invoice <strong>${service.service_number}</strong>.
+          </p>
+
+          <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 16px; margin: 20px 0;">
+            <table style="width: 100%; font-size: 13px; color: #334155; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Service Invoice #:</td>
+                <td style="padding: 6px 0; font-weight: bold; font-family: monospace; color: #043486;">${service.service_number}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Date:</td>
+                <td style="padding: 6px 0; font-weight: 500;">${formattedDate}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Customer Name:</td>
+                <td style="padding: 6px 0; font-weight: 500;">${service.customer_name}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Service Status:</td>
+                <td style="padding: 6px 0; font-weight: bold; color: #059669;">Ready for Delivery / Collection</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Invoice Total:</td>
+                <td style="padding: 6px 0; font-weight: bold; font-size: 15px; color: #043486;">${formattedTotal}</td>
+              </tr>
+            </table>
+          </div>
+
+          <p style="font-size: 13px; color: #475569; line-height: 1.5;">
+            Please present this service invoice copy at the time of device pickup or delivery.
+          </p>
+
+          ${companyDisplayPhone ? `
+          <p style="font-size: 12.5px; color: #64748b; line-height: 1.5;">
+            For queries regarding pickup, please contact us at <strong>${companyDisplayPhone}</strong>.
+          </p>` : ''}
+        </div>
+
+        <div style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 16px 28px; text-align: center; font-size: 12px; color: #64748b;">
+          <p style="margin: 0 0 4px 0; font-weight: bold; color: #334155;">${companyDisplayName}</p>
+          ${companyDisplayAddress ? `<p style="margin: 0 0 4px 0;">${companyDisplayAddress}</p>` : ''}
+          <p style="margin: 0; color: #94a3b8; font-size: 11px;">This is an automated service billing notification.</p>
+        </div>
+      </div>
+    `
+
+    const recipient = (customRecipient || service.customer_email || '').trim()
+    if (!recipient) {
+      return { success: false, message: 'Customer email address is not specified.' }
+    }
+
+    // Attachments
+    const attachments = []
+    if (customPdfBase64) {
+      const cleanBase64 = customPdfBase64.replace(/^data:application\/pdf;base64,/, '')
+      const fileName = `ServiceInvoice_${service.service_number.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`
+      attachments.push({
+        filename: fileName,
+        content: Buffer.from(cleanBase64, 'base64'),
+        contentType: 'application/pdf'
+      })
+    }
+
+    const subject = `Service Invoice - ${service.service_number} (${companyDisplayName})`
+    await transporter.sendMail({
+      from: `"${config.sender_name || companyDisplayName}" <${config.smtp_user}>`,
+      to: recipient,
+      subject: subject,
+      html: getHtmlBody(service.customer_name || 'Valued Customer'),
+      attachments
+    })
+
+    // Mark invoice_email_sent in DB
+    await pool.query(`
+      UPDATE service_bills SET 
+        invoice_email_sent = 1,
+        invoice_email_sent_at = NOW(),
+        updated_at = NOW()
+      WHERE id = ?
+    `, [serviceId])
+
+    return {
+      success: true,
+      message: `Service Invoice PDF emailed successfully to ${recipient}`
+    }
+  } catch (error) {
+    console.error('❌ Error sending service invoice email:', error)
+    return {
+      success: false,
+      message: error.message || 'Failed to dispatch service invoice email via SMTP.'
+    }
+  }
+}
+
 
 
 

@@ -279,7 +279,7 @@ export default function Navbar({
                 className="fixed inset-0 z-40" 
                 onClick={() => setIsNotifOpen(false)} 
               />
-              <div className="absolute right-0 mt-2.5 w-84 sm:w-[420px] bg-white dark:bg-[#1e293b] rounded-lg shadow-2xl border border-gray-200 dark:border-slate-800 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 font-['Poppins',sans-serif]">
+              <div className="fixed inset-x-3 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2.5 w-auto sm:w-[400px] md:w-[420px] max-w-[calc(100vw-24px)] bg-white dark:bg-[#1e293b] rounded-xl shadow-2xl border border-gray-200 dark:border-slate-800 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 font-['Poppins',sans-serif] mx-auto">
                 
                 {/* 1. Header with Deep Velzon Gradient & Clear Options */}
                 <div className="bg-gradient-to-r from-[#405189] to-[#364574] px-4 py-3.5 text-white flex items-center justify-between shadow-xs">
@@ -328,7 +328,7 @@ export default function Navbar({
                 </div>
 
                 {/* 2. Sleek Filter Tabs */}
-                <div className="flex border-b border-gray-100 dark:border-slate-800 bg-gray-50/80 dark:bg-slate-900/70 text-xs px-2 pt-1.5 gap-1">
+                <div className="flex border-b border-gray-100 dark:border-slate-800 bg-gray-50/80 dark:bg-slate-900/70 text-xs px-2 pt-1.5 gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden shrink-0">
                   <button
                     onClick={() => setNotifFilter('all')}
                     className={`px-3.5 py-2 text-xs font-semibold rounded-t-md transition-all cursor-pointer flex items-center gap-1.5 ${

@@ -72,21 +72,17 @@ export default function ServiceReceiptTemplate({ service, bill, settings, compan
   const companyAddress = effectiveCompany?.address || ''
   const signatureUrl = effectiveSettings?.signature_url || effectiveSettings?.signatureUrl || data.signature_url || liveSignUrl || null
 
-  const defaultTermsList = (Array.isArray(effectiveSettings?.service_receipt_terms) && effectiveSettings.service_receipt_terms.length > 0)
-    ? effectiveSettings.service_receipt_terms
-    : (Array.isArray(snapshot?.service_receipt_terms) && snapshot.service_receipt_terms.length > 0)
+  const defaultTermsList = (Array.isArray(snapshot?.service_receipt_terms) && snapshot.service_receipt_terms.length > 0)
     ? snapshot.service_receipt_terms
-    : (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
-    ? effectiveSettings.terms_conditions
     : (Array.isArray(snapshot?.terms_conditions) && snapshot.terms_conditions.length > 0)
     ? snapshot.terms_conditions
+    : (Array.isArray(effectiveSettings?.service_receipt_terms) && effectiveSettings.service_receipt_terms.length > 0)
+    ? effectiveSettings.service_receipt_terms
+    : (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
+    ? effectiveSettings.terms_conditions
     : (liveTerms && liveTerms.length > 0)
     ? liveTerms
-    : [
-      'Payment received for service invoice and repair charges.',
-      'Please retain this service receipt for warranty and service records.',
-      '90 days warranty on replaced hardware components only.'
-    ]
+    : []
 
   const termsList = defaultTermsList
   const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data?.parts) ? data.parts : [])
@@ -196,11 +192,6 @@ export default function ServiceReceiptTemplate({ service, bill, settings, compan
                       </td>
                       <td className="py-2 px-2.5 border-r border-gray-300 align-top text-gray-800">
                         <div>{item.issue_description || 'General Service & Repair'}</div>
-                        {item.hsn_code && (
-                          <div className="text-[9px] font-mono text-gray-500 mt-0.5">
-                            HSN/SAC: {item.hsn_code}
-                          </div>
-                        )}
                       </td>
                       <td className="py-2 px-2 border-r border-gray-300 text-center font-bold align-top text-[#292424]">
                         {formatQty(item.quantity)}
@@ -252,16 +243,18 @@ export default function ServiceReceiptTemplate({ service, bill, settings, compan
               <div className="grid grid-cols-12 gap-6 pt-2 text-[#292424]">
                 {/* Left Column (6/12): Terms & Payment Mode */}
                 <div className="col-span-6 space-y-2">
-                  <div className="space-y-0.5 text-[9.5px]">
-                    <span className="font-black text-[#292424] uppercase tracking-wider block text-[10px] mb-0.5">
-                      TERMS &amp; CONDITIONS
-                    </span>
-                    <ol className="list-decimal list-inside space-y-1 text-gray-700 leading-snug">
-                      {termsList.map((t, idx) => (
-                        <li key={idx} className="leading-tight">{t}</li>
-                      ))}
-                    </ol>
-                  </div>
+                  {termsList && termsList.length > 0 && (
+                    <div className="space-y-0.5 text-[9.5px]">
+                      <span className="font-black text-[#292424] uppercase tracking-wider block text-[10px] mb-0.5">
+                        TERMS &amp; CONDITIONS
+                      </span>
+                      <ol className="list-decimal list-inside space-y-1 text-gray-700 leading-snug">
+                        {termsList.map((t, idx) => (
+                          <li key={idx} className="leading-tight">{t}</li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
 
                   <div className="p-2.5 bg-gray-50 border border-gray-200 text-[10px] text-gray-600 rounded-none mt-3">
                     <p><strong>Payment Mode:</strong> {data.payment_mode || 'Cash'}</p>

@@ -31,12 +31,15 @@ import {
   FileCheck,
   Pencil,
   RefreshCw,
-  List
+  List,
+  Receipt
 } from '../components/common/icons'
 import * as XLSX from 'xlsx'
 import Swal from 'sweetalert2'
 import QuotationModal from '../components/quotation/QuotationModal'
 import QuotationTemplate from '../components/quotation/QuotationTemplate'
+import InvoiceModal from '../components/invoice/InvoiceModal'
+import InvoiceTemplate from '../components/invoice/InvoiceTemplate'
 import ListKpiCard from '../components/common/ListKpiCard'
 import ListDateRangeFilter from '../components/common/ListDateRangeFilter'
 import ListPagePagination from '../components/common/ListPagePagination'
@@ -72,12 +75,11 @@ export default function AllQuotationsPage({ setActiveRoute }) {
   const [settings, setSettings] = useState(null)
   
   const { can, hasAny } = getUserPermissions()
-  const canAdd = can('quotations', 'Add') || can('quotations_list', 'Add') || true
-  const canEdit = hasAny('quotations_list', ['Edit']) || hasAny('quotations', ['Edit']) || true
-  const canDelete = hasAny('quotations_list', ['Delete']) || hasAny('quotations', ['Delete']) || true
-  const canDownload = hasAny('quotations_list', ['Download']) || hasAny('quotations', ['Download']) || true
+  const canAdd = can('quotations', 'Add') || can('quotations_list', 'Add')
+  const canEdit = hasAny('quotations_list', ['Edit']) || hasAny('quotations', ['Edit'])
+  const canDelete = hasAny('quotations_list', ['Delete']) || hasAny('quotations', ['Delete'])
+  const canDownload = hasAny('quotations_list', ['Download']) || hasAny('quotations', ['Download'])
 
-  // Selection state for Excel export & batch actions
   // Selection state for Excel export & batch actions
   const [selectedQuotationIds, setSelectedQuotationIds] = useState([])
 
@@ -105,6 +107,9 @@ export default function AllQuotationsPage({ setActiveRoute }) {
   // Quotation Modal state
   const [activeQuotation, setActiveQuotation] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+
+  // Outward Invoice Modal state
+  const [selectedBill, setSelectedBill] = useState(null)
 
   // Fetch Quotations and System Settings
   const fetchQuotations = async () => {
@@ -334,6 +339,33 @@ export default function AllQuotationsPage({ setActiveRoute }) {
     } catch (e) {
       setActiveQuotation(qtn)
       setIsModalOpen(true)
+    }
+  }
+
+  // View Outward Invoice Details Modal
+  const handleViewInvoice = async (billIdOrNumber) => {
+    if (!billIdOrNumber) return
+    try {
+      const res = await fetch(API_ENDPOINTS.BILL_BY_ID(billIdOrNumber))
+      const data = await res.json()
+      if (data.success && data.bill) {
+        setSelectedBill(data.bill)
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invoice Not Found',
+          text: 'Unable to load invoice details.',
+          confirmButtonColor: '#043486'
+        })
+      }
+    } catch (err) {
+      console.error('Error fetching invoice details:', err)
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to fetch invoice details.',
+        confirmButtonColor: '#043486'
+      })
     }
   }
 
@@ -654,16 +686,16 @@ export default function AllQuotationsPage({ setActiveRoute }) {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
           {canDownload && (
             <Button
               variant="export"
               icon={Download}
               onClick={handleExportExcel}
-              className="text-xs font-semibold"
+              className="w-full justify-center text-[11px] sm:text-xs font-semibold px-2 sm:px-4 py-2"
               title={selectedQuotationIds.length > 0 ? `Export ${selectedQuotationIds.length} Selected Quotation(s)` : 'Export All Filtered Quotations'}
             >
-              {selectedQuotationIds.length > 0 ? `EXPORT SELECTED (${selectedQuotationIds.length})` : 'EXPORT TO EXCEL'}
+              <span className="truncate">{selectedQuotationIds.length > 0 ? `EXPORT (${selectedQuotationIds.length})` : 'EXPORT TO EXCEL'}</span>
             </Button>
           )}
           {canAdd && (
@@ -674,9 +706,9 @@ export default function AllQuotationsPage({ setActiveRoute }) {
                 if (setActiveRoute) setActiveRoute('quotations')
                 navigate('/quotations')
               }}
-              className="text-xs font-semibold"
+              className="w-full justify-center text-[11px] sm:text-xs font-semibold px-2 sm:px-4 py-2"
             >
-              CREATE NEW QUOTATION
+              <span className="truncate">CREATE QUOTATION</span>
             </Button>
           )}
         </div>
@@ -714,10 +746,10 @@ export default function AllQuotationsPage({ setActiveRoute }) {
       <div className="bg-white dark:bg-slate-900 p-5 rounded-none border border-gray-200 dark:border-slate-800 shadow-xs space-y-4 transition-colors">
         
         {/* Top Filter Row: Search & Status / Type Dropdowns */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
           
           {/* Search Input */}
-          <div className="md:col-span-5">
+          <div className="sm:col-span-2 lg:col-span-5">
             <SearchInput
               value={searchTerm}
               onChange={(e) => {
@@ -733,7 +765,7 @@ export default function AllQuotationsPage({ setActiveRoute }) {
           </div>
 
           {/* Quotation Status Dropdown */}
-          <div className="md:col-span-3">
+          <div className="col-span-1 lg:col-span-3">
             {activeTab === 'registry' ? (
               <select
                 value={statusFilter}
@@ -768,7 +800,7 @@ export default function AllQuotationsPage({ setActiveRoute }) {
           </div>
 
           {/* Quotation Type Dropdown */}
-          <div className="md:col-span-3">
+          <div className="col-span-1 lg:col-span-3">
             <select
               value={typeFilter}
               onChange={(e) => {
@@ -784,7 +816,7 @@ export default function AllQuotationsPage({ setActiveRoute }) {
           </div>
 
           {/* Reset / Reload Filters Button */}
-          <div className="md:col-span-1 flex justify-center">
+          <div className="col-span-1 sm:col-span-2 lg:col-span-1 flex justify-center">
             <button
               type="button"
               onClick={() => {
@@ -792,9 +824,10 @@ export default function AllQuotationsPage({ setActiveRoute }) {
                 fetchQuotations()
               }}
               title="Reload Quotations Data"
-              className="p-2 text-gray-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors shadow-xs cursor-pointer"
+              className="w-full lg:w-auto p-2.5 text-gray-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
             >
               <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+              <span className="lg:hidden text-xs font-semibold">Reset Filters</span>
             </button>
           </div>
 
@@ -910,13 +943,18 @@ export default function AllQuotationsPage({ setActiveRoute }) {
                     />
                   </th>
                   <th className="py-3 px-4">Quotation ID</th>
+                  {activeTab === 'converted' && (
+                    <th className="py-3 px-4 text-[#043486] dark:text-blue-400">Invoice ID</th>
+                  )}
                   <th className="py-3 px-4">Date</th>
                   <th className="py-3 px-4">Customer Name</th>
                   <th className="py-3 px-4">Mobile Number</th>
                   <th className="py-3 px-4 text-center">Items</th>
                   <th className="py-3 px-4 text-right">Total Amount</th>
                   <th className="py-3 px-3 text-center">Status</th>
-                  <th className="py-3 px-4 text-center">Actions</th>
+                  {activeTab === 'registry' && (
+                    <th className="py-3 px-4 text-center">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-slate-800 text-xs font-medium">
@@ -959,6 +997,24 @@ export default function AllQuotationsPage({ setActiveRoute }) {
                           <span>{q.quotation_number}</span>
                         </button>
                       </td>
+
+                      {/* Converted Invoice ID column - Clean text link, click opens Invoice popup */}
+                      {activeTab === 'converted' && (
+                        <td className="py-3.5 px-4">
+                          {q.converted_invoice_number ? (
+                            <button
+                              type="button"
+                              onClick={() => handleViewInvoice(q.converted_bill_id || q.converted_invoice_number)}
+                              className="font-mono font-bold text-[#043486] dark:text-blue-400 hover:underline cursor-pointer inline-flex items-center text-left"
+                              title="Click to view Invoice details"
+                            >
+                              <span>{q.converted_invoice_number}</span>
+                            </button>
+                          ) : (
+                            <span className="text-gray-400 dark:text-slate-600 font-mono text-xs">-</span>
+                          )}
+                        </td>
+                      )}
 
                       {/* Date */}
                       <td className={`py-3.5 px-4 text-gray-600 dark:text-slate-400 whitespace-nowrap ${isCancelled ? 'line-through' : ''}`}>
@@ -1019,94 +1075,88 @@ export default function AllQuotationsPage({ setActiveRoute }) {
                         )}
                       </td>
 
-                      {/* Actions */}
-                      <td className="py-3.5 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          {/* Actions in Quotations Registry tab */}
-                          {activeTab === 'registry' ? (
-                            <>
-                              {/* 1. Send Email (Indigo) - Disabled if Cancelled */}
+                      {/* Actions Column (Rendered ONLY in QUOTATIONS tab, removed in Converted and Cancelled tabs) */}
+                      {activeTab === 'registry' && (
+                        <td className="py-3.5 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            {/* 1. Send Email (Indigo) - Disabled if Cancelled */}
+                            <ActionButton
+                              icon={Send}
+                              title={isCancelled ? "Quotation is Cancelled" : "Send Quotation PDF Email"}
+                              disabled={isCancelled}
+                              onClick={() => !isCancelled && handleSendQuotationEmail(q)}
+                              className={
+                                isCancelled
+                                  ? "!text-gray-300 dark:!text-slate-700 opacity-40 cursor-not-allowed"
+                                  : "!text-indigo-600 dark:!text-indigo-400 hover:!bg-indigo-50 dark:hover:!bg-slate-800"
+                              }
+                            />
+
+                            {/* 2. Convert to Outward Invoice (Emerald) - Active ONLY when isApproved */}
+                            {!isConverted && (
                               <ActionButton
-                                icon={Send}
-                                title={isCancelled ? "Quotation is Cancelled" : "Send Quotation PDF Email"}
+                                icon={FileCheck}
+                                title={
+                                  isCancelled
+                                    ? "Quotation is Cancelled"
+                                    : !isApproved
+                                    ? "Convert available only when status is Approved"
+                                    : "Convert to Outward Bill"
+                                }
+                                disabled={!isApproved || isCancelled}
+                                onClick={() => isApproved && !isCancelled && handleConvertToInvoice(q)}
+                                className={
+                                  (!isApproved || isCancelled)
+                                    ? "!text-gray-300 dark:!text-slate-700 opacity-40 cursor-not-allowed"
+                                    : "!text-emerald-600 dark:!text-emerald-400 hover:!bg-emerald-50 dark:hover:!bg-slate-800"
+                                }
+                              />
+                            )}
+
+                            {/* 3. Edit Quotation (Amber) - Disabled if Approved, Converted, or Cancelled */}
+                            {canEdit && (
+                              <ActionButton
+                                icon={Pencil}
+                                title={
+                                  isCancelled
+                                    ? "Cannot edit a cancelled quotation"
+                                    : isApproved
+                                    ? "Cannot edit an approved quotation"
+                                    : isConverted
+                                    ? "Cannot edit a converted quotation"
+                                    : "Edit Quotation"
+                                }
+                                disabled={isConverted || isApproved || isCancelled}
+                                onClick={() => {
+                                  if (!isConverted && !isApproved && !isCancelled) {
+                                    navigate(`/quotations?editId=${q.id}`)
+                                  }
+                                }}
+                                className={
+                                  (isConverted || isApproved || isCancelled)
+                                    ? "!text-gray-300 dark:!text-slate-700 opacity-40 cursor-not-allowed"
+                                    : "!text-amber-600 dark:!text-amber-400 hover:!bg-amber-50 dark:hover:!bg-slate-800"
+                                }
+                              />
+                            )}
+
+                            {/* 4. Delete Quotation (Red) - Disabled if Cancelled */}
+                            {canDelete && (
+                              <ActionButton
+                                icon={Trash2}
+                                title={isCancelled ? "Quotation is Cancelled" : "Delete Quotation"}
                                 disabled={isCancelled}
-                                onClick={() => !isCancelled && handleSendQuotationEmail(q)}
+                                onClick={() => !isCancelled && handleDeleteQuotation(q)}
                                 className={
                                   isCancelled
                                     ? "!text-gray-300 dark:!text-slate-700 opacity-40 cursor-not-allowed"
-                                    : "!text-indigo-600 dark:!text-indigo-400 hover:!bg-indigo-50 dark:hover:!bg-slate-800"
+                                    : "!text-gray-400 hover:!text-red-600 hover:!bg-red-50 dark:hover:!bg-slate-800"
                                 }
                               />
-
-                              {/* 2. Convert to Outward Invoice (Emerald) - Active ONLY when isApproved */}
-                              {!isConverted && (
-                                <ActionButton
-                                  icon={FileCheck}
-                                  title={
-                                    isCancelled
-                                      ? "Quotation is Cancelled"
-                                      : !isApproved
-                                      ? "Convert available only when status is Approved"
-                                      : "Convert to Outward Bill"
-                                  }
-                                  disabled={!isApproved || isCancelled}
-                                  onClick={() => isApproved && !isCancelled && handleConvertToInvoice(q)}
-                                  className={
-                                    (!isApproved || isCancelled)
-                                      ? "!text-gray-300 dark:!text-slate-700 opacity-40 cursor-not-allowed"
-                                      : "!text-emerald-600 dark:!text-emerald-400 hover:!bg-emerald-50 dark:hover:!bg-slate-800"
-                                  }
-                                />
-                              )}
-
-                              {/* 3. Edit Quotation (Amber) - Disabled if Approved, Converted, or Cancelled */}
-                              {canEdit && (
-                                <ActionButton
-                                  icon={Pencil}
-                                  title={
-                                    isCancelled
-                                      ? "Cannot edit a cancelled quotation"
-                                      : isApproved
-                                      ? "Cannot edit an approved quotation"
-                                      : isConverted
-                                      ? "Cannot edit a converted quotation"
-                                      : "Edit Quotation"
-                                  }
-                                  disabled={isConverted || isApproved || isCancelled}
-                                  onClick={() => {
-                                    if (!isConverted && !isApproved && !isCancelled) {
-                                      navigate(`/quotations?editId=${q.id}`)
-                                    }
-                                  }}
-                                  className={
-                                    (isConverted || isApproved || isCancelled)
-                                      ? "!text-gray-300 dark:!text-slate-700 opacity-40 cursor-not-allowed"
-                                      : "!text-amber-600 dark:!text-amber-400 hover:!bg-amber-50 dark:hover:!bg-slate-800"
-                                  }
-                                />
-                              )}
-
-                              {/* 4. Delete Quotation (Red) - Disabled if Cancelled */}
-                              {canDelete && (
-                                <ActionButton
-                                  icon={Trash2}
-                                  title={isCancelled ? "Quotation is Cancelled" : "Delete Quotation"}
-                                  disabled={isCancelled}
-                                  onClick={() => !isCancelled && handleDeleteQuotation(q)}
-                                  className={
-                                    isCancelled
-                                      ? "!text-gray-300 dark:!text-slate-700 opacity-40 cursor-not-allowed"
-                                      : "!text-gray-400 hover:!text-red-600 hover:!bg-red-50 dark:hover:!bg-slate-800"
-                                  }
-                                />
-                              )}
-                            </>
-                          ) : (
-                            <span className="text-gray-400 dark:text-slate-600 font-mono text-xs">-</span>
-                          )}
-
-                        </div>
-                      </td>
+                            )}
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   )
                 })}
@@ -1149,6 +1199,22 @@ export default function AllQuotationsPage({ setActiveRoute }) {
             fetchQuotations()
           }}
         />
+      )}
+
+      {/* Outward Invoice Preview, Print & PDF Modal */}
+      <InvoiceModal
+        isOpen={Boolean(selectedBill)}
+        onClose={() => setSelectedBill(null)}
+        bill={selectedBill}
+        settings={settings}
+      />
+
+      {/* Direct Printable Invoice Portal for instant window.print() */}
+      {selectedBill && typeof document !== 'undefined' && createPortal(
+        <div id="invoice-print-wrapper">
+          <InvoiceTemplate bill={selectedBill} settings={settings} />
+        </div>,
+        document.body
       )}
     </div>
   )

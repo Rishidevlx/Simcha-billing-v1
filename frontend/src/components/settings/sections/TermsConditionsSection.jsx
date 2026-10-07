@@ -172,7 +172,7 @@ export default function TermsConditionsSection({
       label: 'Quotation Terms',
       icon: FileText,
       title: 'Quotation Terms & Conditions',
-      subtitle: 'Customize legal clauses and warranty terms printed on Outward and Service Quotation PDFs.',
+      subtitle: 'Customize terms printed on Outward and Service Quotation PDFs.',
       editLabel: 'Edit Quotation Terms',
       saveLabel: 'Save Quotation Terms',
       isEditing: isQuotationsEditing
@@ -182,7 +182,7 @@ export default function TermsConditionsSection({
       label: 'Invoice Terms',
       icon: Hash,
       title: 'Invoice Terms & Conditions',
-      subtitle: 'Customize standard payment, legal, and return clauses printed on Tax Invoices and Service Tickets.',
+      subtitle: 'Customize printed on Tax Invoices and Service Tickets.',
       editLabel: 'Edit Invoice Terms',
       saveLabel: 'Save Invoice Terms',
       isEditing: isInvoicesEditing
@@ -192,7 +192,7 @@ export default function TermsConditionsSection({
       label: 'Receipt Terms',
       icon: Receipt,
       title: 'Receipt Terms & Conditions',
-      subtitle: 'Customize acknowledgement and payment terms printed on Outward and Service Receipt vouchers.',
+      subtitle: 'Customize printed on Outward and Service Receipt vouchers.',
       editLabel: 'Edit Receipt Terms',
       saveLabel: 'Save Receipt Terms',
       isEditing: isReceiptsEditing
@@ -202,7 +202,7 @@ export default function TermsConditionsSection({
       label: 'Return Terms',
       icon: ReturnIcon,
       title: 'Return Terms & Conditions',
-      subtitle: 'Customize customer return eligibility and QC policy terms printed on Product Return documents.',
+      subtitle: 'Customize terms printed on Product Return documents.',
       editLabel: 'Edit Return Terms',
       saveLabel: 'Save Return Terms',
       isEditing: isReturnsEditing
@@ -329,7 +329,7 @@ export default function TermsConditionsSection({
 
                 {/* Service Estimation Terms */}
                 <TermsClauseCard
-                  title="Service Estimation Terms"
+                  title="Service Quotation Terms"
                   pillStatus="Service Estimation"
                   terms={serviceQuotationTerms}
                   isEditing={isQuotationsEditing}

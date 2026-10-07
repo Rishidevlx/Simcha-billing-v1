@@ -38,9 +38,9 @@ export default function OutwardLineItems({
   isQuotation = false
 }) {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-6 shadow-sm space-y-4 transition-colors w-full">
+    <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-4 sm:p-6 shadow-sm space-y-4 transition-colors w-full">
       {/* Header with Title & Add Line Item button */}
-      <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-gray-200 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <Boxes size={18} className="text-[#043486] dark:text-blue-400" />
           <h2 className="text-sm font-bold text-[#043486] dark:text-blue-400 tracking-wide uppercase">
@@ -53,7 +53,7 @@ export default function OutwardLineItems({
           variant="primary"
           icon={Plus}
           onClick={onAddItem}
-          className="text-xs font-semibold"
+          className="text-xs font-semibold w-full sm:w-auto"
         >
           Add Line Item (Alt+A)
         </Button>
@@ -64,19 +64,49 @@ export default function OutwardLineItems({
         {items.map((item, index) => (
           <div
             key={index}
-            className="p-4 rounded-none border border-gray-300 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-950/60 hover:border-blue-300 dark:hover:border-blue-800 transition-all space-y-3"
+            className="p-3.5 sm:p-4 rounded-none border border-gray-300 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-950/60 hover:border-blue-300 dark:hover:border-blue-800 transition-all space-y-3"
           >
+            {/* Mobile Item Card Header (S.No + Duplicate/Delete) */}
+            <div className="flex items-center justify-between pb-2 border-b border-gray-200/80 dark:border-slate-800/80 md:hidden">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-none bg-[#043486] text-white text-[11px] font-bold flex items-center justify-center">
+                  {index + 1}
+                </span>
+                <span className="text-xs font-bold text-gray-700 dark:text-slate-200">
+                  Item #{index + 1}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onDuplicateItem(index)}
+                  title="Duplicate item"
+                  className="p-1.5 text-gray-500 hover:text-[#043486] dark:hover:text-blue-400 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none cursor-pointer"
+                >
+                  <Copy size={13} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRemoveItem(index)}
+                  title="Delete item"
+                  className="p-1.5 text-gray-500 hover:text-red-600 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-none cursor-pointer"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            </div>
+
             {/* Row 1: Index + Category + Product Select + HSN/SAC + Qty & Unit + Row Actions */}
             <div className="flex flex-col md:flex-row items-stretch md:items-end gap-3">
-              {/* S.No */}
-              <div className="shrink-0">
+              {/* S.No (Desktop only) */}
+              <div className="hidden md:block shrink-0">
                 <span className="w-9 h-[41px] rounded-none bg-[#043486] text-white text-xs font-bold flex items-center justify-center shrink-0">
                   {index + 1}
                 </span>
               </div>
 
               {/* 1. Category Search & Select Dropdown */}
-              <div className="w-full md:w-60 shrink-0">
+              <div className="w-full md:w-56 shrink-0">
                 <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
                   Material Category
                 </label>
@@ -89,7 +119,7 @@ export default function OutwardLineItems({
               </div>
 
               {/* 2. Product / Material Search & Select Dropdown */}
-              <div className="flex-1 min-w-[260px]">
+              <div className="flex-1 min-w-[200px]">
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200">
                     Item Name <span className="text-red-500 font-bold">*</span>
@@ -142,59 +172,59 @@ export default function OutwardLineItems({
                 )}
               </div>
 
-              {/* 3. HSN / SAC */}
-              <div className="w-full sm:w-36 shrink-0">
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
-                  HSN / SAC Code
-                </label>
-                <input
-                  type="text"
-                  value={item.hsn_code}
-                  onChange={(e) => onItemChange(index, 'hsn_code', e.target.value)}
-                  placeholder="HSN / SAC"
-                  title="HSN / SAC Code"
-                  className="w-full px-3 py-2.5 text-xs font-mono text-center text-[#292424] dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 placeholder:text-gray-400 dark:placeholder:text-slate-500 font-medium h-[41px]"
-                />
-              </div>
-
-              {/* 4. Quantity & Unit */}
-              <div className="shrink-0">
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
-                  Qty & Unit
-                </label>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    min="0.01"
-                    step="any"
-                    value={item.quantity}
-                    onChange={(e) => onItemChange(index, 'quantity', e.target.value)}
-                    title="Quantity"
-                    placeholder="Qty"
-                    className={`w-20 px-2 py-2.5 text-xs text-center font-bold bg-white dark:bg-slate-900 border rounded-none focus:outline-none h-[41px] ${
-                      !isQuotation &&
-                      item.material_id &&
-                      item.current_stock !== null &&
-                      (parseFloat(item.current_stock) <= 0 || (parseFloat(item.quantity) || 1) > parseFloat(item.current_stock))
-                        ? 'border-red-500 text-red-600 dark:text-red-400 focus:border-red-600 bg-red-50/20'
-                        : 'text-[#292424] dark:text-white border-gray-300 dark:border-slate-700 focus:border-[#043486] dark:focus:border-blue-500'
-                    }`}
-                  />
+              {/* 3 & 4. HSN/SAC + Quantity & Unit */}
+              <div className="grid grid-cols-2 md:flex md:items-end gap-3">
+                {/* 3. HSN / SAC */}
+                <div className="w-full md:w-32 shrink-0">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
+                    HSN / SAC Code
+                  </label>
                   <input
                     type="text"
-                    value={item.unit || 'NOS'}
-                    readOnly
-                    title="Unit (From material)"
-                    className="w-18 px-2 py-2.5 text-xs text-center uppercase text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-none cursor-not-allowed select-none focus:outline-none font-semibold h-[41px]"
+                    value={item.hsn_code}
+                    onChange={(e) => onItemChange(index, 'hsn_code', e.target.value)}
+                    placeholder="HSN / SAC"
+                    title="HSN / SAC Code"
+                    className="w-full px-2 sm:px-3 py-2.5 text-xs font-mono text-center text-[#292424] dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 placeholder:text-gray-400 dark:placeholder:text-slate-500 font-medium h-[41px]"
                   />
+                </div>
+
+                {/* 4. Quantity & Unit */}
+                <div className="w-full md:w-auto shrink-0">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
+                    Qty & Unit
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="any"
+                      value={item.quantity}
+                      onChange={(e) => onItemChange(index, 'quantity', e.target.value)}
+                      title="Quantity"
+                      placeholder="Qty"
+                      className={`w-full md:w-20 px-2 py-2.5 text-xs text-center font-bold bg-white dark:bg-slate-900 border rounded-none focus:outline-none h-[41px] ${
+                        !isQuotation &&
+                        item.material_id &&
+                        item.current_stock !== null &&
+                        (parseFloat(item.current_stock) <= 0 || (parseFloat(item.quantity) || 1) > parseFloat(item.current_stock))
+                          ? 'border-red-500 text-red-600 dark:text-red-400 focus:border-red-600 bg-red-50/20'
+                          : 'text-[#292424] dark:text-white border-gray-300 dark:border-slate-700 focus:border-[#043486] dark:focus:border-blue-500'
+                      }`}
+                    />
+                    <input
+                      type="text"
+                      value={item.unit || 'NOS'}
+                      readOnly
+                      title="Unit (From material)"
+                      className="w-full md:w-18 px-2 py-2.5 text-xs text-center uppercase text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-none cursor-not-allowed select-none focus:outline-none font-semibold h-[41px]"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Row Actions */}
-              <div className="shrink-0 self-end md:self-end">
-                <label className="hidden md:block text-[11px] font-semibold text-transparent select-none mb-1">
-                  Action
-                </label>
+              {/* Desktop Row Actions */}
+              <div className="hidden md:block shrink-0 self-end">
                 <div className="flex items-center gap-1 h-[41px]">
                   <button
                     type="button"

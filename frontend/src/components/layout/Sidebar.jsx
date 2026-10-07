@@ -222,6 +222,8 @@ export default function Sidebar({
     const permIdMap = {
       'inward': 'inward',
       'inward-reports': 'inward_list',
+      'quotations': 'quotations',
+      'quotations-list': 'quotations_list',
       'create-bill': 'outward',
       'all-bills': 'outward_list',
       'new-service': 'services_new',

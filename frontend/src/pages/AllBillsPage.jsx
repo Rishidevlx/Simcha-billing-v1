@@ -44,7 +44,7 @@ import ListPageHeader from '../components/common/ListPageHeader'
 import ListKpiCard from '../components/common/ListKpiCard'
 import ListDateRangeFilter from '../components/common/ListDateRangeFilter'
 import ListPagePagination from '../components/common/ListPagePagination'
-import { Button, ActionButton, SearchInput, Checkbox } from '../components/ui'
+import { Button, ActionButton, SearchInput, Checkbox, StatusPill, TabNav, TabButton } from '../components/ui'
 import { API_ENDPOINTS } from '../config/api'
 import { getUserPermissions } from '../utils/access'
 import { generateInvoicePdfBase64, generateReceiptPdfBase64 } from '../utils/pdfEmailHelper'
@@ -81,12 +81,14 @@ export default function AllBillsPage({ setActiveRoute }) {
   const canDelete = hasAny('outward_list', ['Delete']) || hasAny('outward', ['Delete'])
   const canDownload = hasAny('outward_list', ['Download']) || hasAny('outward', ['Download'])
 
+  // Active Tab State ('pending' | 'paid' | 'cancelled')
+  const [activeTab, setActiveTab] = useState('pending')
+
   // Selection state for Excel export & batch actions
   const [selectedBillIds, setSelectedBillIds] = useState([])
 
   // Filters State
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('ALL')
   const [typeFilter, setTypeFilter] = useState('ALL')
   const [paymentModeFilter, setPaymentModeFilter] = useState('ALL')
   
@@ -171,7 +173,6 @@ export default function AllBillsPage({ setActiveRoute }) {
   // Reset all filters
   const handleResetFilters = () => {
     setSearchTerm('')
-    setStatusFilter('ALL')
     setTypeFilter('ALL')
     setPaymentModeFilter('ALL')
     setDatePreset('ALL')
@@ -546,7 +547,39 @@ export default function AllBillsPage({ setActiveRoute }) {
     }
   }
 
-  // Inline change Payment Status
+  // Show Cancellation Reason Modal
+  const handleShowCancellationReason = (bill) => {
+    const rawCancelDate = bill.cancelled_at || bill.updated_at || bill.created_at
+    const formattedCancelDate = rawCancelDate
+      ? new Date(rawCancelDate).toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        })
+      : new Date().toLocaleDateString('en-GB')
+
+    Swal.fire({
+      title: 'Cancellation Reason',
+      html: `
+        <div style="text-align:left; font-size:13px; color:#334155;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #e2e8f0;">
+            <div><strong>Invoice:</strong> <span style="font-family:monospace; color:#043486; font-weight:700;">#${bill.invoice_number}</span></div>
+            <div><strong>Cancelled Date:</strong> <span style="font-weight:600; color:#dc2626;">${formattedCancelDate}</span></div>
+          </div>
+          <p style="margin-bottom:10px;"><strong>Customer:</strong> ${bill.customer_name}</p>
+          <div style="background:#fff1f2; border:1px solid #fecdd3; border-radius:6px; padding:12px; margin-top:8px; color:#9f1239;">
+            <div style="font-weight:700; font-size:12px; text-transform:uppercase; margin-bottom:4px; letter-spacing:0.5px;">Reason:</div>
+            <div style="font-size:13px; line-height:1.5;">${bill.cancellation_reason || 'No cancellation reason specified.'}</div>
+          </div>
+        </div>
+      `,
+      icon: 'info',
+      confirmButtonText: 'Close',
+      confirmButtonColor: '#043486'
+    })
+  }
+
+  // Inline change Payment Status with Cancellation Reason Prompt
   const handleUpdatePaymentStatus = async (billId, newStatus) => {
     const targetBill = bills.find(b => b.id === billId)
     if (newStatus === 'Paid') {
@@ -562,21 +595,83 @@ export default function AllBillsPage({ setActiveRoute }) {
       }
     }
 
+    let cancellationReason = null
+    if (newStatus === 'Cancelled') {
+      const promptResult = await Swal.fire({
+        title: 'Cancel Outward Invoice?',
+        html: `
+          <p style="font-size:13px; color:#475569; text-align:left; margin-bottom:10px;">
+            Are you sure you want to cancel Invoice <strong>#${targetBill?.invoice_number}</strong>?
+          </p>
+          <div style="font-size:12px; color:#059669; font-weight:600; text-align:left; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:6px; padding:10px; margin-bottom:12px;">
+            ✓ Billed items stock will be restored to inventory.<br/>
+            ✓ Billed serial numbers will be released back to Available.
+          </div>
+          <p style="font-size:12px; color:#64748b; text-align:left; margin-bottom:6px; font-weight:600;">
+            Reason for cancellation: <span style="color:#e11d48;">*</span>
+          </p>
+        `,
+        input: 'textarea',
+        inputPlaceholder: 'Please enter reason for cancellation...',
+        inputAttributes: {
+          'aria-label': 'Cancellation Reason'
+        },
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Yes, Cancel Invoice',
+        cancelButtonText: 'Close',
+        inputValidator: (val) => {
+          if (!val || !val.trim()) {
+            return 'Cancellation reason is mandatory!'
+          }
+        }
+      })
+
+      if (!promptResult.isConfirmed || !promptResult.value) return
+      cancellationReason = promptResult.value.trim()
+    }
+
     try {
+      const payload = { payment_status: newStatus }
+      if (cancellationReason) {
+        payload.cancellation_reason = cancellationReason
+      }
+
       const res = await fetch(API_ENDPOINTS.BILL_PAYMENT_UPDATE(billId), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payment_status: newStatus })
+        body: JSON.stringify(payload)
       })
       const data = await res.json()
       if (data.success) {
+        const nowIso = new Date().toISOString()
         setBills(prev => {
-          const updated = prev.map(b => b.id === billId ? { ...b, payment_status: newStatus } : b)
+          const updated = prev.map(b => b.id === billId ? { 
+            ...b, 
+            payment_status: newStatus, 
+            cancellation_reason: cancellationReason || b.cancellation_reason,
+            cancelled_at: (newStatus === 'Cancelled' || newStatus === 'Cancel') ? nowIso : null,
+            updated_at: nowIso
+          } : b)
           const paidCount = updated.filter(b => b.payment_status === 'Paid').length
           const pendingCount = updated.filter(b => b.payment_status === 'Pending').length
           setStats(s => ({ ...s, paidCount, pendingCount }))
           return updated
         })
+
+        // Move to respective tab automatically
+        if (newStatus === 'Paid') {
+          setActiveTab('paid')
+          setCurrentPage(1)
+        } else if (newStatus === 'Cancelled') {
+          setActiveTab('cancelled')
+          setCurrentPage(1)
+        } else if (newStatus === 'Pending') {
+          setActiveTab('pending')
+          setCurrentPage(1)
+        }
+
         Swal.mixin({
           toast: true,
           position: 'top-end',
@@ -601,34 +696,75 @@ export default function AllBillsPage({ setActiveRoute }) {
     }
   }
 
-  // Filter Logic
+  // Tab Badge Counts
+  const tabCounts = useMemo(() => {
+    const pending = bills.filter(b => (b.payment_status || 'Pending').toUpperCase() === 'PENDING').length
+    const paid = bills.filter(b => (b.payment_status || '').toUpperCase() === 'PAID').length
+    const cancelled = bills.filter(b => {
+      const st = (b.payment_status || '').toUpperCase()
+      return st === 'CANCELLED' || st === 'CANCEL'
+    }).length
+    return { pending, paid, cancelled }
+  }, [bills])
+
+  // Filter Logic with Tab Segmentation
   const filteredBills = useMemo(() => {
     return bills.filter(bill => {
+      const st = (bill.payment_status || 'Pending').toUpperCase()
+
+      // 0. Tab Filter
+      if (activeTab === 'pending') {
+        if (st !== 'PENDING') return false
+      } else if (activeTab === 'paid') {
+        if (st !== 'PAID') return false
+      } else if (activeTab === 'cancelled') {
+        if (st !== 'CANCELLED' && st !== 'CANCEL') return false
+      }
+
       // 1. Search Query
       const matchesSearch =
         bill.invoice_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
         bill.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (bill.customer_phone && bill.customer_phone.includes(searchTerm))
 
-      // 2. Status Filter
-      const matchesStatus = statusFilter === 'ALL' || bill.payment_status === statusFilter
-
-      // 3. Invoice Type Filter (GST vs NON_GST)
+      // 2. Invoice Type Filter (GST vs NON_GST)
       const matchesType = typeFilter === 'ALL' || bill.invoice_type === typeFilter
 
-      // 4. Payment Mode Filter
-      const matchesMode = paymentModeFilter === 'ALL' || bill.payment_mode === paymentModeFilter
+      // 3. Payment Mode Filter
+      const matchesMode =
+        paymentModeFilter === 'ALL' ||
+        bill.payment_mode === paymentModeFilter ||
+        (paymentModeFilter === 'UPI' && (bill.payment_mode === 'UPI' || bill.payment_mode === 'UPI / Online')) ||
+        (paymentModeFilter === 'Online / Net Banking' && (bill.payment_mode === 'Online / Net Banking' || bill.payment_mode === 'Net Banking' || bill.payment_mode === 'Bank Transfer (NEFT/RTGS)')) ||
+        (paymentModeFilter === 'Credit' && (bill.payment_mode === 'Credit' || bill.payment_mode === 'Credit / Debit Card' || bill.payment_mode === 'Card'))
 
-      // 5. Date Range Filter
+      // 4. Date Range Filter
       if (startDate || endDate) {
         const billDate = getLocalDateString(bill.invoice_date || bill.created_at)
         if (startDate && billDate < startDate) return false
         if (endDate && billDate > endDate) return false
       }
 
-      return matchesSearch && matchesStatus && matchesType && matchesMode
+      return matchesSearch && matchesType && matchesMode
     })
-  }, [bills, searchTerm, statusFilter, typeFilter, paymentModeFilter, startDate, endDate])
+
+    // Cancelled tab: sort by latest cancellation / cancelled_at DESC (most recently cancelled first)
+    if (activeTab === 'cancelled') {
+      return [...list].sort((a, b) => {
+        const timeA = a.cancelled_at
+          ? new Date(a.cancelled_at).getTime()
+          : (a.updated_at ? new Date(a.updated_at).getTime() : (a.id || 0))
+        const timeB = b.cancelled_at
+          ? new Date(b.cancelled_at).getTime()
+          : (b.updated_at ? new Date(b.updated_at).getTime() : (b.id || 0))
+
+        if (timeB !== timeA) return timeB - timeA
+        return (b.id || 0) - (a.id || 0)
+      })
+    }
+
+    return list
+  }, [bills, activeTab, searchTerm, typeFilter, paymentModeFilter, startDate, endDate])
 
   // Pagination Calculations
   const totalItems = filteredBills.length
@@ -782,16 +918,16 @@ export default function AllBillsPage({ setActiveRoute }) {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
           {canDownload && (
             <Button
               variant="export"
               icon={Download}
               onClick={handleExportExcel}
-              className="text-xs font-semibold"
+              className="w-full justify-center text-[11px] sm:text-xs font-semibold px-2 sm:px-4 py-2"
               title={selectedBillIds.length > 0 ? `Export ${selectedBillIds.length} Selected Bill(s)` : 'Export All Filtered Bills'}
             >
-              {selectedBillIds.length > 0 ? `EXPORT SELECTED (${selectedBillIds.length})` : 'EXPORT TO EXCEL'}
+              <span className="truncate">{selectedBillIds.length > 0 ? `EXPORT (${selectedBillIds.length})` : 'EXPORT TO EXCEL'}</span>
             </Button>
           )}
           {canAdd && (
@@ -802,9 +938,9 @@ export default function AllBillsPage({ setActiveRoute }) {
                 if (setActiveRoute) setActiveRoute('create-bill')
                 navigate('/outward')
               }}
-              className="text-xs font-semibold"
+              className="w-full justify-center text-[11px] sm:text-xs font-semibold px-2 sm:px-4 py-2"
             >
-              CREATE NEW BILL
+              <span className="truncate">CREATE NEW BILL</span>
             </Button>
           )}
         </div>
@@ -841,11 +977,11 @@ export default function AllBillsPage({ setActiveRoute }) {
       {/* 3. Advanced Multi-Filter Bar & Date Range Filtering */}
       <div className="bg-white dark:bg-slate-900 p-5 rounded-none border border-gray-200 dark:border-slate-800 shadow-xs space-y-4 transition-colors">
         
-        {/* Top Filter Row: Search & Status / Type / Mode Dropdowns */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+        {/* Top Filter Row: Search & Type / Mode Dropdowns */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
           
           {/* Search Input */}
-          <div className="md:col-span-4">
+          <div className="sm:col-span-2 lg:col-span-5">
             <SearchInput
               value={searchTerm}
               onChange={(e) => {
@@ -860,25 +996,8 @@ export default function AllBillsPage({ setActiveRoute }) {
             />
           </div>
 
-          {/* Payment Status Dropdown */}
-          <div className="md:col-span-3">
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value)
-                setCurrentPage(1)
-              }}
-              className="w-full px-3 py-2.5 text-xs font-semibold text-[#292424] dark:text-white bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] cursor-pointer"
-            >
-              <option value="ALL">All Payment Status</option>
-              <option value="Paid">Paid</option>
-              <option value="Pending">Pending</option>
-              <option value="Cancelled">Cancelled</option>
-            </select>
-          </div>
-
           {/* Invoice Type Dropdown */}
-          <div className="md:col-span-2">
+          <div className="col-span-1 lg:col-span-3">
             <select
               value={typeFilter}
               onChange={(e) => {
@@ -894,7 +1013,7 @@ export default function AllBillsPage({ setActiveRoute }) {
           </div>
 
           {/* Payment Mode Dropdown */}
-          <div className="md:col-span-2">
+          <div className="col-span-1 lg:col-span-3">
             <select
               value={paymentModeFilter}
               onChange={(e) => {
@@ -906,14 +1025,14 @@ export default function AllBillsPage({ setActiveRoute }) {
               <option value="ALL">All Payment Modes</option>
               <option value="Cash">Cash</option>
               <option value="UPI">UPI</option>
+              <option value="Online / Net Banking">Online / Net Banking</option>
+              <option value="Cheque">Cheque</option>
               <option value="Credit">Credit</option>
-              <option value="Card">Card</option>
-              <option value="Net Banking">Net Banking</option>
             </select>
           </div>
 
           {/* Reset / Reload Filters */}
-          <div className="md:col-span-1 flex justify-center">
+          <div className="col-span-1 sm:col-span-2 lg:col-span-1 flex justify-center">
             <button
               type="button"
               onClick={() => {
@@ -921,9 +1040,10 @@ export default function AllBillsPage({ setActiveRoute }) {
                 fetchInitialData()
               }}
               title="Reload Outward Data"
-              className="p-2 text-gray-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors shadow-xs cursor-pointer"
+              className="w-full lg:w-auto p-2.5 text-gray-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
             >
               <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+              <span className="lg:hidden text-xs font-semibold">Reset Filters</span>
             </button>
           </div>
 
@@ -949,7 +1069,49 @@ export default function AllBillsPage({ setActiveRoute }) {
 
       </div>
 
-      {/* 3. Bills Table (Crisp Boxie Layout) */}
+      {/* 4. Three Navigation Tabs (Velzon Wizard / Chevron Tabs) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <TabNav>
+          <TabButton
+            active={activeTab === 'pending'}
+            onClick={() => {
+              setActiveTab('pending')
+              setCurrentPage(1)
+            }}
+            icon={Clock}
+            badge={tabCounts.pending}
+            variant="amber"
+          >
+            PENDING
+          </TabButton>
+          <TabButton
+            active={activeTab === 'paid'}
+            onClick={() => {
+              setActiveTab('paid')
+              setCurrentPage(1)
+            }}
+            icon={CheckCircle2}
+            badge={tabCounts.paid}
+            variant="emerald"
+          >
+            PAID
+          </TabButton>
+          <TabButton
+            active={activeTab === 'cancelled'}
+            onClick={() => {
+              setActiveTab('cancelled')
+              setCurrentPage(1)
+            }}
+            icon={X}
+            badge={tabCounts.cancelled}
+            variant="rose"
+          >
+            CANCELLED
+          </TabButton>
+        </TabNav>
+      </div>
+
+      {/* 5. Bills Table (Crisp Boxie Layout) */}
       <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 shadow-xs overflow-hidden transition-colors">
         {isLoading ? (
           <div className="p-4 space-y-3">
@@ -999,9 +1161,15 @@ export default function AllBillsPage({ setActiveRoute }) {
                   <th className="py-3 px-4">Mobile Number</th>
                   <th className="py-3 px-4 text-center">Items</th>
                   <th className="py-3 px-4 text-right">Total Amount</th>
-                  <th className="py-3 px-3 text-center">Payment Type</th>
+                  {activeTab !== 'cancelled' && (
+                    <th className="py-3 px-3 text-center">Payment Type</th>
+                  )}
                   <th className="py-3 px-3 text-center">Status</th>
-                  <th className="py-3 px-4 text-center">Actions</th>
+                  {activeTab === 'cancelled' ? (
+                    <th className="py-3 px-4 text-center">Reason</th>
+                  ) : (
+                    <th className="py-3 px-4 text-center">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-slate-800 text-xs font-medium">
@@ -1009,7 +1177,6 @@ export default function AllBillsPage({ setActiveRoute }) {
                   const isSelected = selectedBillIds.includes(bill.id)
                   const isPaid = bill.payment_status === 'Paid'
                   const isCancelled = bill.payment_status === 'Cancelled' || bill.payment_status === 'Cancel'
-                  const isEditDeleteDisabled = isPaid || isCancelled
 
                   return (
                     <tr
@@ -1077,143 +1244,148 @@ export default function AllBillsPage({ setActiveRoute }) {
                         ₹ {parseFloat(bill.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
 
-                      {/* Payment Type Dropdown */}
+                      {/* Payment Type Dropdown (Hidden in Cancelled Tab) */}
+                      {activeTab !== 'cancelled' && (
+                        <td className="py-3.5 px-3 text-center">
+                          <select
+                            value={bill.payment_mode || ''}
+                            onChange={(e) => handleUpdatePaymentType(bill.id, e.target.value)}
+                            className="px-2.5 py-1.5 text-xs font-semibold text-gray-700 dark:text-slate-200 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] transition-colors cursor-pointer hover:border-gray-400"
+                          >
+                            <option value="">Select</option>
+                            <option value="Cash">Cash</option>
+                            <option value="UPI">UPI</option>
+                            <option value="Online / Net Banking">Online / Net Banking</option>
+                            <option value="Cheque">Cheque</option>
+                            <option value="Credit">Credit</option>
+                          </select>
+                        </td>
+                      )}
+
+                      {/* Status Dropdown / Pill */}
                       <td className="py-3.5 px-3 text-center">
-                        <select
-                          value={bill.payment_mode || ''}
-                          disabled={isCancelled}
-                          onChange={(e) => handleUpdatePaymentType(bill.id, e.target.value)}
-                          className={`px-2.5 py-1.5 text-xs font-semibold text-gray-700 dark:text-slate-200 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] transition-colors ${
-                            isCancelled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-gray-400'
-                          }`}
-                        >
-                          <option value="">Select</option>
-                          <option value="Cash">Cash</option>
-                          <option value="UPI">UPI</option>
-                          <option value="Online / Net Banking">Online / Net Banking</option>
-                          <option value="Cheque">Cheque</option>
-                          <option value="Credit">Credit</option>
-                        </select>
-                      </td>
-
-                      {/* Status Dropdown */}
-                      <td className="py-3.5 px-3 text-center">
-                        <select
-                          value={bill.payment_status || 'Pending'}
-                          onChange={(e) => handleUpdatePaymentStatus(bill.id, e.target.value)}
-                          className={`px-2.5 py-1.5 text-[11px] font-bold uppercase rounded-none border focus:outline-none cursor-pointer transition-colors ${
-                            isPaid
-                              ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800'
-                              : isCancelled
-                              ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700'
-                              : 'bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-400 border-red-300 dark:border-red-800'
-                          }`}
-                        >
-                          <option value="Pending">Pending</option>
-                          <option value="Paid">Paid</option>
-                          <option value="Cancelled">Cancel</option>
-                        </select>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-3.5 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          {/* 1. Direct Print Receipt (Active ONLY when Paid) */}
-                          <ActionButton
-                            icon={FileCheck}
-                            onClick={() => handlePrintReceipt(bill.id)}
-                            disabled={!isPaid}
-                            className={
+                        {isCancelled ? (
+                          <StatusPill status="Cancelled" size="sm" />
+                        ) : (
+                          <select
+                            value={bill.payment_status || 'Pending'}
+                            onChange={(e) => handleUpdatePaymentStatus(bill.id, e.target.value)}
+                            className={`px-2.5 py-1.5 text-[11px] font-bold uppercase rounded-none border focus:outline-none cursor-pointer transition-colors ${
                               isPaid
-                                ? '!text-purple-600 dark:!text-purple-400 hover:!bg-purple-50 dark:hover:!bg-slate-800'
-                                : '!text-gray-300 dark:!text-slate-700 opacity-40'
-                            }
-                            title={
-                              isPaid
-                                ? 'Print / View Payment Receipt'
-                                : 'Receipt available only when status is Paid'
-                            }
-                          />
-
-                          {/* 2. Send Email (Active when Pending -> Invoice Email, Active when Paid -> Receipt Email; turns red once sent) */}
-                          <ActionButton
-                            icon={Send}
-                            onClick={() => {
-                              if (isCancelled) return
-                              if (isPaid) {
-                                handleSendReceiptEmail(bill)
-                              } else {
-                                handleSendInvoiceEmail(bill)
-                              }
-                            }}
-                            disabled={isCancelled}
-                            className={
-                              isCancelled
-                                ? '!text-gray-300 dark:!text-slate-700 opacity-40 cursor-not-allowed'
-                                : isPaid
-                                ? bill.receipt_sent
-                                  ? '!text-red-500 dark:!text-red-400 hover:!bg-red-50 dark:hover:!bg-slate-800'
-                                  : '!text-emerald-600 dark:!text-emerald-400 hover:!bg-emerald-50 dark:hover:!bg-slate-800'
-                                : bill.invoice_sent
-                                ? '!text-red-500 dark:!text-red-400 hover:!bg-red-50 dark:hover:!bg-slate-800'
-                                : '!text-[#043486] dark:!text-blue-400 hover:!bg-blue-50 dark:hover:!bg-slate-800'
-                            }
-                            title={
-                              isCancelled
-                                ? 'Invoice is Cancelled'
-                                : isPaid
-                                ? bill.receipt_sent
-                                  ? 'Receipt Already Sent (Click for details)'
-                                  : 'Send Receipt Email to Customer'
-                                : bill.invoice_sent
-                                ? 'Invoice Already Sent (Click for details)'
-                                : 'Send Tax Invoice Email to Customer'
-                            }
-                          />
-
-                          {/* 3. Edit Invoice (Inactive if Paid or Cancelled) */}
-                          {canEdit && (
-                            <ActionButton
-                              type="edit"
-                              onClick={() => !isEditDeleteDisabled && navigate(`/outward?editId=${bill.id}`)}
-                              disabled={isEditDeleteDisabled}
-                              className={
-                                isEditDeleteDisabled
-                                  ? '!text-gray-300 dark:!text-slate-700 opacity-30'
-                                  : '!text-amber-600 dark:!text-amber-400 hover:!bg-amber-50 dark:hover:!bg-slate-800'
-                              }
-                              title={
-                                isCancelled
-                                  ? 'Cannot edit a cancelled invoice'
-                                  : isPaid
-                                  ? 'Cannot edit a paid invoice'
-                                  : 'Edit Invoice'
-                              }
-                            />
-                          )}
-
-                          {/* 4. Delete Invoice (Inactive if Paid or Cancelled) */}
-                          {canDelete && (
-                            <ActionButton
-                              type="delete"
-                              onClick={() => !isEditDeleteDisabled && handleDeleteBill(bill.id, bill.invoice_number)}
-                              disabled={isEditDeleteDisabled}
-                              className={
-                                isEditDeleteDisabled
-                                  ? '!text-gray-300 dark:!text-slate-700 opacity-30'
-                                  : '!text-gray-400 hover:!text-red-600 hover:!bg-red-50 dark:hover:!bg-slate-800'
-                              }
-                              title={
-                                isCancelled
-                                  ? 'Cannot delete a cancelled invoice'
-                                  : isPaid
-                                  ? 'Cannot delete a paid invoice'
-                                  : 'Delete Invoice'
-                              }
-                            />
-                          )}
-                        </div>
+                                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800'
+                                : 'bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-400 border-red-300 dark:border-red-800'
+                            }`}
+                          >
+                            <option value="Pending">Pending</option>
+                            <option value="Paid">Paid</option>
+                            <option value="Cancelled">Cancel</option>
+                          </select>
+                        )}
                       </td>
+
+                      {/* Actions Column OR Reason Column */}
+                      {activeTab === 'cancelled' ? (
+                        <td className="py-3.5 px-4 text-center">
+                          <div className="flex items-center justify-center">
+                            <ActionButton
+                              icon={FileText}
+                              onClick={() => handleShowCancellationReason(bill)}
+                              className="!text-[#043486] dark:!text-blue-400 hover:!bg-blue-50 dark:hover:!bg-slate-800"
+                              title="View Cancellation Reason"
+                            />
+                          </div>
+                        </td>
+                      ) : (
+                        <td className="py-3.5 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            {/* In Pending Tab: Send Invoice Email */}
+                            {activeTab === 'pending' && (
+                              <ActionButton
+                                icon={Send}
+                                onClick={() => handleSendInvoiceEmail(bill)}
+                                className={
+                                  bill.invoice_sent
+                                    ? '!text-red-500 dark:!text-red-400 hover:!bg-red-50 dark:hover:!bg-slate-800'
+                                    : '!text-[#043486] dark:!text-blue-400 hover:!bg-blue-50 dark:hover:!bg-slate-800'
+                                }
+                                title={
+                                  bill.invoice_sent
+                                    ? 'Invoice Already Sent (Click for details)'
+                                    : 'Send Tax Invoice Email to Customer'
+                                }
+                              />
+                            )}
+
+                            {/* In Paid Tab: View/Print Receipt + Send Receipt Email */}
+                            {activeTab === 'paid' && (
+                              <>
+                                <ActionButton
+                                  icon={FileCheck}
+                                  onClick={() => handlePrintReceipt(bill.id)}
+                                  className="!text-purple-600 dark:!text-purple-400 hover:!bg-purple-50 dark:hover:!bg-slate-800"
+                                  title="Print / View Payment Receipt"
+                                />
+                                <ActionButton
+                                  icon={Send}
+                                  onClick={() => handleSendReceiptEmail(bill)}
+                                  className={
+                                    bill.receipt_sent
+                                      ? '!text-red-500 dark:!text-red-400 hover:!bg-red-50 dark:hover:!bg-slate-800'
+                                      : '!text-emerald-600 dark:!text-emerald-400 hover:!bg-emerald-50 dark:hover:!bg-slate-800'
+                                  }
+                                  title={
+                                    bill.receipt_sent
+                                      ? 'Receipt Already Sent (Click for details)'
+                                      : 'Send Receipt Email to Customer'
+                                  }
+                                />
+                              </>
+                            )}
+
+                            {/* Edit Invoice (Active ONLY in Pending, Disabled in Paid/Cancelled) */}
+                            {canEdit && (
+                              <ActionButton
+                                type="edit"
+                                onClick={() => !isPaid && !isCancelled && navigate(`/outward?editId=${bill.id}`)}
+                                disabled={isPaid || isCancelled}
+                                className={
+                                  isPaid || isCancelled
+                                    ? '!text-gray-300 dark:!text-slate-700 opacity-30 cursor-not-allowed'
+                                    : '!text-amber-600 dark:!text-amber-400 hover:!bg-amber-50 dark:hover:!bg-slate-800'
+                                }
+                                title={
+                                  isCancelled
+                                    ? 'Cannot edit a cancelled invoice'
+                                    : isPaid
+                                    ? 'Cannot edit a paid invoice'
+                                    : 'Edit Invoice'
+                                }
+                              />
+                            )}
+
+                            {/* Delete Invoice (Active ONLY in Pending, Disabled in Paid/Cancelled) */}
+                            {canDelete && (
+                              <ActionButton
+                                type="delete"
+                                onClick={() => !isPaid && !isCancelled && handleDeleteBill(bill.id, bill.invoice_number)}
+                                disabled={isPaid || isCancelled}
+                                className={
+                                  isPaid || isCancelled
+                                    ? '!text-gray-300 dark:!text-slate-700 opacity-30 cursor-not-allowed'
+                                    : '!text-gray-400 hover:!text-red-600 hover:!bg-red-50 dark:hover:!bg-slate-800'
+                                }
+                                title={
+                                  isCancelled
+                                    ? 'Cannot delete a cancelled invoice'
+                                    : isPaid
+                                    ? 'Cannot delete a paid invoice'
+                                    : 'Delete Invoice'
+                                }
+                              />
+                            )}
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   )
                 })}

@@ -1098,19 +1098,19 @@ export default function CreateQuotationPage({ setActiveRoute }) {
           <div className="lg:col-span-8 space-y-6">
 
             {/* A. Quotation Specifications */}
-            <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-6 shadow-sm space-y-5 transition-colors">
-              <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
+            <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-4 sm:p-6 shadow-sm space-y-5 transition-colors">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200 dark:border-slate-800">
                 <h2 className="text-sm font-bold text-[#043486] dark:text-blue-400 tracking-wide uppercase flex items-center gap-2">
                   <FileText size={16} />
                   <span>Quotation Specifications</span>
                 </h2>
 
                 {/* Non-GST / GST Toggle */}
-                <div className="flex items-center bg-gray-100 dark:bg-slate-800 p-1 rounded-none border border-gray-200 dark:border-slate-700">
+                <div className="grid grid-cols-2 sm:flex items-center bg-gray-100 dark:bg-slate-800 p-1 rounded-none border border-gray-200 dark:border-slate-700 w-full sm:w-auto">
                   <button
                     type="button"
                     onClick={() => handleToggleQuotationType('NON_GST')}
-                    className={`px-3.5 py-1.5 text-xs font-semibold rounded-none transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 text-center text-xs font-semibold rounded-none transition-all cursor-pointer ${
                       quotationType === 'NON_GST'
                         ? 'bg-[#043486] text-white shadow-sm'
                         : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
@@ -1121,7 +1121,7 @@ export default function CreateQuotationPage({ setActiveRoute }) {
                   <button
                     type="button"
                     onClick={() => handleToggleQuotationType('GST')}
-                    className={`px-3.5 py-1.5 text-xs font-semibold rounded-none transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 text-center text-xs font-semibold rounded-none transition-all cursor-pointer ${
                       quotationType === 'GST'
                         ? 'bg-[#043486] text-white shadow-sm'
                         : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
@@ -1296,6 +1296,29 @@ export default function CreateQuotationPage({ setActiveRoute }) {
               </div>
             </div>
 
+            {/* ================= QUOTATION LINE ITEMS ================= */}
+            <OutwardLineItems
+              items={items}
+              categoryOptions={categoryOptions}
+              materials={materials}
+              getMaterialOptionsForRow={getMaterialOptionsForRow}
+              duplicateSerials={duplicateSerials}
+              verifiedSerials={verifiedSerials}
+              availableSerialsMap={availableSerialsMap}
+              activeSerialSuggest={activeSerialSuggest}
+              setActiveSerialSuggest={setActiveSerialSuggest}
+              fetchAvailableSerialsForMaterial={fetchAvailableSerialsForMaterial}
+              verifySerialWithDb={verifySerialWithDb}
+              onCategorySelect={handleCategorySelect}
+              onMaterialSelect={handleMaterialSelect}
+              onItemChange={handleItemChange}
+              onSerialNumberChange={handleSerialNumberChange}
+              onAddItem={handleAddItem}
+              onDuplicateItem={handleDuplicateItem}
+              onRemoveItem={handleRemoveItem}
+              isQuotation={true}
+            />
+
           </div>
 
           {/* ================= RIGHT STICKY SUMMARY COLUMN (4 COLS) ================= */}
@@ -1328,29 +1351,6 @@ export default function CreateQuotationPage({ setActiveRoute }) {
           </div>
 
         </div>
-
-        {/* ================= MIDDLE SECTION: 100% FULL WIDTH LINE ITEMS ================= */}
-        <OutwardLineItems
-          items={items}
-          categoryOptions={categoryOptions}
-          materials={materials}
-          getMaterialOptionsForRow={getMaterialOptionsForRow}
-          duplicateSerials={duplicateSerials}
-          verifiedSerials={verifiedSerials}
-          availableSerialsMap={availableSerialsMap}
-          activeSerialSuggest={activeSerialSuggest}
-          setActiveSerialSuggest={setActiveSerialSuggest}
-          fetchAvailableSerialsForMaterial={fetchAvailableSerialsForMaterial}
-          verifySerialWithDb={verifySerialWithDb}
-          onCategorySelect={handleCategorySelect}
-          onMaterialSelect={handleMaterialSelect}
-          onItemChange={handleItemChange}
-          onSerialNumberChange={handleSerialNumberChange}
-          onAddItem={handleAddItem}
-          onDuplicateItem={handleDuplicateItem}
-          onRemoveItem={handleRemoveItem}
-          isQuotation={true}
-        />
 
       </form>
 

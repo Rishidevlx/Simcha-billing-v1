@@ -44,7 +44,7 @@ export default function BillSummaryCard({
   const displaySaveText = saveButtonText || (isEditMode ? 'Update (Ctrl+Enter)' : 'Save (Ctrl+Enter)')
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-6 shadow-sm space-y-4 transition-colors">
+    <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-4 sm:p-6 shadow-sm space-y-4 transition-colors">
       {/* Header */}
       <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
         <h2 className="text-sm font-bold text-[#043486] dark:text-blue-400 tracking-wide uppercase flex items-center gap-2">

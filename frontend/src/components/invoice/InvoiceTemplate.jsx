@@ -82,31 +82,34 @@ export default function InvoiceTemplate({ bill, settings, company }) {
   const bankImageUrl = effectiveBank?.bank_image_url || effectiveBank?.bankImageUrl || bill.bank_image_url || liveBankImg || ''
   const signatureUrl = effectiveSettings?.signature_url || effectiveSettings?.signatureUrl || bill.signature_url || liveSignUrl || ''
   
-  const defaultTermsList = (Array.isArray(effectiveSettings?.invoice_terms) && effectiveSettings.invoice_terms.length > 0)
-    ? effectiveSettings.invoice_terms
-    : (Array.isArray(snapshot?.invoice_terms) && snapshot.invoice_terms.length > 0)
+  const defaultTermsList = (Array.isArray(snapshot?.invoice_terms) && snapshot.invoice_terms.length > 0)
     ? snapshot.invoice_terms
-    : (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
-    ? effectiveSettings.terms_conditions
     : (Array.isArray(snapshot?.terms_conditions) && snapshot.terms_conditions.length > 0)
     ? snapshot.terms_conditions
+    : (Array.isArray(effectiveSettings?.invoice_terms) && effectiveSettings.invoice_terms.length > 0)
+    ? effectiveSettings.invoice_terms
+    : (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
+    ? effectiveSettings.terms_conditions
     : (liveTerms && liveTerms.length > 0)
     ? liveTerms
-    : [
-      'Warranty as per manufacturer’s norms & should be claimed directly.',
-      'Warranty claim takes 1 to 8 weeks.',
-      'Please carry invoice copy for warranty.',
-      'Goods Once Sold will not be taken back or exchanged.'
-    ]
+    : []
 
   const items = Array.isArray(bill.items) ? bill.items : []
   const hasReturnableItems = items.some(it => it.return_policy === true || it.return_policy === 1 || it.return_policy === '1')
-  const returnDays = settings?.return_days || 7
-  const returnClause = settings?.return_policy_clause
-    ? settings.return_policy_clause.replace('{days}', `${returnDays} days`)
-    : `Products eligible for return must be returned within ${returnDays} days of purchase with original invoice copy.`
+  const rawReturnDays = snapshot?.return_days !== undefined && snapshot?.return_days !== null && snapshot?.return_days !== ''
+    ? snapshot.return_days
+    : (effectiveSettings?.return_days !== undefined && effectiveSettings?.return_days !== null && effectiveSettings?.return_days !== ''
+      ? effectiveSettings.return_days
+      : (settings?.return_days !== undefined && settings?.return_days !== null && settings?.return_days !== '' ? settings.return_days : 0))
+  const returnDays = parseInt(rawReturnDays, 10) || 0
 
-  const termsList = hasReturnableItems
+  const hasReturnWindow = returnDays > 0
+  const customReturnClause = ((snapshot?.return_policy_clause !== undefined && snapshot?.return_policy_clause !== null ? snapshot.return_policy_clause : effectiveSettings?.return_policy_clause) || settings?.return_policy_clause || '').trim()
+  const returnClause = customReturnClause
+    ? customReturnClause.replace('{days}', `${returnDays} days`)
+    : `Products eligible for return have to be returned within ${returnDays} days of purchase with original invoice copy.`
+
+  const termsList = (hasReturnableItems && hasReturnWindow)
     ? [returnClause, ...defaultTermsList.filter(t => !t.toLowerCase().includes('will not be taken back'))]
     : defaultTermsList
   const isGstInvoice = bill.invoice_type === 'GST' || (!bill.invoice_type && parseFloat(bill.total_tax || 0) > 0)

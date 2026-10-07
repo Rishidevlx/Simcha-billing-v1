@@ -23,7 +23,7 @@ let pingTimer = null
 
 function startKeepAlivePing() {
   if (pingTimer) return
-  // Ping database every 45 seconds to prevent serverless sleep & socket timeout
+  // Ping database every 20 seconds to prevent cloud socket timeout / ECONNRESET
   pingTimer = setInterval(async () => {
     try {
       if (pool) {
@@ -32,7 +32,7 @@ function startKeepAlivePing() {
     } catch {
       // Non-critical background ping
     }
-  }, 45000)
+  }, 20000)
 
   if (pingTimer.unref) {
     pingTimer.unref() // Allow graceful Node process shutdown
@@ -53,11 +53,11 @@ export async function initDatabase() {
           database: dbName,
           waitForConnections: true,
           connectionLimit: 10,
-          maxIdle: 10,
-          idleTimeout: 60000,
+          maxIdle: 5,
+          idleTimeout: 30000,
           queueLimit: 0,
           enableKeepAlive: true,
-          keepAliveInitialDelay: 5000
+          keepAliveInitialDelay: 0
         })
 
         pool.on('error', (err) => {
@@ -381,7 +381,31 @@ export async function runDatabaseMigrations() {
           await pool.query(`ALTER TABLE bills ADD COLUMN company_snapshot LONGTEXT NULL AFTER notes;`)
         } catch {}
         try {
+          await pool.query(`ALTER TABLE bills ADD COLUMN cancellation_reason TEXT NULL;`)
+        } catch {}
+        try {
+          await pool.query(`ALTER TABLE bills ADD COLUMN cancelled_at TIMESTAMP NULL;`)
+        } catch {}
+        try {
+          await pool.query(`UPDATE bills SET cancelled_at = COALESCE(updated_at, created_at, NOW()) WHERE (payment_status = 'Cancelled' OR payment_status = 'Cancel') AND cancelled_at IS NULL;`)
+        } catch {}
+        try {
+          await pool.query(`ALTER TABLE service_bills ADD COLUMN quotation_number VARCHAR(100) NULL AFTER service_number;`)
+        } catch {}
+        try {
+          await pool.query(`ALTER TABLE service_bills ADD COLUMN invoice_email_sent BOOLEAN DEFAULT FALSE;`)
+        } catch {}
+        try {
+          await pool.query(`ALTER TABLE service_bills ADD COLUMN invoice_email_sent_at TIMESTAMP NULL;`)
+        } catch {}
+        try {
           await pool.query(`ALTER TABLE service_bills ADD COLUMN company_snapshot LONGTEXT NULL AFTER notes;`)
+        } catch {}
+        try {
+          await pool.query(`ALTER TABLE service_bills ADD COLUMN cancellation_reason TEXT NULL;`)
+        } catch {}
+        try {
+          await pool.query(`ALTER TABLE service_bills ADD COLUMN cancelled_at TIMESTAMP NULL;`)
         } catch {}
         try {
           await pool.query(`ALTER TABLE returns_registry ADD COLUMN company_snapshot LONGTEXT NULL AFTER qc_notes;`)
@@ -703,6 +727,10 @@ export async function runDatabaseMigrations() {
         `)
         console.log('✅ "stock_ledger" table ready.')
 
+        try {
+          await pool.query('ALTER TABLE stock_ledger MODIFY COLUMN movement_type VARCHAR(50) NOT NULL')
+        } catch (e) {}
+
         // Step 19: Create inventory_serials table if not exists
         await pool.query(`
           CREATE TABLE IF NOT EXISTS inventory_serials (
@@ -891,7 +919,12 @@ export async function runDatabaseMigrations() {
         `)
         console.log('✅ "password_reset_tokens" table ready.')
 
-        // Step 23: Create password_otps table for Forgot Password OTP Verification
+        // Step 23: Ensure cancellation_reason column in bills
+        try {
+          await pool.query("ALTER TABLE bills ADD COLUMN cancellation_reason TEXT NULL;")
+        } catch (e) {}
+
+        // Step 24: Create password_otps table for Forgot Password OTP Verification
         await pool.query(`
           CREATE TABLE IF NOT EXISTS password_otps (
             id INT AUTO_INCREMENT PRIMARY KEY,

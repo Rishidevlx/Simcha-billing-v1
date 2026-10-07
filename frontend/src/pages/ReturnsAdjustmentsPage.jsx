@@ -998,16 +998,17 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
         title="Returns & Stock Adjustments"
         subtitle="Manage product returns, inspection quality checks (QC), restock movements, replacements, and credit notes."
         actions={
-          <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
             {/* Green Export Excel Button */}
             {canDownload && (
               <Button
                 variant="export"
                 icon={Download}
                 onClick={handleExportExcel}
+                className="w-full justify-center text-[11px] sm:text-xs font-semibold px-2 sm:px-4 py-2"
                 title={selectedIds.length > 0 ? `Export ${selectedIds.length} Selected Record(s)` : 'Export All Filtered Records'}
               >
-                {selectedIds.length > 0 ? `EXPORT SELECTED (${selectedIds.length})` : 'EXPORT TO EXCEL'}
+                <span className="truncate">{selectedIds.length > 0 ? `EXPORT (${selectedIds.length})` : 'EXPORT TO EXCEL'}</span>
               </Button>
             )}
 
@@ -1021,8 +1022,9 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                   handleClearSelectedBill()
                   window.scrollTo({ top: 0, behavior: 'smooth' })
                 }}
+                className="w-full justify-center text-[11px] sm:text-xs font-semibold px-2 sm:px-4 py-2"
               >
-                NEW RETURN REQUEST
+                <span className="truncate">NEW RETURN</span>
               </Button>
             )}
           </div>
@@ -1588,9 +1590,9 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
             </div>
 
             {/* Dropdown Filters */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+            <div className="flex items-center gap-2.5 flex-wrap w-full md:w-auto">
+              <div className="flex items-center gap-1.5 flex-1 sm:flex-initial min-w-[140px]">
+                <span className="text-[11px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">
                   Reason:
                 </span>
                 <select
@@ -1599,7 +1601,7 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                     setSelectedReason(e.target.value)
                     setCurrentPage(1)
                   }}
-                  className="px-3 py-1.5 text-xs text-gray-800 dark:text-slate-200 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] cursor-pointer"
+                  className="w-full sm:w-auto px-2.5 py-1.5 text-xs text-gray-800 dark:text-slate-200 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] cursor-pointer"
                 >
                   <option value="ALL">All Reasons</option>
                   <option value="Defective Product">Defective Product</option>
@@ -1611,8 +1613,8 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
               </div>
 
               {activeTab !== 'pending' && (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                <div className="flex items-center gap-1.5 flex-1 sm:flex-initial min-w-[140px]">
+                  <span className="text-[11px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">
                     QC Decision:
                   </span>
                   <select
@@ -1621,7 +1623,7 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                       setSelectedDecision(e.target.value)
                       setCurrentPage(1)
                     }}
-                    className="px-3 py-1.5 text-xs text-gray-800 dark:text-slate-200 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] cursor-pointer"
+                    className="w-full sm:w-auto px-2.5 py-1.5 text-xs text-gray-800 dark:text-slate-200 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] cursor-pointer"
                   >
                     <option value="ALL">All Decisions</option>
                     <option value="STOCK">Restock to Inventory (+1)</option>
@@ -1638,7 +1640,7 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                   setLoading(true)
                   setTimeout(() => setLoading(false), 400)
                 }}
-                className="p-1.5 text-gray-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors shadow-xs cursor-pointer ml-1"
+                className="p-2 text-gray-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors shadow-xs cursor-pointer shrink-0"
                 title="Refresh Return Records"
               >
                 <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />

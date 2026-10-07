@@ -82,32 +82,35 @@ export default function ServiceInvoiceTemplate({ service, bill, settings, compan
   const bankIfsc = effectiveBank?.ifsc_code || effectiveBank?.ifscCode || ''
   const bankImageUrl = effectiveBank?.bank_image_url || effectiveBank?.bankImageUrl || data.bank_image_url || liveBankImg || ''
   const signatureUrl = effectiveSettings?.signature_url || effectiveSettings?.signatureUrl || data.signature_url || liveSignUrl || ''
-  
-  const defaultTermsList = (Array.isArray(effectiveSettings?.service_terms) && effectiveSettings.service_terms.length > 0)
-    ? effectiveSettings.service_terms
-    : (Array.isArray(snapshot?.service_terms) && snapshot.service_terms.length > 0)
+
+  const defaultTermsList = (Array.isArray(snapshot?.service_terms) && snapshot.service_terms.length > 0)
     ? snapshot.service_terms
-    : (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
-    ? effectiveSettings.terms_conditions
     : (Array.isArray(snapshot?.terms_conditions) && snapshot.terms_conditions.length > 0)
-    ? snapshot.terms_conditions
-    : (liveTerms && liveTerms.length > 0)
-    ? liveTerms
-    : [
-      'Warranty as per manufacturer’s norms & should be claimed directly.',
-      'Service warranty 30 days applicable on reported issues only.',
-      'Please carry service invoice copy for warranty claims.',
-      'Replaced spare parts will not be returned unless requested prior.'
-    ]
+      ? snapshot.terms_conditions
+      : (Array.isArray(effectiveSettings?.service_terms) && effectiveSettings.service_terms.length > 0)
+        ? effectiveSettings.service_terms
+        : (Array.isArray(effectiveSettings?.terms_conditions) && effectiveSettings.terms_conditions.length > 0)
+          ? effectiveSettings.terms_conditions
+          : (liveTerms && liveTerms.length > 0)
+            ? liveTerms
+            : []
 
   const items = Array.isArray(data.items) ? data.items : []
   const hasReturnableItems = items.some(it => it.return_policy === true || it.return_policy === 1 || it.return_policy === '1')
-  const returnDays = settings?.return_days || 7
-  const returnClause = settings?.return_policy_clause
-    ? settings.return_policy_clause.replace('{days}', `${returnDays} days`)
-    : `Products eligible for return must be returned within ${returnDays} days of purchase with original invoice copy.`
+  const rawReturnDays = snapshot?.return_days !== undefined && snapshot?.return_days !== null && snapshot?.return_days !== ''
+    ? snapshot.return_days
+    : (effectiveSettings?.return_days !== undefined && effectiveSettings?.return_days !== null && effectiveSettings?.return_days !== ''
+      ? effectiveSettings.return_days
+      : (settings?.return_days !== undefined && settings?.return_days !== null && settings?.return_days !== '' ? settings.return_days : 0))
+  const returnDays = parseInt(rawReturnDays, 10) || 0
 
-  const termsList = hasReturnableItems
+  const hasReturnWindow = returnDays > 0
+  const customReturnClause = ((snapshot?.return_policy_clause !== undefined && snapshot?.return_policy_clause !== null ? snapshot.return_policy_clause : effectiveSettings?.return_policy_clause) || settings?.return_policy_clause || '').trim()
+  const returnClause = customReturnClause
+    ? customReturnClause.replace('{days}', `${returnDays} days`)
+    : `Products eligible for return have to be returned within ${returnDays} days of purchase with original invoice copy.`
+
+  const termsList = (hasReturnableItems && hasReturnWindow)
     ? [returnClause, ...defaultTermsList.filter(t => !t.toLowerCase().includes('will not be taken back'))]
     : defaultTermsList
   const isGstInvoice = data.service_type === 'GST' || data.invoice_type === 'GST' || parseFloat(data.total_tax || 0) > 0
@@ -210,11 +213,6 @@ export default function ServiceInvoiceTemplate({ service, bill, settings, compan
                       </td>
                       <td className="py-2 px-2.5 border-r border-gray-300 align-top text-gray-800">
                         <div>{item.issue_description || 'General Service & Repair'}</div>
-                        {item.hsn_code && (
-                          <div className="text-[9px] font-mono text-gray-500 mt-0.5">
-                            HSN/SAC: {item.hsn_code}
-                          </div>
-                        )}
                       </td>
                       <td className="py-2 px-2 border-r border-gray-300 text-center font-bold align-top text-[#292424]">
                         {formatQty(item.quantity)}

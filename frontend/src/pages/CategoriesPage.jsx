@@ -86,6 +86,22 @@ export default function CategoriesPage({ setActiveRoute }) {
     setEditingId(null)
   }
 
+  // Format Date Helper (e.g. 07 Oct 2026)
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '-'
+    try {
+      const d = new Date(dateStr)
+      if (isNaN(d.getTime())) return '-'
+      return d.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      })
+    } catch {
+      return '-'
+    }
+  }
+
   // Edit Action with Smooth Scroll & Auto-focus
   const handleEdit = (cat) => {
     setEditingId(cat.id)
@@ -378,9 +394,11 @@ export default function CategoriesPage({ setActiveRoute }) {
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="bg-gray-100/70 dark:bg-slate-800/90 border-b border-gray-200 dark:border-slate-800 text-gray-600 dark:text-slate-300 font-bold uppercase text-[11px]">
-                  <th className="py-3 px-4 w-16">S.No</th>
+                  <th className="py-3 px-3 w-12 text-center">S.No</th>
+                  <th className="py-3 px-3.5 w-32 whitespace-nowrap" title="Date of Creation">DOC</th>
                   <th className="py-3 px-4">Category Name</th>
-                  <th className="py-3 px-4 text-center w-28">Status</th>
+                  <th className="py-3 px-3.5 w-32 whitespace-nowrap" title="Last Edited Date">Last Edited</th>
+                  <th className="py-3 px-3.5 text-center w-28">Status</th>
                   <th className="py-3 px-4 text-right w-24">Actions</th>
                 </tr>
               </thead>
@@ -390,13 +408,19 @@ export default function CategoriesPage({ setActiveRoute }) {
               {isLoading ? (
                 Array.from({ length: 4 }).map((_, index) => (
                   <tr key={index} className="animate-pulse">
-                    <td className="py-3.5 px-4">
-                      <div className="w-5 h-3 bg-gray-200 dark:bg-slate-700/80 rounded-xs" />
+                    <td className="py-3.5 px-3 text-center">
+                      <div className="w-5 h-3 bg-gray-200 dark:bg-slate-700/80 rounded-xs mx-auto" />
+                    </td>
+                    <td className="py-3.5 px-3.5">
+                      <div className="h-3.5 bg-gray-200 dark:bg-slate-700/80 rounded-xs w-20" />
                     </td>
                     <td className="py-3.5 px-4">
                       <div className="h-4 bg-gray-200 dark:bg-slate-700/80 rounded-xs w-48" />
                     </td>
-                    <td className="py-3.5 px-4 text-center">
+                    <td className="py-3.5 px-3.5">
+                      <div className="h-3.5 bg-gray-200 dark:bg-slate-700/80 rounded-xs w-20" />
+                    </td>
+                    <td className="py-3.5 px-3.5 text-center">
                       <div className="h-5 bg-gray-200 dark:bg-slate-700/80 rounded-xs w-16 mx-auto" />
                     </td>
                     <td className="py-3.5 px-4 text-right">
@@ -409,7 +433,7 @@ export default function CategoriesPage({ setActiveRoute }) {
                 ))
               ) : filteredCategories.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="text-center py-10 text-gray-400 dark:text-slate-500">
+                  <td colSpan={6} className="text-center py-10 text-gray-400 dark:text-slate-500">
                     <Layers size={26} className="mx-auto text-gray-300 dark:text-slate-600 mb-2" />
                     <p className="font-semibold text-gray-500 dark:text-slate-400">No categories found.</p>
                     <p className="text-[11px] text-gray-400 dark:text-slate-500">Add a category from the left form.</p>
@@ -423,15 +447,25 @@ export default function CategoriesPage({ setActiveRoute }) {
                         editingId === cat.id ? 'bg-blue-50/70 dark:bg-blue-950/40' : ''
                       }`}
                     >
-                      <td className="py-3.5 px-4 text-gray-500 dark:text-slate-400 font-medium">
+                      <td className="py-3.5 px-3 text-center text-gray-500 dark:text-slate-400 font-medium">
                         {idx + 1}
+                      </td>
+
+                      <td className="py-3.5 px-3.5 whitespace-nowrap text-gray-700 dark:text-slate-300 font-medium text-xs">
+                        {cat.created_at ? formatDate(cat.created_at) : '—'}
                       </td>
 
                       <td className="py-3.5 px-4 font-semibold text-[#292424] dark:text-white">
                         {cat.name}
                       </td>
 
-                      <td className="py-3.5 px-4 text-center">
+                      <td className="py-3.5 px-3.5 whitespace-nowrap text-gray-700 dark:text-slate-300 font-medium text-xs">
+                        {cat.updated_at || cat.created_at
+                          ? formatDate(cat.updated_at || cat.created_at)
+                          : '—'}
+                      </td>
+
+                      <td className="py-3.5 px-3.5 text-center">
                         <button
                           type="button"
                           onClick={() => handleToggleStatus(cat)}

@@ -20,7 +20,7 @@ export default function TaxRatesSection({
     <SettingSectionCard
       icon={Percent}
       title="Tax & GST Rate Percentages"
-      subtitle="Default tax percentages applied during Inward purchases and Outward billing invoices."
+      subtitle="default tax percentage applied in all documents"
       actions={
         canEdit && (
           !isEditing ? (
