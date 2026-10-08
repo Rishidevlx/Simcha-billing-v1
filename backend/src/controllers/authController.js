@@ -277,20 +277,38 @@ export async function changePassword(req, res) {
       })
     }
 
-    const pool = getPool()
-    let userId = 1
+    // Extract userId from authenticated request or token
+    let userId = req.user?.id
 
-    const authHeader = req.headers.authorization
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    if (!userId) {
+      const authHeader = req.headers.authorization || req.headers['authorization']
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({
+          success: false,
+          message: 'Unauthorized: Valid authentication token required.'
+        })
+      }
+
       try {
         const token = authHeader.split(' ')[1]
         const decoded = jwt.verify(token, JWT_SECRET)
         userId = decoded.id
       } catch (err) {
-        // fallback
+        return res.status(401).json({
+          success: false,
+          message: 'Unauthorized: Invalid or expired token.'
+        })
       }
     }
 
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized: Authentication required.'
+      })
+    }
+
+    const pool = getPool()
     const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [userId])
     if (rows.length === 0) {
       return res.status(404).json({

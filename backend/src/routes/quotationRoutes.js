@@ -1,4 +1,5 @@
 import express from 'express'
+import { verifyToken } from '../middleware/authMiddleware.js'
 import {
   getNextQuotationNumber,
   createQuotation,
@@ -12,6 +13,9 @@ import {
 } from '../controllers/quotationController.js'
 
 const router = express.Router()
+
+// Protect all quotation routes with JWT verification
+router.use(verifyToken)
 
 router.get('/', getAllQuotations)
 router.post('/', createQuotation)

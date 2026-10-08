@@ -46,15 +46,22 @@ export default function BillSummaryCard({
   return (
     <div className="bg-white dark:bg-slate-900 rounded-none border border-gray-200 dark:border-slate-800 p-4 sm:p-6 shadow-sm space-y-4 transition-colors">
       {/* Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
-        <h2 className="text-sm font-bold text-[#043486] dark:text-blue-400 tracking-wide uppercase flex items-center gap-2">
-          <IndianRupee size={16} />
-          <span>{title}</span>
-        </h2>
+      <div className="pb-3 border-b border-gray-200 dark:border-slate-800 space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-bold text-[#043486] dark:text-blue-400 tracking-wide uppercase flex items-center gap-2">
+            <IndianRupee size={16} className="shrink-0" />
+            <span>{title}</span>
+          </h2>
+        </div>
         {billNumber && (
-          <span className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/60 text-[#043486] dark:text-blue-300 border border-blue-200 dark:border-blue-900 text-[10px] font-mono font-bold uppercase">
-            {billNumber}
-          </span>
+          <div className="flex items-center justify-between text-xs pt-0.5">
+            <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-slate-500 tracking-wider">
+              Doc Number:
+            </span>
+            <span className="font-mono font-bold text-gray-700 dark:text-slate-300 tracking-tight">
+              {billNumber}
+            </span>
+          </div>
         )}
       </div>
 

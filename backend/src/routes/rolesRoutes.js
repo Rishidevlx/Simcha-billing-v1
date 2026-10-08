@@ -1,4 +1,5 @@
 import express from 'express'
+import { verifyToken } from '../middleware/authMiddleware.js'
 import {
   getRoles,
   getRoleById,
@@ -9,6 +10,9 @@ import {
 } from '../controllers/rolesController.js'
 
 const router = express.Router()
+
+// Protect all roles routes with JWT verification
+router.use(verifyToken)
 
 router.get('/', getRoles)
 router.get('/:id', getRoleById)

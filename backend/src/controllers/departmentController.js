@@ -102,8 +102,27 @@ export const deleteDepartment = async (req, res) => {
     const deptId = req.params.id
     const pool = getPool()
 
+    // 1. Check if department exists
+    const [deptRows] = await pool.query('SELECT id, name FROM departments WHERE id = ?', [deptId])
+    if (deptRows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Department not found.' })
+    }
+    const deptName = deptRows[0].name
+
+    // 2. Check if any users are assigned to this department
+    const [userRows] = await pool.query('SELECT COUNT(*) AS user_count FROM users WHERE department = ?', [deptName])
+    const assignedUserCount = userRows[0]?.user_count || 0
+
+    if (assignedUserCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete department "${deptName}". It is currently assigned to ${assignedUserCount} user(s). Please reassign or update their department before deleting.`
+      })
+    }
+
+    // 3. Safe delete
     await pool.query('DELETE FROM departments WHERE id = ?', [deptId])
-    res.json({ success: true, message: 'Department deleted successfully' })
+    res.json({ success: true, message: `Department "${deptName}" deleted successfully.` })
   } catch (error) {
     console.error('Error deleting department:', error)
     res.status(500).json({ success: false, message: 'Failed to delete department', error: error.message })

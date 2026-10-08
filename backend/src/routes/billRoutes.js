@@ -1,4 +1,5 @@
 import express from 'express'
+import { verifyToken } from '../middleware/authMiddleware.js'
 import {
   getNextInvoiceNumber,
   getNextReceiptNumber,
@@ -12,6 +13,9 @@ import {
 } from '../controllers/billController.js'
 
 const router = express.Router()
+
+// Protect all bill routes with JWT verification
+router.use(verifyToken)
 
 router.get('/', getAllBills)
 router.post('/', createBill)

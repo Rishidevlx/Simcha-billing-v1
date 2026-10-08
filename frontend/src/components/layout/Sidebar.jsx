@@ -218,6 +218,9 @@ export default function Sidebar({
   const hasAccessToSubItem = (subId) => {
     if (hasFullAccess) return true
     
+    // Profile Settings is globally accessible for all authenticated users
+    if (subId === 'profile-settings') return true
+
     // Map sidebar sub item IDs to permission IDs
     const permIdMap = {
       'inward': 'inward',

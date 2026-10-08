@@ -1,4 +1,5 @@
 import express from 'express'
+import { verifyToken } from '../middleware/authMiddleware.js'
 import {
   getDepartments,
   getDepartmentById,
@@ -9,6 +10,9 @@ import {
 } from '../controllers/departmentController.js'
 
 const router = express.Router()
+
+// Protect all department routes with JWT verification
+router.use(verifyToken)
 
 router.get('/', getDepartments)
 router.get('/:id', getDepartmentById)

@@ -46,6 +46,7 @@ import { Button, ActionButton } from '../components/ui'
 import ListKpiCard from '../components/common/ListKpiCard'
 import DashboardDateRangePicker from '../components/dashboard/DashboardDateRangePicker'
 import { API_ENDPOINTS } from '../config/api'
+import { getDefaultLandingRoute } from '../utils/access'
 
 const PIE_COLORS = ['#043486', '#0284c7', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899']
 
@@ -70,6 +71,20 @@ const getLocalDateString = (dateVal) => {
 
 export default function DashboardPage({ setActiveRoute: setActiveRouteProp }) {
   const navigate = useNavigate()
+
+  // Route Protection Guard: Auto-redirect users without dashboard access to their assigned module
+  useEffect(() => {
+    const simchaUser = JSON.parse(localStorage.getItem('simcha_user') || sessionStorage.getItem('simcha_user') || '{}')
+    const userAdminAccess = simchaUser.admin_access || []
+    const userPermissions = simchaUser.permissions || {}
+    const hasFullAccess = userAdminAccess.includes('Full Admin Access') || simchaUser.role === 'Administrator'
+    const hasDashboardAccess = hasFullAccess || userAdminAccess.includes('Dashboard') || (Array.isArray(userPermissions.dashboard) && userPermissions.dashboard.length > 0)
+
+    if (!hasDashboardAccess) {
+      const targetRoute = getDefaultLandingRoute(simchaUser)
+      navigate(targetRoute, { replace: true })
+    }
+  }, [navigate])
 
   const setActiveRoute = (route) => {
     // Check Access Rights

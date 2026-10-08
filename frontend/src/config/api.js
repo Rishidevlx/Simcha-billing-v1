@@ -2,6 +2,31 @@
 const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || ''
 export const API_BASE_URL = rawBaseUrl.endsWith('/') ? rawBaseUrl.slice(0, -1) : rawBaseUrl
 
+// Automatically attach JWT token to all API requests if available
+if (typeof window !== 'undefined' && window.fetch && !window.__simcha_fetch_intercepted__) {
+  window.__simcha_fetch_intercepted__ = true
+  const nativeFetch = window.fetch
+  window.fetch = async function (resource, init = {}) {
+    const token = localStorage.getItem('simcha_token') || sessionStorage.getItem('simcha_token')
+    const resourceStr = typeof resource === 'string' ? resource : (resource?.url || '')
+    const isApiCall = resourceStr.includes('/api/') || resourceStr.startsWith('http')
+
+    if (token && isApiCall) {
+      if (init.headers instanceof Headers) {
+        if (!init.headers.has('Authorization')) {
+          init.headers.set('Authorization', `Bearer ${token}`)
+        }
+      } else {
+        init.headers = {
+          Authorization: `Bearer ${token}`,
+          ...(init.headers || {})
+        }
+      }
+    }
+    return nativeFetch(resource, init)
+  }
+}
+
 export const API_ENDPOINTS = {
   LOGIN: `${API_BASE_URL}/api/auth/login`,
   ME: `${API_BASE_URL}/api/auth/me`,

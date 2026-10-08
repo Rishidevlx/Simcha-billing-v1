@@ -1,4 +1,5 @@
 import express from 'express'
+import { verifyToken } from '../middleware/authMiddleware.js'
 import {
   getAiConfig,
   updateAiConfig,
@@ -7,6 +8,9 @@ import {
 } from '../controllers/aiController.js'
 
 const router = express.Router()
+
+// Protect all AI routes with JWT verification
+router.use(verifyToken)
 
 // Configuration endpoints
 router.get('/config', getAiConfig)

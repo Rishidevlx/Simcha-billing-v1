@@ -765,7 +765,7 @@ export default function UserManualPage() {
           {/* LEFT SIDE: Simple, Clean Headings & Spacious Crisp Points */}
           <div className="lg:col-span-6 p-6 sm:p-8 lg:p-10 space-y-9">
 
-            {/* Step 1: New Service Request */}
+            {/* Step 1: New Service Request & Quotation */}
             <div className="space-y-4">
               <div
                 onClick={() => navigate('/services/new')}
@@ -774,7 +774,7 @@ export default function UserManualPage() {
                 <div className="flex items-center gap-3">
                   <span className="w-7 h-7 rounded-full bg-[#043486] text-white flex items-center justify-center text-xs font-bold shadow-2xs">1</span>
                   <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-[#043486] dark:group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
-                    New Service Request (Create Service Bill)
+                    Service Intake &amp; Quotation Approval
                   </h2>
                 </div>
                 <span className="text-xs text-[#043486] dark:text-blue-400 font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -782,16 +782,15 @@ export default function UserManualPage() {
                 </span>
               </div>
 
-              <ul className="space-y-3.5 text-sm text-slate-600 dark:text-slate-400 pl-9 list-disc list-outside leading-relaxed">
-                <li><b>Customer &amp; Device Details:</b> Enter Customer Name, Contact Number, Email, Device Model (e.g., Laptop, Printer, CCTV), Serial Number, and accessories received (e.g., Adapter, Power Cable).</li>
-                <li><b>Reported Complaint &amp; Diagnosis:</b> Document customer complaint symptoms and technician inspection notes.</li>
-                <li><b>Labor Charges &amp; Spare Parts:</b> Add service labor cost, link replacement spare parts from inventory, and apply GST tax rates (CGST+SGST 9%+9% or IGST 18%).</li>
-                <li><b>Advance Payment &amp; Initial Stage:</b> Record advance received (if any) and set starting workflow stage (e.g., <em>Received</em>, <em>Quotation</em>, <em>Customer Approval</em>).</li>
-                <li><b>Instant Service Invoice:</b> Assigns dynamic Service Number (e.g., <em>SIS-SR/2026-27/0001</em>) and generates printable job bill.</li>
+              <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-400 pl-9 list-disc list-outside leading-relaxed">
+                <li><b>Customer &amp; Device Details:</b> Record Customer Name, Mobile, Email, Device Type (Laptop, Printer, CCTV, etc.), Serial Number, and accessories received (Adapter, Cable, Bag).</li>
+                <li><b>Complaint Diagnosis &amp; Estimate:</b> Note reported issues and inspection findings. Add labor charges, link spare parts from inventory, and apply GST (CGST+SGST or IGST).</li>
+                <li><b>Quotation &amp; Approval:</b> Set stage to <em>Received</em> or <em>Quotation</em>. Share estimate with customer. Once approved, update stage to <em>Customer Approval</em>.</li>
+                <li><b>Advance Payment:</b> Record advance received (if any) to automatically deduct from the final balance.</li>
               </ul>
             </div>
 
-            {/* Step 2: Service List & Receipts */}
+            {/* Step 2: Repair & Service Invoice Dispatch */}
             <div className="space-y-4">
               <div
                 onClick={() => navigate('/services/list')}
@@ -800,7 +799,7 @@ export default function UserManualPage() {
                 <div className="flex items-center gap-3">
                   <span className="w-7 h-7 rounded-full bg-[#043486] text-white flex items-center justify-center text-xs font-bold shadow-2xs">2</span>
                   <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-[#043486] dark:group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
-                    Service List (Status Stages &amp; Receipt Sending)
+                    Ready Status &amp; Invoice Dispatch (SIS-SR)
                   </h2>
                 </div>
                 <span className="text-xs text-[#043486] dark:text-blue-400 font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -808,12 +807,35 @@ export default function UserManualPage() {
                 </span>
               </div>
 
-              <ul className="space-y-3.5 text-sm text-slate-600 dark:text-slate-400 pl-9 list-disc list-outside leading-relaxed">
-                <li><b>7 Workflow Stages:</b> Progressively update job status: <em>Received &rarr; Quotation &rarr; Customer Approval &rarr; Repair In-Progress &rarr; Ready &rarr; Payment Received &rarr; Delivered</em>.</li>
-                <li><b>Payment Received Status:</b> When repair is completed and customer pays the final service amount, update the stage to <span className="font-semibold text-emerald-600 dark:text-emerald-400">Payment Received</span>.</li>
-                <li><b>Send Receipt Button Activation:</b> The moment status becomes <b>Payment Received</b>, the dedicated <b>&quot;Send Receipt&quot;</b> button activates immediately in the actions column.</li>
-                <li><b>1-Click Email Dispatch:</b> Click &quot;Send Receipt&quot; to email the official PDF Service Payment Receipt directly to the customer&apos;s registered email.</li>
-                <li><b>Print &amp; Service Delivery:</b> Print official Service Tax Invoice with terms disclaimer and mark status as <em>Delivered</em>.</li>
+              <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-400 pl-9 list-disc list-outside leading-relaxed">
+                <li><b>Repair In-Progress &rarr; Ready:</b> Technician completes service and marks status as <span className="font-semibold text-blue-600 dark:text-blue-400">Ready</span>.</li>
+                <li><b>Service Tax Invoice Generation:</b> Assigns dynamic Service Invoice Number (e.g., <em>SIS-SR/2026-27/0001</em>) with complete spare parts, labor, GST breakdown, and bank details.</li>
+                <li><b>Strict 1-Time Invoice Email:</b> Invoice email can be sent <b>ONLY when status is &quot;Ready&quot;</b> and can be dispatched <b>strictly ONE TIME</b> to prevent duplicate bill emails.</li>
+              </ul>
+            </div>
+
+            {/* Step 3: Payment Receipt & Delivery */}
+            <div className="space-y-4">
+              <div
+                onClick={() => navigate('/services/list')}
+                className="group flex items-center justify-between cursor-pointer border-b border-slate-100 dark:border-slate-800 pb-3 hover:border-[#043486] transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shadow-2xs">3</span>
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex items-center gap-1.5">
+                    Payment Received &amp; Receipt Dispatch (SIS-REC)
+                  </h2>
+                </div>
+                <span className="text-xs text-[#043486] dark:text-blue-400 font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  Open Page <ExternalLink size={13} />
+                </span>
+              </div>
+
+              <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-400 pl-9 list-disc list-outside leading-relaxed">
+                <li><b>Payment Received Status:</b> When customer settles the remaining bill balance, set status to <span className="font-semibold text-emerald-600 dark:text-emerald-400">Payment Received</span>.</li>
+                <li><b>Dynamic Receipt Number:</b> Generates official Service Receipt with month notation (e.g., <em>SIS-REC/10/2026-27/0001</em>).</li>
+                <li><b>Strict 1-Time Receipt Email:</b> Receipt email activates <b>ONLY when status is &quot;Payment Received&quot;</b> and can be dispatched <b>strictly ONE TIME</b>.</li>
+                <li><b>Delivery:</b> Hand over the serviced device with accessories and mark status as <em>Delivered</em>.</li>
               </ul>
             </div>
 
@@ -822,31 +844,31 @@ export default function UserManualPage() {
           {/* RIGHT SIDE: Spacious Clear Flowchart Diagram with Full-Height Center Divider */}
           <div className="lg:col-span-6 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 p-6 sm:p-8 lg:p-10 flex flex-col items-center justify-start">
 
-            <div className="w-full max-w-sm flex flex-col items-center space-y-2 sticky top-6">
+            <div className="w-full max-w-sm flex flex-col items-center space-y-1.5 sticky top-6">
 
               {/* START OVAL */}
               <div className="w-48 py-2 px-4 rounded-full border-2 border-[#043486] bg-blue-50 dark:bg-slate-800 text-center font-bold text-xs sm:text-[13px] text-[#043486] dark:text-blue-300 shadow-2xs">
                 Start Service Request
               </div>
 
-              <FlowArrow />
+              <FlowArrow className="h-6" />
 
               {/* STEP 1 RECTANGLE */}
-              <div className="w-64 py-2.5 px-4 border border-slate-700 dark:border-slate-300 bg-white dark:bg-slate-950 text-center text-xs sm:text-[12.5px] font-semibold text-slate-800 dark:text-slate-100 shadow-2xs">
-                1. New Service: Device &amp; Issue Entry
+              <div className="w-68 py-2 px-4 border border-slate-700 dark:border-slate-300 bg-white dark:bg-slate-950 text-center text-xs sm:text-[12px] font-semibold text-slate-800 dark:text-slate-100 shadow-2xs">
+                1. Intake: Device, Complaint &amp; Diagnosis
               </div>
 
-              <FlowArrow />
+              <FlowArrow className="h-6" />
 
               {/* STEP 2 RECTANGLE */}
-              <div className="w-64 py-2.5 px-4 border border-slate-700 dark:border-slate-300 bg-white dark:bg-slate-950 text-center text-xs sm:text-[12.5px] font-semibold text-slate-800 dark:text-slate-100 shadow-2xs">
-                2. Add Labor Charges, Spares &amp; GST
+              <div className="w-68 py-2 px-4 border border-slate-700 dark:border-slate-300 bg-white dark:bg-slate-950 text-center text-xs sm:text-[12px] font-semibold text-slate-800 dark:text-slate-100 shadow-2xs">
+                2. Quotation Stage &amp; Estimate Sharing
               </div>
 
-              <FlowArrow />
+              <FlowArrow className="h-6" />
 
               {/* DECISION DIAMOND */}
-              <div className="relative flex items-center justify-center w-38 h-22 my-1">
+              <div className="relative flex items-center justify-center w-36 h-20 my-0.5">
                 <svg className="w-full h-full" viewBox="0 0 144 80" fill="none">
                   <polygon
                     points="72,2 141,40 72,78 3,40"
@@ -855,41 +877,33 @@ export default function UserManualPage() {
                     strokeLinejoin="round"
                   />
                 </svg>
-                <span className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-center text-slate-800 dark:text-slate-100 px-4 leading-tight">
-                  Status Stage?
+                <span className="absolute inset-0 flex items-center justify-center text-[10.5px] font-bold text-center text-slate-800 dark:text-slate-100 px-3 leading-tight">
+                  Customer Approved?
                 </span>
               </div>
 
               {/* SLEEK SPLIT CONNECTOR */}
               <BranchSplit />
 
-              {/* SPLIT FLOW: REPAIR VS PAYMENT RECEIVED */}
+              {/* SPLIT FLOW: REJECTED VS APPROVED */}
               <div className="w-full grid grid-cols-2 gap-3.5 my-0.5">
-                {/* Branch Left: IN-PROGRESS / READY */}
-                <div className="flex flex-col items-center space-y-2 pr-1">
-                  <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider bg-amber-50 dark:bg-amber-950/60 px-2.5 py-0.5 border border-amber-200 dark:border-amber-900/60 rounded-full">
-                    In-Progress / Ready
+                {/* Branch Left: REJECTED / ON-HOLD */}
+                <div className="flex flex-col items-center space-y-1.5 pr-1">
+                  <span className="text-[9.5px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 border border-rose-200 dark:border-rose-900/60 rounded-full">
+                    Rejected / On-Hold
                   </span>
-                  <div className="w-full py-2.5 px-2.5 border border-amber-300 dark:border-amber-700/60 bg-amber-50/50 dark:bg-amber-950/30 text-center text-[11px] font-medium text-amber-900 dark:text-amber-200 leading-tight shadow-2xs">
-                    Technician completes device repair
-                  </div>
-                  <FlowArrow className="h-6" />
-                  <div className="w-full py-2 px-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-center text-[10px] font-semibold text-slate-700 dark:text-slate-300 shadow-2xs">
-                    Collect bill &rarr; Set &quot;Payment Received&quot;
+                  <div className="w-full py-2 px-2 border border-rose-200 dark:border-rose-800/60 bg-rose-50/50 dark:bg-rose-950/30 text-center text-[10.5px] font-medium text-rose-900 dark:text-rose-200 leading-tight shadow-2xs">
+                    Revise Estimate or Return Device
                   </div>
                 </div>
 
-                {/* Branch Right: PAYMENT RECEIVED */}
-                <div className="flex flex-col items-center space-y-2 pl-1">
-                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 border border-emerald-200 dark:border-emerald-900/60 rounded-full">
-                    Payment Received
+                {/* Branch Right: APPROVED */}
+                <div className="flex flex-col items-center space-y-1.5 pl-1">
+                  <span className="text-[9.5px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 border border-emerald-200 dark:border-emerald-900/60 rounded-full">
+                    Approved
                   </span>
-                  <div className="w-full py-2.5 px-2.5 border border-emerald-300 dark:border-emerald-700/60 bg-emerald-50/50 dark:bg-emerald-950/30 text-center text-[11px] font-medium text-emerald-900 dark:text-emerald-200 leading-tight shadow-2xs">
-                    &quot;Send Receipt&quot; Button Activates
-                  </div>
-                  <FlowArrow className="h-6" />
-                  <div className="w-full py-2 px-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-center text-[10px] font-semibold text-slate-700 dark:text-slate-300 shadow-2xs">
-                    1-Click Email PDF Service Receipt
+                  <div className="w-full py-2 px-2 border border-emerald-300 dark:border-emerald-700/60 bg-emerald-50/50 dark:bg-emerald-950/30 text-center text-[10.5px] font-medium text-emerald-900 dark:text-emerald-200 leading-tight shadow-2xs">
+                    Repair In-Progress &rarr; Set &quot;Ready&quot;
                   </div>
                 </div>
               </div>
@@ -897,9 +911,25 @@ export default function UserManualPage() {
               {/* SLEEK MERGE CONNECTOR */}
               <BranchMerge />
 
+              {/* STEP 3 RECTANGLE */}
+              <div className="w-68 py-2 px-3 border border-blue-600 bg-blue-50/60 dark:bg-blue-950/40 text-center text-xs sm:text-[11.5px] font-semibold text-blue-900 dark:text-blue-200 shadow-2xs">
+                <span className="block font-bold text-[#043486] dark:text-blue-300">3. Status: &quot;Ready&quot;</span>
+                Send Invoice (SIS-SR) &bull; <span className="text-amber-700 dark:text-amber-400 font-bold">1-Time Email</span>
+              </div>
+
+              <FlowArrow className="h-6" />
+
+              {/* STEP 4 RECTANGLE */}
+              <div className="w-68 py-2 px-3 border border-emerald-600 bg-emerald-50/60 dark:bg-emerald-950/40 text-center text-xs sm:text-[11.5px] font-semibold text-emerald-900 dark:text-emerald-200 shadow-2xs">
+                <span className="block font-bold text-emerald-700 dark:text-emerald-400">4. Status: &quot;Payment Received&quot;</span>
+                Send Receipt (SIS-REC) &bull; <span className="text-emerald-800 dark:text-emerald-300 font-bold">1-Time Email</span>
+              </div>
+
+              <FlowArrow className="h-6" />
+
               {/* END OVAL */}
               <div className="w-56 py-2 px-4 rounded-full border-2 border-emerald-600 bg-emerald-50 dark:bg-emerald-950 text-center font-bold text-xs sm:text-[13px] text-emerald-700 dark:text-emerald-300 shadow-2xs">
-                Service Delivered &amp; Receipt Sent (End)
+                Service Delivered &amp; Closed (End)
               </div>
 
             </div>
@@ -913,11 +943,11 @@ export default function UserManualPage() {
       {activeTab === 'returns' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 items-stretch bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
 
-          {/* LEFT SIDE: Detailed Headings, Sub-headings & Spacious Clear Logic */}
-          <div className="lg:col-span-6 p-6 sm:p-8 lg:p-10 space-y-9">
+          {/* LEFT SIDE: Crisp Headings, Sub-headings & Minimal Clear Logic */}
+          <div className="lg:col-span-6 p-6 sm:p-8 lg:p-10 space-y-8">
 
-            {/* Step 1: Return Entry & Bill Search */}
-            <div className="space-y-4">
+            {/* Step 1: Search, Policy Check & Return Intake */}
+            <div className="space-y-3.5">
               <div
                 onClick={() => navigate('/inventory/returns')}
                 className="group flex items-center justify-between cursor-pointer border-b border-slate-100 dark:border-slate-800 pb-3 hover:border-[#043486] transition-colors"
@@ -925,7 +955,7 @@ export default function UserManualPage() {
                 <div className="flex items-center gap-3">
                   <span className="w-7 h-7 rounded-full bg-[#043486] text-white flex items-center justify-center text-xs font-bold shadow-2xs">1</span>
                   <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-[#043486] dark:group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
-                    Return Entry &amp; Bill Search
+                    Search &amp; Return Policy Validation
                   </h2>
                 </div>
                 <span className="text-xs text-[#043486] dark:text-blue-400 font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -933,146 +963,100 @@ export default function UserManualPage() {
                 </span>
               </div>
 
-              <div className="space-y-4 pl-9 text-sm text-slate-600 dark:text-slate-400">
-                <div className="space-y-1.5">
-                  <h3 className="font-bold text-slate-800 dark:text-slate-200 text-xs sm:text-[13px] uppercase tracking-wide">
-                    A. Search Invoice or Receipt Number
-                  </h3>
-                  <p className="leading-relaxed">
-                    Open <b>Material Returns</b> (or click return action in Outward List). Search the original transaction by entering <b>Invoice Number</b> (e.g., <em>SIS/2026-27/0001</em>), <b>Receipt Number</b>, or <b>Customer Phone Number</b>. The system automatically fetches customer details and the list of billed materials.
-                  </p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <h3 className="font-bold text-slate-800 dark:text-slate-200 text-xs sm:text-[13px] uppercase tracking-wide">
-                    B. Select Return Item &amp; Quantity
-                  </h3>
-                  <p className="leading-relaxed">
-                    Choose the specific item being returned, enter returned quantity, and choose return reason (e.g., <em>Defective Screen, Customer Exchange, Wrong Item Ordered</em>).
-                  </p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <h3 className="font-bold text-slate-800 dark:text-slate-200 text-xs sm:text-[13px] uppercase tracking-wide">
-                    C. Initial Status: &quot;Pending QC&quot;
-                  </h3>
-                  <p className="leading-relaxed">
-                    Submitting creates a new Return Record (e.g., <em>SIS-RET/2026-27/0001</em>) in <b>Pending QC</b> status until technician inspection is complete.
-                  </p>
-                </div>
-              </div>
+              <ul className="space-y-2.5 text-sm text-slate-600 dark:text-slate-400 pl-9 list-disc list-outside leading-relaxed">
+                <li><b>Search Bill:</b> Enter <b>Invoice Number</b> (e.g., <em>SIS-INV/10/...</em>) or <b>Receipt Number</b> (<em>SIS-REC/10/...</em>) to auto-load customer details and purchased items.</li>
+                <li><b>Policy Window Check:</b> System checks return policy window (e.g., 7 Days). If expired, manager override approval is required before proceeding.</li>
+                <li><b>Select Item &amp; Serial:</b> Pick the returned product, select serialized unit (if applicable), choose return reason, and submit to create dynamic Return ID (e.g., <em>SIS-RET/10/2026-27/0001</em>).</li>
+              </ul>
             </div>
 
-            {/* Step 2: Quality Check (QC Inspection: Pass vs Fail) */}
-            <div className="space-y-4">
+            {/* Step 2: Quality Check (QC: PASS vs FAIL) */}
+            <div className="space-y-3.5">
               <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
                 <span className="w-7 h-7 rounded-full bg-[#043486] text-white flex items-center justify-center text-xs font-bold shadow-2xs">2</span>
                 <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                  Quality Check (QC Inspection: Pass vs Fail)
+                  Quality Inspection (QC Pass vs Fail)
                 </h2>
               </div>
 
-              <div className="space-y-4 pl-9 text-sm text-slate-600 dark:text-slate-400">
+              <div className="space-y-3 pl-9 text-sm text-slate-600 dark:text-slate-400">
                 <p className="leading-relaxed">
-                  Technician physically tests and inspects the condition of the returned item before deciding inventory placement:
+                  Technician inspects the returned product condition in <b>Pending QC</b>:
                 </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
-                  <div className="p-3.5 bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 rounded-xs space-y-1.5">
-                    <h4 className="font-bold text-emerald-800 dark:text-emerald-300 text-xs sm:text-[12.5px] flex items-center gap-1.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
+                  <div className="p-3 bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 rounded-xs space-y-1">
+                    <h4 className="font-bold text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-1.5">
                       QC PASS (Good)
                     </h4>
-                    <p className="text-[12px] text-emerald-900/80 dark:text-emerald-300/80 leading-relaxed">
-                      Item is intact, unopened, or fully operational. Product stock is added back to <b>Active Inventory Shelf</b>.
+                    <p className="text-[11.5px] text-emerald-900/80 dark:text-emerald-300/80 leading-relaxed">
+                      Product is in good condition. Stock is restored back to <b>Active Inventory (+1)</b> with serial status <em>Available</em>.
                     </p>
                   </div>
-
-                  <div className="p-3.5 bg-rose-50/60 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/60 rounded-xs space-y-1.5">
-                    <h4 className="font-bold text-rose-800 dark:text-rose-300 text-xs sm:text-[12.5px] flex items-center gap-1.5">
+                  <div className="p-3 bg-rose-50/60 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/60 rounded-xs space-y-1">
+                    <h4 className="font-bold text-rose-800 dark:text-rose-300 text-xs flex items-center gap-1.5">
                       QC FAIL (Damaged)
                     </h4>
-                    <p className="text-[12px] text-rose-900/80 dark:text-rose-300/80 leading-relaxed">
-                      Item is burned, physically broken, or defective. Item is transferred into <b>Scrap Inventory</b>.
+                    <p className="text-[11.5px] text-rose-900/80 dark:text-rose-300/80 leading-relaxed">
+                      Product is damaged/defective. Stock is isolated in <b>Defective Registry</b> for warranty claims / scrap.
                     </p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Step 3: Resolution Path A — Replacement Workflow */}
-            <div className="space-y-4">
+            {/* Step 3: Resolution & Document Vouchers */}
+            <div className="space-y-3.5">
               <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
-                <span className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold shadow-2xs">3A</span>
+                <span className="w-7 h-7 rounded-full bg-[#043486] text-white flex items-center justify-center text-xs font-bold shadow-2xs">3</span>
                 <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                  Replacement Workflow (New Product Dispatch)
+                  Resolution: Replacement vs Credit Note Slip
                 </h2>
               </div>
 
-              <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-400 pl-9 list-disc list-outside leading-relaxed">
-                <li>
-                  <b>If QC PASS:</b> Returned unit is added back to <b>Active Stock (+1)</b> &rarr; A brand new replacement unit is issued &amp; dispatched to customer (<b>Active Stock -1</b>). Net inventory balance is automatically maintained.
-                </li>
-                <li>
-                  <b>If QC FAIL:</b> Damaged unit is logged into <b>Scrap Stock</b> &rarr; A brand new replacement unit is issued &amp; dispatched to customer (<b>Active Stock -1</b>).
-                </li>
-                <li>
-                  <b>Replacement Bill in Outward List:</b> When replacement is chosen, a new bill with return prefix is generated against the original invoice in <b>Outward List</b>, where the replacement product invoice and receipt are available.
-                </li>
-              </ul>
-            </div>
+              <div className="space-y-3 pl-9 text-sm text-slate-600 dark:text-slate-400">
+                <div className="p-3 border border-blue-200 dark:border-blue-900/60 bg-blue-50/40 dark:bg-blue-950/20 space-y-1">
+                  <h4 className="font-bold text-[#043486] dark:text-blue-300 text-xs uppercase">
+                    Option A: Replacement Voucher (Fresh Unit Dispatch)
+                  </h4>
+                  <p className="text-xs leading-relaxed">
+                    Selects fresh serial from stock (Shelf Stock -1) and generates official <b>Replacement Invoice</b> in Outward Bills with printable <b>Replacement Slip</b>.
+                  </p>
+                </div>
 
-            {/* Step 4: Resolution Path B — Refund / Credit Note Workflow */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
-                <span className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shadow-2xs">3B</span>
-                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                  Refund / Credit Note Workflow (Money / Balance Return)
-                </h2>
+                <div className="p-3 border border-purple-200 dark:border-purple-900/60 bg-purple-50/40 dark:bg-purple-950/20 space-y-1">
+                  <h4 className="font-bold text-purple-800 dark:text-purple-300 text-xs uppercase">
+                    Option B: Credit Note Slip (Refund &amp; Ledger Balance)
+                  </h4>
+                  <p className="text-xs leading-relaxed">
+                    Generates sequential <b>Credit Note (e.g., <em>SIS-CN/10/2026-27/0001</em>)</b>. Customers receive refund credit with official <b>Credit Note Slip</b> print and PDF download.
+                  </p>
+                </div>
               </div>
-
-              <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-400 pl-9 list-disc list-outside leading-relaxed">
-                <li>
-                  <b>If QC PASS:</b> Returned unit is added back to <b>Active Stock (+1)</b> &rarr; Official <b>Credit Note</b> (e.g., <em>SIS-CN/2026-27/0001</em>) is issued to adjust customer ledger or settle cash/bank refund.
-                </li>
-                <li>
-                  <b>If QC FAIL:</b> Damaged unit is quarantined into <b>Scrap Stock</b> &rarr; Official <b>Credit Note</b> is issued to customer ledger or settled via refund payout.
-                </li>
-                <li>
-                  <b>1-Click Print &amp; Email:</b> Download or email the signed Return Voucher / Credit Note PDF with company seal and bank details.
-                </li>
-              </ul>
             </div>
 
           </div>
 
-          {/* RIGHT SIDE: Spacious Clear Multi-Decision Flowchart Diagram with Full-Height Center Divider */}
+          {/* RIGHT SIDE: Policy Check & Multi-Decision Flowchart */}
           <div className="lg:col-span-6 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 p-6 sm:p-8 lg:p-10 flex flex-col items-center justify-start">
 
-            <div className="w-full max-w-sm flex flex-col items-center space-y-2 sticky top-6">
+            <div className="w-full max-w-sm flex flex-col items-center space-y-1.5 sticky top-6">
 
               {/* START OVAL */}
               <div className="w-48 py-2 px-4 rounded-full border-2 border-[#043486] bg-blue-50 dark:bg-slate-800 text-center font-bold text-xs sm:text-[13px] text-[#043486] dark:text-blue-300 shadow-2xs">
                 Start Product Return
               </div>
 
-              <FlowArrow />
+              <FlowArrow className="h-6" />
 
               {/* STEP 1 RECTANGLE */}
-              <div className="w-64 py-2.5 px-4 border border-slate-700 dark:border-slate-300 bg-white dark:bg-slate-950 text-center text-xs sm:text-[12.5px] font-semibold text-slate-800 dark:text-slate-100 shadow-2xs">
-                1. Return Entry: Search Inv / Rcpt No
+              <div className="w-68 py-2 px-4 border border-slate-700 dark:border-slate-300 bg-white dark:bg-slate-950 text-center text-xs sm:text-[12px] font-semibold text-slate-800 dark:text-slate-100 shadow-2xs">
+                1. Search Invoice or Receipt Number
               </div>
 
-              <FlowArrow />
+              <FlowArrow className="h-6" />
 
-              {/* STEP 2 RECTANGLE */}
-              <div className="w-64 py-2.5 px-4 border border-slate-700 dark:border-slate-300 bg-white dark:bg-slate-950 text-center text-xs sm:text-[12.5px] font-semibold text-slate-800 dark:text-slate-100 shadow-2xs">
-                2. Select Item, Qty &amp; Save &quot;Pending QC&quot;
-              </div>
-
-              <FlowArrow />
-
-              {/* DECISION 1: QC INSPECTION */}
-              <div className="relative flex items-center justify-center w-38 h-22 my-1">
+              {/* POLICY DECISION DIAMOND */}
+              <div className="relative flex items-center justify-center w-36 h-20 my-0.5">
                 <svg className="w-full h-full" viewBox="0 0 144 80" fill="none">
                   <polygon
                     points="72,2 141,40 72,78 3,40"
@@ -1081,42 +1065,49 @@ export default function UserManualPage() {
                     strokeLinejoin="round"
                   />
                 </svg>
-                <span className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-center text-slate-800 dark:text-slate-100 px-3 leading-tight">
-                  QC Inspection?
+                <span className="absolute inset-0 flex items-center justify-center text-[10.5px] font-bold text-center text-slate-800 dark:text-slate-100 px-3 leading-tight">
+                  Within Valid Return Days?
                 </span>
               </div>
 
-              {/* BRANCH SPLIT FOR QC */}
+              {/* SLEEK SPLIT CONNECTOR */}
               <BranchSplit />
 
-              {/* SPLIT FLOW 1: QC PASS VS QC FAIL */}
+              {/* SPLIT FLOW: EXPIRED VS VALID */}
               <div className="w-full grid grid-cols-2 gap-3.5 my-0.5">
-                {/* Branch Left: QC PASS */}
-                <div className="flex flex-col items-center space-y-2 pr-1">
-                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 border border-emerald-200 dark:border-emerald-900/60 rounded-full">
-                    QC Pass
+                {/* Branch Left: EXPIRED */}
+                <div className="flex flex-col items-center space-y-1.5 pr-1">
+                  <span className="text-[9.5px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 border border-rose-200 dark:border-rose-900/60 rounded-full">
+                    Expired Window
                   </span>
-                  <div className="w-full py-2.5 px-2.5 border border-emerald-300 dark:border-emerald-700/60 bg-emerald-50/50 dark:bg-emerald-950/30 text-center text-[11px] font-medium text-emerald-900 dark:text-emerald-200 leading-tight shadow-2xs">
-                    Return Product Stock Added to Inventory
+                  <div className="w-full py-2 px-2 border border-rose-200 dark:border-rose-800/60 bg-rose-50/50 dark:bg-rose-950/30 text-center text-[10.5px] font-medium text-rose-900 dark:text-rose-200 leading-tight shadow-2xs">
+                    Manager Override Approval
                   </div>
                 </div>
 
-                {/* Branch Right: QC FAIL */}
-                <div className="flex flex-col items-center space-y-2 pl-1">
-                  <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider bg-rose-50 dark:bg-rose-950/60 px-2.5 py-0.5 border border-rose-200 dark:border-rose-900/60 rounded-full">
-                    QC Fail
+                {/* Branch Right: VALID */}
+                <div className="flex flex-col items-center space-y-1.5 pl-1">
+                  <span className="text-[9.5px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 border border-emerald-200 dark:border-emerald-900/60 rounded-full">
+                    Valid Window
                   </span>
-                  <div className="w-full py-2.5 px-2.5 border border-rose-300 dark:border-rose-700/60 bg-rose-50/50 dark:bg-rose-950/30 text-center text-[11px] font-medium text-rose-900 dark:text-rose-200 leading-tight shadow-2xs">
-                    Added to Scrap / Defective Stock
+                  <div className="w-full py-2 px-2 border border-emerald-300 dark:border-emerald-700/60 bg-emerald-50/50 dark:bg-emerald-950/30 text-center text-[10.5px] font-medium text-emerald-900 dark:text-emerald-200 leading-tight shadow-2xs">
+                    Select Items &amp; Return Reason
                   </div>
                 </div>
               </div>
 
-              {/* BRANCH MERGE FOR QC */}
+              {/* SLEEK MERGE CONNECTOR */}
               <BranchMerge />
 
-              {/* DECISION 2: REPLACEMENT VS REFUND */}
-              <div className="relative flex items-center justify-center w-38 h-22 my-1">
+              {/* STEP 2 RECTANGLE */}
+              <div className="w-68 py-2 px-4 border border-slate-700 dark:border-slate-300 bg-white dark:bg-slate-950 text-center text-xs sm:text-[12px] font-semibold text-slate-800 dark:text-slate-100 shadow-2xs">
+                2. Queue in &quot;Pending QC&quot; (SIS-RET/Month)
+              </div>
+
+              <FlowArrow className="h-6" />
+
+              {/* QC RESOLUTION DECISION DIAMOND */}
+              <div className="relative flex items-center justify-center w-36 h-20 my-0.5">
                 <svg className="w-full h-full" viewBox="0 0 144 80" fill="none">
                   <polygon
                     points="72,2 141,40 72,78 3,40"
@@ -1125,38 +1116,38 @@ export default function UserManualPage() {
                     strokeLinejoin="round"
                   />
                 </svg>
-                <span className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-center text-slate-800 dark:text-slate-100 px-3 leading-tight">
-                  Resolution Type?
+                <span className="absolute inset-0 flex items-center justify-center text-[10.5px] font-bold text-center text-slate-800 dark:text-slate-100 px-3 leading-tight">
+                  QC Outcome Decision?
                 </span>
               </div>
 
-              {/* BRANCH SPLIT FOR RESOLUTION */}
+              {/* SLEEK SPLIT CONNECTOR */}
               <BranchSplit />
 
-              {/* SPLIT FLOW 2: REPLACEMENT VS REFUND */}
+              {/* SPLIT FLOW: REPLACEMENT VS CREDIT NOTE */}
               <div className="w-full grid grid-cols-2 gap-3.5 my-0.5">
                 {/* Branch Left: REPLACEMENT */}
-                <div className="flex flex-col items-center space-y-2 pr-1">
-                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider bg-blue-50 dark:bg-blue-950/60 px-2.5 py-0.5 border border-blue-200 dark:border-blue-900/60 rounded-full">
-                    Replacement
+                <div className="flex flex-col items-center space-y-1.5 pr-1">
+                  <span className="text-[9.5px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 border border-blue-200 dark:border-blue-900/60 rounded-full">
+                    Exchange / Replace
                   </span>
-                  <div className="w-full py-2.5 px-2.5 border border-blue-300 dark:border-blue-700/60 bg-blue-50/50 dark:bg-blue-950/30 text-center text-[11px] font-medium text-blue-900 dark:text-blue-200 leading-tight shadow-2xs">
-                    Dispatch New Unit (Stock Deducted)
+                  <div className="w-full py-2 px-2 border border-blue-300 dark:border-blue-700/60 bg-blue-50/50 dark:bg-blue-950/30 text-center text-[10.5px] font-medium text-blue-900 dark:text-blue-200 leading-tight shadow-2xs">
+                    Dispatch Unit &bull; Return Voucher
                   </div>
                 </div>
 
-                {/* Branch Right: REFUND */}
-                <div className="flex flex-col items-center space-y-2 pl-1">
-                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 border border-emerald-200 dark:border-emerald-900/60 rounded-full">
+                {/* Branch Right: CREDIT NOTE */}
+                <div className="flex flex-col items-center space-y-1.5 pl-1">
+                  <span className="text-[9.5px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 border border-purple-200 dark:border-purple-900/60 rounded-full">
                     Refund / Credit
                   </span>
-                  <div className="w-full py-2.5 px-2.5 border border-emerald-300 dark:border-emerald-700/60 bg-emerald-50/50 dark:bg-emerald-950/30 text-center text-[11px] font-medium text-emerald-900 dark:text-emerald-200 leading-tight shadow-2xs">
-                    Create Credit Note / Settle Refund
+                  <div className="w-full py-2 px-2 border border-purple-300 dark:border-purple-700/60 bg-purple-50/50 dark:bg-purple-950/30 text-center text-[10.5px] font-medium text-purple-900 dark:text-purple-200 leading-tight shadow-2xs">
+                    Issue SIS-CN &bull; Credit Note Slip
                   </div>
                 </div>
               </div>
 
-              {/* BRANCH MERGE FOR RESOLUTION */}
+              {/* SLEEK MERGE CONNECTOR */}
               <BranchMerge />
 
               {/* END OVAL */}

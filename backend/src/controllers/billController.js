@@ -73,6 +73,22 @@ function buildDynamicNumber(prefix, sep, monthSetting, fySetting, seqNum, paddin
   return `${cleanPrefix}${sep}${activeMonth}${sep}${activeFy}${sep}${String(seqNum).padStart(padding, '0')}`
 }
 
+export function ensureReceiptHasMonth(recNo, invDate) {
+  if (!recNo) return recNo
+  const m = String(recNo).trim().match(/^([A-Za-z0-9_-]+)([/\\-])(\d{4}-\d{2})([/\\-])(\d+)$/)
+  if (m) {
+    const prefix = m[1]
+    const sep = m[2]
+    const fy = m[3]
+    const seq = m[5]
+    const d = invDate ? new Date(invDate) : new Date()
+    const validDate = isNaN(d.getTime()) ? new Date() : d
+    const monthNum = String(validDate.getMonth() + 1).padStart(2, '0')
+    return `${prefix}${sep}${monthNum}${sep}${fy}${sep}${seq}`
+  }
+  return recNo
+}
+
 // Generate next formatted invoice number based on system settings
 export async function getNextInvoiceNumber(req, res) {
   try {
@@ -304,20 +320,22 @@ export async function createBill(req, res) {
     let finalReceiptNumber = (receipt_number || '').trim()
     if (!finalReceiptNumber) {
       const [settingRows] = await pool.query(`
-        SELECT receipt_prefix, receipt_financial_year, receipt_starting_number, receipt_padding_digits, receipt_separator 
+        SELECT receipt_prefix, receipt_month, receipt_financial_year, receipt_starting_number, receipt_padding_digits, receipt_separator 
         FROM settings WHERE id = 1
       `)
       const s = settingRows.length > 0 ? settingRows[0] : {}
-      const prefix = (s.receipt_prefix !== undefined && s.receipt_prefix !== null && s.receipt_prefix.trim() !== '') ? s.receipt_prefix.trim() : 'SIS-REC'
-      const fy = (s.receipt_financial_year && s.receipt_financial_year.trim()) ? s.receipt_financial_year.trim() : '2026-27'
+      const prefix = (s.receipt_prefix !== undefined && s.receipt_prefix !== null && String(s.receipt_prefix).trim() !== '') ? String(s.receipt_prefix).trim() : 'SIS-REC'
+      const month = s.receipt_month
+      const fy = (s.receipt_financial_year && String(s.receipt_financial_year).trim()) ? String(s.receipt_financial_year).trim() : '2026-27'
       const startNum = parseInt(s.receipt_starting_number, 10) || 1
       const padding = parseInt(s.receipt_padding_digits, 10) || 4
       const sep = (s.receipt_separator !== undefined && s.receipt_separator !== null) ? s.receipt_separator : '/'
 
+      const effectiveDate = await getEffectiveIstDate(pool, invoice_date)
       // Extract numeric sequence from invoice_number if available
       const match = invoice_number.match(/(\d+)$/)
       const seq = match ? parseInt(match[1], 10) : startNum
-      finalReceiptNumber = `${prefix}${sep}${fy}${sep}${String(seq).padStart(padding, '0')}`
+      finalReceiptNumber = buildDynamicNumber(prefix, sep, month, fy, seq, padding, invoice_date, effectiveDate)
     }
 
     // Clean payment mode (null if Select or empty)
@@ -548,33 +566,19 @@ export async function getAllBills(req, res) {
   try {
     const pool = getPool()
     
-    // Fetch bills and line items in parallel for maximum performance
-    const [ [bills], [allItems] ] = await Promise.all([
-      pool.query(`
-        SELECT 
-          b.*,
-          COUNT(bi.id) AS total_items
-        FROM bills b
-        LEFT JOIN bill_items bi ON b.id = bi.bill_id
-        GROUP BY b.id
-        ORDER BY b.id DESC
-      `),
-      pool.query(`
-        SELECT * FROM bill_items ORDER BY id ASC
-      `)
-    ])
+    // High-performance lean query: Avoids loading entire bill_items table into server memory
+    const [bills] = await pool.query(`
+      SELECT 
+        b.*,
+        (SELECT COUNT(bi.id) FROM bill_items bi WHERE bi.bill_id = b.id) AS total_items
+      FROM bills b
+      ORDER BY b.id DESC
+    `)
 
-    const itemsByBillId = {}
-    allItems.forEach(item => {
-      if (!itemsByBillId[item.bill_id]) {
-        itemsByBillId[item.bill_id] = []
-      }
-      itemsByBillId[item.bill_id].push(item)
-    })
-
-    const billsWithItems = bills.map(bill => ({
+    const billsFormatted = bills.map(bill => ({
       ...bill,
-      items: itemsByBillId[bill.id] || []
+      receipt_number: ensureReceiptHasMonth(bill.receipt_number, bill.invoice_date || bill.created_at),
+      items: [] // Items are fetched on-demand via getBillById(id) when viewing/printing
     }))
 
     // Overall summary metrics
@@ -584,8 +588,8 @@ export async function getAllBills(req, res) {
 
     return res.status(200).json({
       success: true,
-      count: billsWithItems.length,
-      bills: billsWithItems,
+      count: billsFormatted.length,
+      bills: billsFormatted,
       stats: {
         totalBills: bills.length,
         totalRevenue,
@@ -637,6 +641,7 @@ export async function getBillById(req, res) {
       success: true,
       bill: {
         ...bill,
+        receipt_number: ensureReceiptHasMonth(bill.receipt_number, bill.invoice_date || bill.created_at),
         items
       }
     })

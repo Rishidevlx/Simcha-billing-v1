@@ -1,4 +1,5 @@
 import express from 'express'
+import { verifyToken } from '../middleware/authMiddleware.js'
 import {
   getNextReturnNumber,
   getAllReturns,
@@ -9,6 +10,9 @@ import {
 } from '../controllers/returnController.js'
 
 const router = express.Router()
+
+// Protect all return routes with JWT verification
+router.use(verifyToken)
 
 router.get('/', getAllReturns)
 router.get('/meta/next-number', getNextReturnNumber)

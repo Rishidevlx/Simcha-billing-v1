@@ -1,4 +1,5 @@
 import express from 'express'
+import { verifyToken } from '../middleware/authMiddleware.js'
 import {
   getUsers,
   getUserById,
@@ -10,6 +11,9 @@ import {
 } from '../controllers/usersController.js'
 
 const router = express.Router()
+
+// Protect all users routes with JWT verification
+router.use(verifyToken)
 
 router.get('/', getUsers)
 router.get('/:id', getUserById)

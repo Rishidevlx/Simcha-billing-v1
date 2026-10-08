@@ -64,7 +64,7 @@ export default function ReturnVoucherTemplate({ returnItem, settings, company })
   const companyAddress = effectiveCompany?.address || ''
   const signatureUrl = effectiveSettings?.signature_url || effectiveSettings?.signatureUrl || returnItem?.signature_url || liveSignUrl || null
 
-  const isCreditNote = returnItem.qc_decision === 'REFUND' || (returnItem.resolution_ref && returnItem.resolution_ref.includes('CN'))
+  const isCreditNote = returnItem.qc_decision === 'REFUND' || returnItem.qc_decision === 'Credit Note' || (returnItem.resolution_ref && returnItem.resolution_ref.includes('CN')) || returnItem.return_mode === 'credit_note'
   const isReplacement = returnItem.qc_decision === 'REPLACE'
   const documentTitle = isCreditNote ? 'CREDIT NOTE' : (isReplacement ? 'REPLACEMENT VOUCHER' : 'RETURN VOUCHER')
   const documentNumber = returnItem.resolution_ref || returnItem.return_number
@@ -102,6 +102,18 @@ export default function ReturnVoucherTemplate({ returnItem, settings, company })
       'Defective items are subject to QC verification before replacement or credit note issuance.'
     ]
 
+  const defaultCreditNoteTerms = (Array.isArray(snapshot?.credit_note_terms) && snapshot.credit_note_terms.length > 0)
+    ? snapshot.credit_note_terms
+    : (Array.isArray(effectiveSettings?.credit_note_terms) && effectiveSettings.credit_note_terms.length > 0)
+    ? effectiveSettings.credit_note_terms
+    : [
+      'This Credit Note is issued towards refund / return adjustment against the specified original invoice.',
+      'The credit balance can be utilized against future purchases or refunded as per company billing policy.',
+      'This document is computer-generated and legally valid subject to authorized signature.'
+    ]
+
+  const activeTerms = isCreditNote ? defaultCreditNoteTerms : defaultReturnTerms
+
   return (
     <div id="return-slip-printable-area" className="w-full">
       <TemplatePageShell pageIndex={1} totalPages={1}>
@@ -118,7 +130,7 @@ export default function ReturnVoucherTemplate({ returnItem, settings, company })
 
           {/* Meta Bar */}
           <TemplateMetaBar
-            docNumberLabel="RETURN NUMBER:"
+            docNumberLabel={isCreditNote ? "CREDIT NOTE NUMBER:" : (isReplacement ? "REPLACEMENT NUMBER:" : "RETURN NUMBER:")}
             docNumber={documentNumber}
             dateLabel="DATE:"
             dateValue={formatDate(returnItem.return_date)}
@@ -162,16 +174,20 @@ export default function ReturnVoucherTemplate({ returnItem, settings, company })
                 </div>
               </div>
 
-              {/* Right Column: RETURN & VOUCHER DETAILS */}
+              {/* Right Column: RETURN & VOUCHER DETAILS / CREDIT NOTE DETAILS */}
               <div className="space-y-0.5 pl-1">
                 <span className="text-[12px] font-black text-[#043486] uppercase tracking-wider block mb-0.5">
-                  RETURN &amp; VOUCHER DETAILS
+                  {isCreditNote ? 'CREDIT NOTE DETAILS' : 'RETURN & VOUCHER DETAILS'}
                 </span>
                 <div className="space-y-0.5 pt-0.5 text-[10px] font-medium text-gray-700">
-                  <div><strong>Return Tracking ID:</strong> <span className="font-mono text-[#292424] font-bold">{returnItem.return_number}</span></div>
+                  {isCreditNote ? (
+                    <div><strong>Credit Note ID:</strong> <span className="font-mono text-[#292424] font-bold">{documentNumber}</span></div>
+                  ) : (
+                    <div><strong>Return Tracking ID:</strong> <span className="font-mono text-[#292424] font-bold">{returnItem.return_number}</span></div>
+                  )}
                   <div><strong>QC Status:</strong> <span className="font-bold text-emerald-700 uppercase">{returnItem.qc_status || 'COMPLETED'}</span></div>
                   <div><strong>Resolution Type:</strong> <span className="font-bold text-[#292424] uppercase">{isCreditNote ? 'Credit Note Issued for Refund' : (isReplacement ? 'Item Replaced' : 'Restocked')}</span></div>
-                  <div><strong>Return Date:</strong> <span className="font-medium text-[#292424]">{formatDate(returnItem.return_date)}</span></div>
+                  <div><strong>{isCreditNote ? 'Issue Date:' : 'Return Date:'}</strong> <span className="font-medium text-[#292424]">{formatDate(returnItem.return_date)}</span></div>
                 </div>
               </div>
             </div>
@@ -297,13 +313,13 @@ export default function ReturnVoucherTemplate({ returnItem, settings, company })
 
           {/* --- TERMS & CONDITIONS AND SIGNATURE SECTION (Directly below QC Box) --- */}
           <div className="pt-3 border-t border-gray-200 grid grid-cols-12 gap-4 items-end">
-            {/* Left: Return Terms & Conditions */}
+            {/* Left: Terms & Conditions */}
             <div className="col-span-8 space-y-1">
               <h4 className="text-[10px] font-bold text-[#043486] uppercase tracking-wider">
-                Terms &amp; Conditions:
+                {isCreditNote ? 'Credit Note Terms & Conditions:' : 'Terms & Conditions:'}
               </h4>
               <ol className="list-decimal list-inside text-[9px] text-gray-700 space-y-0.5 leading-relaxed font-medium">
-                {defaultReturnTerms.map((term, idx) => (
+                {activeTerms.map((term, idx) => (
                   <li key={idx}>{term}</li>
                 ))}
               </ol>

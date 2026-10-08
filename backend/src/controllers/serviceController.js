@@ -211,18 +211,19 @@ export async function createServiceBill(req, res) {
     if (!finalReceiptNumber) {
       const [settingRows] = await pool.query(`
         SELECT 
-          service_receipt_prefix, service_receipt_financial_year, service_receipt_starting_number, service_receipt_padding_digits, service_receipt_separator,
-          receipt_prefix, receipt_financial_year, receipt_starting_number, receipt_padding_digits, receipt_separator 
+          service_receipt_prefix, service_receipt_month, service_receipt_financial_year, service_receipt_starting_number, service_receipt_padding_digits, service_receipt_separator,
+          receipt_prefix, receipt_month, receipt_financial_year, receipt_starting_number, receipt_padding_digits, receipt_separator 
         FROM settings WHERE id = 1
       `)
       const s = settingRows.length > 0 ? settingRows[0] : {}
-      const hasServiceRec = (s.service_receipt_prefix !== undefined && s.service_receipt_prefix !== null && s.service_receipt_prefix.trim() !== '')
+      const hasServiceRec = (s.service_receipt_prefix !== undefined && s.service_receipt_prefix !== null && String(s.service_receipt_prefix).trim() !== '')
       const prefix = hasServiceRec 
-        ? s.service_receipt_prefix.trim() 
-        : ((s.receipt_prefix !== undefined && s.receipt_prefix !== null && s.receipt_prefix.trim() !== '') ? s.receipt_prefix.trim() : 'SIS-REC')
+        ? String(s.service_receipt_prefix).trim() 
+        : ((s.receipt_prefix !== undefined && s.receipt_prefix !== null && String(s.receipt_prefix).trim() !== '') ? String(s.receipt_prefix).trim() : 'SIS-REC')
+      const month = hasServiceRec ? s.service_receipt_month : s.receipt_month
       const fy = hasServiceRec 
-        ? (s.service_receipt_financial_year && s.service_receipt_financial_year.trim() ? s.service_receipt_financial_year.trim() : '2026-27')
-        : ((s.receipt_financial_year && s.receipt_financial_year.trim()) ? s.receipt_financial_year.trim() : '2026-27')
+        ? (s.service_receipt_financial_year && String(s.service_receipt_financial_year).trim() ? String(s.service_receipt_financial_year).trim() : '2026-27')
+        : ((s.receipt_financial_year && String(s.receipt_financial_year).trim()) ? String(s.receipt_financial_year).trim() : '2026-27')
       const startNum = hasServiceRec
         ? (parseInt(s.service_receipt_starting_number, 10) || 1)
         : (parseInt(s.receipt_starting_number, 10) || 1)
@@ -233,9 +234,10 @@ export async function createServiceBill(req, res) {
         ? ((s.service_receipt_separator !== undefined && s.service_receipt_separator !== null) ? s.service_receipt_separator : '/')
         : ((s.receipt_separator !== undefined && s.receipt_separator !== null) ? s.receipt_separator : '/')
 
+      const effectiveDate = await getEffectiveIstDate(pool, service_date)
       const match = service_number.match(/(\d+)$/)
       const seq = match ? parseInt(match[1], 10) : startNum
-      finalReceiptNumber = `${prefix}${sep}${fy}${sep}${String(seq).padStart(padding, '0')}`
+      finalReceiptNumber = buildDynamicNumber(prefix, sep, month, fy, seq, padding, service_date, effectiveDate)
     }
 
     const sanitizedPaymentMode = (payment_mode === 'Select' || payment_mode === '' || !payment_mode) ? null : payment_mode

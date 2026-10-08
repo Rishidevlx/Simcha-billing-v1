@@ -30,6 +30,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage'
 import { ThemeProvider } from './context/ThemeContext'
 import { SettingsProvider } from './context/SettingsContext'
 import { API_ENDPOINTS } from './config/api'
+import { getDefaultLandingRoute } from './utils/access'
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -135,7 +136,7 @@ export default function App() {
           path="/login"
           element={
             isAuthenticated ? (
-              <Navigate to="/dashboard" replace />
+              <Navigate to={getDefaultLandingRoute(user)} replace />
             ) : (
               <LoginPage onLogin={handleLogin} />
             )
@@ -163,8 +164,8 @@ export default function App() {
             )
           }
         >
-          {/* Default Root Redirect to Dashboard */}
-          <Route index element={<Navigate to="/dashboard" replace />} />
+          {/* Default Root Redirect to Role-based Landing Route */}
+          <Route index element={<Navigate to={getDefaultLandingRoute(user)} replace />} />
 
           {/* Core App Pages */}
           <Route

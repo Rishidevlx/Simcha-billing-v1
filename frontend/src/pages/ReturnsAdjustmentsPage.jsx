@@ -1867,11 +1867,10 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                           <button
                             type="button"
                             onClick={() => handleOpenInvoicePreview(item.bill_number || item.invoice_number)}
-                            className="px-2 py-0.5 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900 border border-blue-200 dark:border-blue-800 text-[11px] font-bold text-[#043486] dark:text-blue-400 hover:underline transition-all cursor-pointer inline-flex items-center gap-1"
+                            className="font-mono font-bold text-[#043486] dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer inline-flex items-center text-left"
                             title="Click to view Original Invoice Bill"
                           >
-                            <span>{item.bill_number}</span>
-                            <ArrowUpRight size={11} className="opacity-70" />
+                            {item.bill_number}
                           </button>
                         </td>
                         {activeTab === 'defective' && (
@@ -1944,10 +1943,10 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                                   setSelectedReturnView(item)
                                   setViewModalOpen(true)
                                 }}
-                                className="px-2 py-0.5 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-xs font-bold hover:underline cursor-pointer inline-flex items-center gap-1"
-                                title="Click to view Credit Note / Return Voucher Slip"
+                                className="font-mono font-bold text-purple-700 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 hover:underline cursor-pointer inline-flex items-center text-left"
+                                title="Click to view Credit Note Slip"
                               >
-                                <span>{item.resolution_ref || 'CN-PENDING'}</span>
+                                {item.resolution_ref || 'CN-PENDING'}
                               </button>
                             </td>
                             <td className="py-3 px-4">
@@ -2548,7 +2547,9 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
               <div className="flex items-center gap-2">
                 <FileText className="text-[#043486] dark:text-blue-400" size={20} />
                 <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
-                  Return Voucher Slip
+                  {selectedReturnView.qc_decision === 'REFUND' || selectedReturnView.qc_decision === 'Credit Note' || selectedReturnView.return_mode === 'credit_note' || (selectedReturnView.resolution_ref && selectedReturnView.resolution_ref.includes('CN'))
+                    ? 'Credit Note Slip'
+                    : 'Return Voucher Slip'}
                 </h3>
               </div>
               <button
@@ -2560,12 +2561,25 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
             </div>
 
             <div className="py-4 space-y-2.5 text-xs">
+              {selectedReturnView.qc_decision === 'REFUND' || selectedReturnView.qc_decision === 'Credit Note' || (selectedReturnView.resolution_ref && selectedReturnView.resolution_ref.includes('CN')) ? (
+                <div className="flex justify-between py-1 border-b border-gray-100 dark:border-slate-800">
+                  <span className="text-gray-500">Credit Note ID:</span>
+                  <span className="font-mono font-bold text-[#043486] dark:text-blue-400">
+                    {selectedReturnView.resolution_ref || selectedReturnView.return_number}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex justify-between py-1 border-b border-gray-100 dark:border-slate-800">
+                  <span className="text-gray-500">Return ID:</span>
+                  <span className="font-mono font-bold text-[#043486] dark:text-blue-400">{selectedReturnView.return_number}</span>
+                </div>
+              )}
               <div className="flex justify-between py-1 border-b border-gray-100 dark:border-slate-800">
-                <span className="text-gray-500">Return ID:</span>
-                <span className="font-mono font-bold text-[#043486] dark:text-blue-400">{selectedReturnView.return_number}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-gray-100 dark:border-slate-800">
-                <span className="text-gray-500">Return Date:</span>
+                <span className="text-gray-500">
+                  {selectedReturnView.qc_decision === 'REFUND' || selectedReturnView.qc_decision === 'Credit Note' || (selectedReturnView.resolution_ref && selectedReturnView.resolution_ref.includes('CN'))
+                    ? 'Issue Date:'
+                    : 'Return Date:'}
+                </span>
                 <span className="font-semibold text-gray-800 dark:text-slate-200">
                   {selectedReturnView.return_date
                     ? new Date(selectedReturnView.return_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -2650,7 +2664,9 @@ export default function ReturnsAdjustmentsPage({ setActiveRoute }) {
                 onClick={() => setViewModalOpen(false)}
                 className="px-4 py-1.5 text-xs font-bold text-white bg-[#043486] hover:bg-[#0248BC] rounded-none cursor-pointer"
               >
-                Close Voucher
+                {selectedReturnView.qc_decision === 'REFUND' || selectedReturnView.qc_decision === 'Credit Note' || (selectedReturnView.resolution_ref && selectedReturnView.resolution_ref.includes('CN'))
+                  ? 'Close Slip'
+                  : 'Close Voucher'}
               </button>
             </div>
           </div>

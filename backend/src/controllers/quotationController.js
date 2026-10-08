@@ -837,19 +837,20 @@ export async function convertQuotationToInvoice(req, res) {
 
     // Determine receipt number
     const [settingRows] = await pool.query(`
-      SELECT receipt_prefix, receipt_financial_year, receipt_starting_number, receipt_padding_digits, receipt_separator 
+      SELECT receipt_prefix, receipt_month, receipt_financial_year, receipt_starting_number, receipt_padding_digits, receipt_separator 
       FROM settings WHERE id = 1
     `)
     const s = settingRows.length > 0 ? settingRows[0] : {}
-    const rPrefix = (s.receipt_prefix !== undefined && s.receipt_prefix !== null && s.receipt_prefix.trim() !== '') ? s.receipt_prefix.trim() : 'SIS-REC'
-    const rFy = (s.receipt_financial_year && s.receipt_financial_year.trim()) ? s.receipt_financial_year.trim() : '2026-27'
+    const rPrefix = (s.receipt_prefix !== undefined && s.receipt_prefix !== null && String(s.receipt_prefix).trim() !== '') ? String(s.receipt_prefix).trim() : 'SIS-REC'
+    const rMonth = s.receipt_month
+    const rFy = (s.receipt_financial_year && String(s.receipt_financial_year).trim()) ? String(s.receipt_financial_year).trim() : '2026-27'
     const rStartNum = parseInt(s.receipt_starting_number, 10) || 1
     const rPadding = parseInt(s.receipt_padding_digits, 10) || 4
     const rSep = (s.receipt_separator !== undefined && s.receipt_separator !== null) ? s.receipt_separator : '/'
 
     const matchSeq = finalInvoiceNumber.match(/(\d+)$/)
     const seq = matchSeq ? parseInt(matchSeq[1], 10) : rStartNum
-    const finalReceiptNumber = `${rPrefix}${rSep}${rFy}${rSep}${String(seq).padStart(rPadding, '0')}`
+    const finalReceiptNumber = buildDynamicNumber(rPrefix, rSep, rMonth, rFy, seq, rPadding, todayStr, effectiveDate)
 
     // Build Invoice Company Snapshot with Invoice & Receipt terms (not quotation terms)
     const [snapSettingRows] = await pool.query('SELECT * FROM settings WHERE id = 1')

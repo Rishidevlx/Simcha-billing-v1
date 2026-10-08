@@ -1,5 +1,6 @@
 import { v2 as cloudinary } from 'cloudinary'
 import { getPool } from '../config/db.js'
+import { maskApiKey } from '../utils/encryption.js'
 
 // Helper to get active Cloudinary config from DB
 async function getActiveCloudinaryInstance() {
@@ -20,7 +21,7 @@ async function getActiveCloudinaryInstance() {
   return { isConfigured: true, config: cfg, cloudinary }
 }
 
-// 1. Get Cloudinary Configuration
+// 1. Get Cloudinary Configuration (Safe: Masked Secret)
 export async function getCloudinaryConfig(req, res) {
   try {
     const pool = getPool()
@@ -34,14 +35,25 @@ export async function getCloudinaryConfig(req, res) {
           api_key: '',
           api_secret: '',
           folder_name: 'simcha_billing',
-          is_enabled: true
+          is_enabled: true,
+          is_secret_configured: false
         }
       })
     }
 
+    const row = rows[0]
     return res.status(200).json({
       success: true,
-      config: rows[0]
+      config: {
+        id: row.id,
+        cloud_name: row.cloud_name || '',
+        api_key: row.api_key || '',
+        api_secret: row.api_secret ? maskApiKey(row.api_secret) : '',
+        is_secret_configured: Boolean(row.api_secret),
+        folder_name: row.folder_name || 'simcha_billing',
+        is_enabled: Boolean(row.is_enabled),
+        updated_at: row.updated_at
+      }
     })
   } catch (error) {
     console.error('Error fetching Cloudinary config:', error)
@@ -58,6 +70,13 @@ export async function saveCloudinaryConfig(req, res) {
     const { cloud_name, api_key, api_secret, folder_name = 'simcha_billing', is_enabled = true } = req.body
     const pool = getPool()
 
+    // Fetch existing secret if user did not modify the masked string
+    const [existingRows] = await pool.query('SELECT api_secret FROM cloudinary_configs WHERE id = 1')
+    let finalSecret = (api_secret || '').trim()
+    if (finalSecret.includes('•') && existingRows.length > 0 && existingRows[0].api_secret) {
+      finalSecret = existingRows[0].api_secret
+    }
+
     await pool.query(`
       INSERT INTO cloudinary_configs (id, cloud_name, api_key, api_secret, folder_name, is_enabled)
       VALUES (1, ?, ?, ?, ?, ?)
@@ -70,7 +89,7 @@ export async function saveCloudinaryConfig(req, res) {
     `, [
       (cloud_name || '').trim(),
       (api_key || '').trim(),
-      (api_secret || '').trim(),
+      finalSecret,
       (folder_name || 'simcha_billing').trim(),
       Boolean(is_enabled)
     ])
@@ -96,14 +115,14 @@ export async function testCloudinaryConnection(req, res) {
     let aKey = api_key
     let aSecret = api_secret
 
-    // If not provided in body, fallback to DB values
-    if (!cName || !aKey || !aSecret) {
-      const pool = getPool()
-      const [rows] = await pool.query('SELECT * FROM cloudinary_configs WHERE id = 1')
-      if (rows.length > 0) {
-        cName = cName || rows[0].cloud_name
-        aKey = aKey || rows[0].api_key
-        aSecret = aSecret || rows[0].api_secret
+    // If not provided in body or masked, fallback to DB values
+    const pool = getPool()
+    const [rows] = await pool.query('SELECT * FROM cloudinary_configs WHERE id = 1')
+    if (rows.length > 0) {
+      cName = cName || rows[0].cloud_name
+      aKey = aKey || rows[0].api_key
+      if (!aSecret || aSecret.includes('•')) {
+        aSecret = rows[0].api_secret
       }
     }
 

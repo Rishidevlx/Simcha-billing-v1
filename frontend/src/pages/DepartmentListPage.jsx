@@ -189,7 +189,17 @@ export default function DepartmentListPage({ setActiveRoute }) {
     XLSX.writeFile(wb, 'Company_Departments.xlsx')
   }
 
-  const handleDelete = async (id, deptName) => {
+  const handleDelete = async (id, deptName, assignedCount = 0) => {
+    if (assignedCount > 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Cannot Delete Department',
+        text: `Department "${deptName}" is assigned to ${assignedCount} active user(s). Please reassign or update those users before deleting.`,
+        confirmButtonColor: '#043486'
+      })
+      return
+    }
+
     const result = await Swal.fire({
       title: 'Delete Department?',
       text: `Are you sure you want to delete department "${deptName}"?`,
@@ -673,7 +683,7 @@ export default function DepartmentListPage({ setActiveRoute }) {
                                 {canDelete && (
                                   <ActionButton
                                     type="delete"
-                                    onClick={() => handleDelete(dept.id, dept.name)}
+                                    onClick={() => handleDelete(dept.id, dept.name, deptUsers.length)}
                                     title="Delete Department"
                                   />
                                 )}

@@ -1,4 +1,5 @@
 import express from 'express'
+import { verifyToken } from '../middleware/authMiddleware.js'
 import {
   getEmailConfig,
   updateEmailConfig,
@@ -7,6 +8,9 @@ import {
 } from '../controllers/emailController.js'
 
 const router = express.Router()
+
+// Protect all email config routes with JWT verification
+router.use(verifyToken)
 
 router.get('/', getEmailConfig)
 router.post('/', updateEmailConfig)
