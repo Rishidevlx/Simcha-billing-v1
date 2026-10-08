@@ -64,49 +64,59 @@ export default function OutwardLineItems({
         {items.map((item, index) => (
           <div
             key={index}
-            className="p-3.5 sm:p-4 rounded-none border border-gray-300 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-950/60 hover:border-blue-300 dark:hover:border-blue-800 transition-all space-y-3"
+            className="p-3.5 sm:p-4 rounded-none border border-gray-300 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-950/60 hover:border-blue-400 dark:hover:border-blue-700 transition-all space-y-3.5"
           >
-            {/* Mobile Item Card Header (S.No + Duplicate/Delete) */}
-            <div className="flex items-center justify-between pb-2 border-b border-gray-200/80 dark:border-slate-800/80 md:hidden">
+            {/* Item Card Header (S.No Badge + Item # + Duplicate & Delete Actions) */}
+            <div className="flex items-center justify-between pb-2.5 border-b border-gray-200/80 dark:border-slate-800/80">
               <div className="flex items-center gap-2">
                 <span className="w-6 h-6 rounded-none bg-[#043486] text-white text-[11px] font-bold flex items-center justify-center">
                   {index + 1}
                 </span>
-                <span className="text-xs font-bold text-gray-700 dark:text-slate-200">
+                <span className="text-xs font-bold text-gray-800 dark:text-slate-100 uppercase tracking-wide">
                   Item #{index + 1}
                 </span>
+                {!isQuotation && item.material_id && item.current_stock !== null && item.current_stock !== undefined && (
+                  <span
+                    className={`hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-none border ${
+                      parseFloat(item.current_stock) <= 0
+                        ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/50 dark:text-red-300 dark:border-red-900'
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-900'
+                    }`}
+                  >
+                    {parseFloat(item.current_stock) <= 0
+                      ? '⚠️ Out of Stock'
+                      : `Stock: ${item.current_stock} ${item.unit || 'NOS'}`}
+                  </span>
+                )}
               </div>
+
+              {/* Action Buttons (Duplicate & Delete) */}
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => onDuplicateItem(index)}
-                  title="Duplicate item"
-                  className="p-1.5 text-gray-500 hover:text-[#043486] dark:hover:text-blue-400 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none cursor-pointer"
+                  title="Duplicate line item"
+                  className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-gray-600 dark:text-slate-300 hover:text-[#043486] dark:hover:text-blue-400 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 hover:border-blue-400 rounded-none transition-colors cursor-pointer"
                 >
                   <Copy size={13} />
+                  <span className="hidden sm:inline">Duplicate</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => onRemoveItem(index)}
-                  title="Delete item"
-                  className="p-1.5 text-gray-500 hover:text-red-600 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-none cursor-pointer"
+                  title="Delete line item"
+                  className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-gray-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-950/40 hover:border-red-300 rounded-none transition-colors cursor-pointer"
                 >
                   <Trash2 size={13} />
+                  <span className="hidden sm:inline">Delete</span>
                 </button>
               </div>
             </div>
 
-            {/* Row 1: Index + Category + Product Select + HSN/SAC + Qty & Unit + Row Actions */}
-            <div className="flex flex-col md:flex-row items-stretch md:items-end gap-3">
-              {/* S.No (Desktop only) */}
-              <div className="hidden md:block shrink-0">
-                <span className="w-9 h-[41px] rounded-none bg-[#043486] text-white text-xs font-bold flex items-center justify-center shrink-0">
-                  {index + 1}
-                </span>
-              </div>
-
+            {/* Row 1: Category + Item Name + HSN/SAC Code */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-start">
               {/* 1. Category Search & Select Dropdown */}
-              <div className="w-full md:w-56 shrink-0">
+              <div className="sm:col-span-4">
                 <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
                   Material Category
                 </label>
@@ -119,39 +129,24 @@ export default function OutwardLineItems({
               </div>
 
               {/* 2. Product / Material Search & Select Dropdown */}
-              <div className="flex-1 min-w-[200px]">
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200">
-                    Item Name <span className="text-red-500 font-bold">*</span>
-                    {!isQuotation && item.material_id && item.current_stock !== null && item.current_stock !== undefined && (
-                      <span
-                        className={`ml-2 text-[10.5px] font-bold ${
-                          parseFloat(item.current_stock) <= 0
-                            ? 'text-red-500'
-                            : 'text-emerald-600 dark:text-emerald-400'
-                        }`}
-                      >
-                        {parseFloat(item.current_stock) <= 0
-                          ? '(0 in Stock - Out of Stock)'
-                          : `(Available: ${item.current_stock} ${item.unit || 'NOS'})`}
-                      </span>
-                    )}
-                  </label>
-                </div>
+              <div className="sm:col-span-5">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
+                  Item Name <span className="text-red-500 font-bold">*</span>
+                </label>
                 <SearchableSelect
                   options={getMaterialOptionsForRow ? getMaterialOptionsForRow(item.category_id, item.hsn_code) : []}
                   value={item.material_id || ''}
                   onChange={(val) => onMaterialSelect(index, val)}
                   placeholder={
                     item.category_name
-                      ? `Select product in "${item.category_name}"...`
+                      ? `Select in "${item.category_name}"...`
                       : item.hsn_code
-                      ? `Select product for HSN "${item.hsn_code}"...`
+                      ? `Select for HSN "${item.hsn_code}"...`
                       : 'Search & select product / item...'
                   }
                 />
 
-                {/* Stock Validations Warning Message Under Input Field */}
+                {/* Stock Warning Message */}
                 {!isQuotation && item.material_id && item.current_stock !== null && item.current_stock !== undefined && (
                   <>
                     {parseFloat(item.current_stock) <= 0 ? (
@@ -163,8 +158,7 @@ export default function OutwardLineItems({
                       <div className="mt-1 flex items-center gap-1.5 text-[11px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-2.5 py-0.5 border border-red-200 dark:border-red-900">
                         <AlertCircle size={12} className="shrink-0 text-red-500" />
                         <span>
-                          ⚠️ Insufficient Stock! Only {item.current_stock} {item.unit || 'NOS'} available (Billed:{' '}
-                          {item.quantity})
+                          ⚠️ Insufficient Stock! Only {item.current_stock} {item.unit || 'NOS'} available
                         </span>
                       </div>
                     ) : null}
@@ -172,77 +166,19 @@ export default function OutwardLineItems({
                 )}
               </div>
 
-              {/* 3 & 4. HSN/SAC + Quantity & Unit */}
-              <div className="grid grid-cols-2 md:flex md:items-end gap-3">
-                {/* 3. HSN / SAC */}
-                <div className="w-full md:w-32 shrink-0">
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
-                    HSN / SAC Code
-                  </label>
-                  <input
-                    type="text"
-                    value={item.hsn_code}
-                    onChange={(e) => onItemChange(index, 'hsn_code', e.target.value)}
-                    placeholder="HSN / SAC"
-                    title="HSN / SAC Code"
-                    className="w-full px-2 sm:px-3 py-2.5 text-xs font-mono text-center text-[#292424] dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 placeholder:text-gray-400 dark:placeholder:text-slate-500 font-medium h-[41px]"
-                  />
-                </div>
-
-                {/* 4. Quantity & Unit */}
-                <div className="w-full md:w-auto shrink-0">
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
-                    Qty & Unit
-                  </label>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="number"
-                      min="0.01"
-                      step="any"
-                      value={item.quantity}
-                      onChange={(e) => onItemChange(index, 'quantity', e.target.value)}
-                      title="Quantity"
-                      placeholder="Qty"
-                      className={`w-full md:w-20 px-2 py-2.5 text-xs text-center font-bold bg-white dark:bg-slate-900 border rounded-none focus:outline-none h-[41px] ${
-                        !isQuotation &&
-                        item.material_id &&
-                        item.current_stock !== null &&
-                        (parseFloat(item.current_stock) <= 0 || (parseFloat(item.quantity) || 1) > parseFloat(item.current_stock))
-                          ? 'border-red-500 text-red-600 dark:text-red-400 focus:border-red-600 bg-red-50/20'
-                          : 'text-[#292424] dark:text-white border-gray-300 dark:border-slate-700 focus:border-[#043486] dark:focus:border-blue-500'
-                      }`}
-                    />
-                    <input
-                      type="text"
-                      value={item.unit || 'NOS'}
-                      readOnly
-                      title="Unit (From material)"
-                      className="w-full md:w-18 px-2 py-2.5 text-xs text-center uppercase text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-none cursor-not-allowed select-none focus:outline-none font-semibold h-[41px]"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Desktop Row Actions */}
-              <div className="hidden md:block shrink-0 self-end">
-                <div className="flex items-center gap-1 h-[41px]">
-                  <button
-                    type="button"
-                    onClick={() => onDuplicateItem(index)}
-                    title="Duplicate row"
-                    className="p-2.5 text-gray-400 hover:text-[#043486] dark:hover:text-blue-400 hover:bg-white dark:hover:bg-slate-800 rounded-none transition-colors cursor-pointer"
-                  >
-                    <Copy size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onRemoveItem(index)}
-                    title="Delete row"
-                    className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-none transition-colors cursor-pointer"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
+              {/* 3. HSN / SAC Code */}
+              <div className="sm:col-span-3">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
+                  HSN / SAC Code
+                </label>
+                <input
+                  type="text"
+                  value={item.hsn_code}
+                  onChange={(e) => onItemChange(index, 'hsn_code', e.target.value)}
+                  placeholder="HSN / SAC"
+                  title="HSN / SAC Code"
+                  className="w-full px-2.5 py-2 text-xs font-mono text-center text-[#292424] dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 placeholder:text-gray-400 dark:placeholder:text-slate-500 font-medium h-[41px]"
+                />
               </div>
             </div>
 
@@ -457,66 +393,84 @@ export default function OutwardLineItems({
               </div>
             )}
 
-            {/* Row 3: Rate, Tax, Amount */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-3 border-t border-gray-200 dark:border-slate-800 items-end">
-              {/* Rate (Base Price - Non-editable from material) */}
-              <div>
+            {/* Row 2: Quantity & Unit + Rate + Tax + Total Amount */}
+            <div className="grid grid-cols-2 sm:grid-cols-12 gap-3 pt-2.5 border-t border-gray-200/70 dark:border-slate-800 items-end">
+              {/* 4. Quantity & Unit */}
+              <div className="col-span-1 sm:col-span-3">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
+                  Qty &amp; Unit
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="any"
+                    value={item.quantity}
+                    onChange={(e) => onItemChange(index, 'quantity', e.target.value)}
+                    title="Quantity"
+                    placeholder="Qty"
+                    className={`w-full px-2.5 py-2 text-xs text-center font-bold bg-white dark:bg-slate-900 border rounded-none focus:outline-none h-[41px] ${
+                      !isQuotation &&
+                      item.material_id &&
+                      item.current_stock !== null &&
+                      (parseFloat(item.current_stock) <= 0 || (parseFloat(item.quantity) || 1) > parseFloat(item.current_stock))
+                        ? 'border-red-500 text-red-600 dark:text-red-400 focus:border-red-600 bg-red-50/20'
+                        : 'text-[#292424] dark:text-white border-gray-300 dark:border-slate-700 focus:border-[#043486] dark:focus:border-blue-500'
+                    }`}
+                  />
+                  <input
+                    type="text"
+                    value={item.unit || 'NOS'}
+                    readOnly
+                    title="Unit"
+                    className="w-18 px-2 py-2 text-xs text-center uppercase text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-none cursor-not-allowed select-none focus:outline-none font-semibold h-[41px] shrink-0"
+                  />
+                </div>
+              </div>
+
+              {/* 5. Rate (₹) */}
+              <div className="col-span-1 sm:col-span-3">
                 <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200">
-                      {item.has_discount ? 'Discounted Rate (₹)' : 'Rate (₹)'}
-                    </label>
-                    {item.material_id && (
-                      <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded-none border ${
-                        item.tax_inclusive 
-                          ? 'bg-blue-50 text-[#043486] dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-900' 
-                          : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-900'
-                      }`}>
-                        {item.tax_inclusive ? 'Tax Inclusive' : 'Tax Exclusive (+18%)'}
-                      </span>
-                    )}
-                    {item.has_discount && (
-                      <span className="text-[10px] text-gray-400 dark:text-slate-500 font-mono font-medium">
-                        (Orig:{' '}
-                        <span className="line-through text-gray-400">
-                          ₹{Number(item.original_rate || item.rate || 0).toFixed(2)}
-                        </span>{' '}
-                        -₹{Number(item.discount_amount || 0).toFixed(2)})
-                      </span>
-                    )}
-                  </div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 truncate">
+                    {item.has_discount ? 'Rate (Disc.)' : 'Rate (₹)'}
+                  </label>
                   {item.has_discount && (
                     <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
                       {item.discount_percent}% OFF
                     </span>
                   )}
                 </div>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={Number(item.rate || 0).toFixed(2)}
-                    readOnly
-                    className="w-full px-3 py-2.5 text-xs font-semibold text-right font-mono text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-none cursor-not-allowed select-none focus:outline-none h-[41px]"
-                  />
-                </div>
+                <input
+                  type="text"
+                  value={Number(item.rate || 0).toFixed(2)}
+                  readOnly
+                  className="w-full px-3 py-2 text-xs font-semibold text-right font-mono text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-none cursor-not-allowed select-none focus:outline-none h-[41px]"
+                />
               </div>
 
-              {/* Tax % */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
-                  Tax ({item.tax_rate}%)
-                </label>
-                <div className="px-3 py-2.5 text-xs bg-gray-100 dark:bg-slate-800 rounded-none border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 font-mono font-medium flex items-center justify-end h-[41px]">
+              {/* 6. Tax (%) */}
+              <div className="col-span-1 sm:col-span-3">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200">
+                    Tax ({item.tax_rate}%)
+                  </label>
+                  {item.material_id && (
+                    <span className="text-[9.5px] font-medium text-gray-500 dark:text-slate-400">
+                      {item.tax_inclusive ? 'Inclusive' : '+GST'}
+                    </span>
+                  )}
+                </div>
+                <div className="px-3 py-2 text-xs bg-gray-100 dark:bg-slate-800 rounded-none border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 font-mono font-medium flex items-center justify-end h-[41px]">
                   ₹ {Number(item.tax_amount || 0).toFixed(2)}
                 </div>
               </div>
 
-              {/* Total Line Amount */}
-              <div>
+              {/* 7. Amount (₹) */}
+              <div className="col-span-1 sm:col-span-3">
                 <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-400 mb-1">
                   Amount (₹)
                 </label>
-                <div className="px-3 py-2.5 text-xs font-bold font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 rounded-none flex items-center justify-end h-[41px]">
+                <div className="px-3 py-2 text-xs font-bold font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 rounded-none flex items-center justify-end h-[41px]">
                   ₹ {Number(item.amount || 0).toFixed(2)}
                 </div>
               </div>

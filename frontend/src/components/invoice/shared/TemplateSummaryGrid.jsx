@@ -86,11 +86,22 @@ export default function TemplateSummaryGrid({
                 SCAN TO PAY
               </span>
               {bankImageUrl ? (
-                <div className="flex items-center justify-center">
+                <div className="flex items-center justify-center" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <img
                     src={bankImageUrl}
                     alt="Scan to Pay QR"
-                    className="h-32 w-32 max-h-36 max-w-full object-contain mx-auto"
+                    className="h-28 w-28 max-h-32 max-w-full object-contain mx-auto"
+                    style={{
+                      width: '110px',
+                      height: '110px',
+                      maxWidth: '120px',
+                      maxHeight: '120px',
+                      objectFit: 'contain',
+                      display: 'block',
+                      margin: '0 auto'
+                    }}
+                    width="110"
+                    height="110"
                   />
                 </div>
               ) : (
@@ -194,11 +205,12 @@ export default function TemplateSummaryGrid({
         {/* Authorized Signatory Block */}
         <div className="pt-2 text-center space-y-0.5">
           {signatureUrl && (
-            <div className="flex justify-center items-center h-10 mb-1">
+            <div className="flex justify-center items-center h-10 mb-1" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '40px' }}>
               <img
                 src={signatureUrl}
                 alt="Authorized Signature"
                 className="max-h-10 max-w-[140px] object-contain"
+                style={{ maxHeight: '40px', maxWidth: '140px', objectFit: 'contain', display: 'block', margin: '0 auto' }}
               />
             </div>
           )}

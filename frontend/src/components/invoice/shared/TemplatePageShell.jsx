@@ -22,11 +22,27 @@ export default function TemplatePageShell({
       }}
     >
       {/* Background Watermark */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0 opacity-[0.05]">
+      <div
+        className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          opacity: 0.05,
+          zIndex: 0,
+          pointerEvents: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
         <img
           src={watermarkImg}
           alt="Favicon Watermark"
-          className="w-[300px] max-w-full object-contain filter grayscale"
+          className="w-[280px] max-w-full object-contain filter grayscale"
+          style={{ width: '280px', maxWidth: '280px', height: 'auto', objectFit: 'contain', filter: 'grayscale(100%)' }}
         />
       </div>
 

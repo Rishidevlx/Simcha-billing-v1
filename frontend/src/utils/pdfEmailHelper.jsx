@@ -8,19 +8,32 @@ import ReceiptTemplate from '../components/receipt/ReceiptTemplate'
 import QuotationTemplate from '../components/quotation/QuotationTemplate'
 import ServiceReceiptTemplate from '../components/receipt/ServiceReceiptTemplate'
 
+import { ThemeProvider } from '../context/ThemeContext'
+import { SettingsProvider } from '../context/SettingsContext'
+
 /**
  * Universal Offscreen PDF Generator to Base64 String
  * Renders any React template component in off-screen DOM, computes high-res PDF canvas, and outputs Base64.
  */
 export async function generatePdfBase64FromComponent(Component, props = {}) {
+  // Ensure document fonts (Poppins, Inter, etc.) are ready
+  try {
+    if (document.fonts && document.fonts.ready) {
+      await document.fonts.ready
+    }
+  } catch {}
+
   const container = document.createElement('div')
   container.id = `offscreen-pdf-renderer-${Date.now()}`
   container.style.position = 'fixed'
-  container.style.left = '-9999px'
   container.style.top = '0'
-  container.style.width = '210mm'
+  container.style.left = '0'
+  container.style.width = '794px' // Exact A4 pixel width (210mm @ 96dpi)
+  container.style.minWidth = '794px'
+  container.style.maxWidth = '794px'
   container.style.backgroundColor = '#ffffff'
-  container.style.zIndex = '-9999'
+  container.style.zIndex = '-99999'
+  container.style.opacity = '0'
   container.style.pointerEvents = 'none'
   container.style.overflow = 'visible'
   document.body.appendChild(container)
@@ -28,27 +41,34 @@ export async function generatePdfBase64FromComponent(Component, props = {}) {
   const root = createRoot(container)
 
   try {
-    root.render(<Component {...props} />)
+    root.render(
+      <SettingsProvider>
+        <ThemeProvider>
+          <Component {...props} />
+        </ThemeProvider>
+      </SettingsProvider>
+    )
 
-    // Wait for React DOM update
-    await new Promise((r) => setTimeout(r, 200))
+    // Wait for React DOM update and layout calculation
+    await new Promise((r) => setTimeout(r, 250))
 
-    // Wait for all images inside container (logos, watermarks, stamps, signatures) to fully load
+    // Wait for all images inside container (logos, watermarks, stamps, signatures, QR) to fully load
     const images = Array.from(container.querySelectorAll('img'))
     if (images.length > 0) {
       await Promise.all(
         images.map((img) => {
-          if (img.complete) return Promise.resolve()
+          if (img.complete && img.naturalHeight !== 0) return Promise.resolve()
           return new Promise((resolve) => {
             img.onload = resolve
             img.onerror = resolve
+            setTimeout(resolve, 1500)
           })
         })
       )
     }
 
-    // Additional short settling delay for fonts / layout
-    await new Promise((r) => setTimeout(r, 100))
+    // Additional settling delay for CSS geometry
+    await new Promise((r) => setTimeout(r, 120))
 
     const pdf = new jsPDF({
       orientation: 'portrait',
@@ -56,12 +76,13 @@ export async function generatePdfBase64FromComponent(Component, props = {}) {
       format: 'a4'
     })
 
-    const pageElements = container.querySelectorAll('.invoice-page')
+    const pageElements = container.querySelectorAll('.invoice-page, .quotation-page, .receipt-page')
     if (pageElements && pageElements.length > 0) {
       for (let i = 0; i < pageElements.length; i++) {
         const pageEl = pageElements[i]
         const canvas = await html2canvas(pageEl, {
           scale: 2,
+          windowWidth: 794,
           useCORS: true,
           logging: false,
           backgroundColor: '#ffffff'
@@ -79,6 +100,7 @@ export async function generatePdfBase64FromComponent(Component, props = {}) {
     } else {
       const canvas = await html2canvas(container, {
         scale: 2,
+        windowWidth: 794,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff'

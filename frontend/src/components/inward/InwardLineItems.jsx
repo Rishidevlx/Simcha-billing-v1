@@ -46,154 +46,129 @@ export default function InwardLineItems({
               key={index}
               className="p-3.5 sm:p-4 rounded-none border border-gray-300 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-950/60 hover:border-blue-300 dark:hover:border-blue-800 transition-all space-y-3"
             >
-              {/* Mobile Item Card Header (S.No + Duplicate/Delete) */}
-              <div className="flex items-center justify-between pb-2 border-b border-gray-200/80 dark:border-slate-800/80 md:hidden">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-none bg-[#043486] text-white text-[11px] font-bold flex items-center justify-center">
-                    {index + 1}
-                  </span>
-                  <span className="text-xs font-bold text-gray-700 dark:text-slate-200">
-                    Material #{index + 1}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => onDuplicateItem(index)}
-                    title="Duplicate material"
-                    className="p-1.5 text-gray-500 hover:text-[#043486] dark:hover:text-blue-400 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none cursor-pointer"
-                  >
-                    <Copy size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onRemoveItem(index)}
-                    title="Delete material"
-                    className="p-1.5 text-gray-500 hover:text-red-600 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-none cursor-pointer"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
+            {/* Item Card Header (S.No Badge + Item # + Duplicate/Delete Actions) */}
+            <div className="flex items-center justify-between pb-2.5 border-b border-gray-200/80 dark:border-slate-800/80">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-none bg-[#043486] text-white text-[11px] font-bold flex items-center justify-center">
+                  {index + 1}
+                </span>
+                <span className="text-xs font-bold text-gray-800 dark:text-slate-100 uppercase tracking-wide">
+                  Material #{index + 1}
+                </span>
               </div>
 
-              {/* Row 1: S.No + Item Name Select + HSN/SAC + Qty (Max 25) + Unit (Auto) + Rate (Auto) + Amount + Desktop Actions */}
-              <div className="flex flex-col md:flex-row items-stretch md:items-end gap-3">
-                {/* S.No (Desktop only) */}
-                <div className="hidden md:block shrink-0">
-                  <span className="w-9 h-[41px] rounded-none bg-[#043486] text-white text-xs font-bold flex items-center justify-center shrink-0">
-                    {index + 1}
-                  </span>
-                </div>
+              {/* Action Buttons (Duplicate & Delete) */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onDuplicateItem(index)}
+                  title="Duplicate material"
+                  className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-gray-600 dark:text-slate-300 hover:text-[#043486] dark:hover:text-blue-400 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 hover:border-blue-400 rounded-none transition-colors cursor-pointer"
+                >
+                  <Copy size={13} />
+                  <span className="hidden sm:inline">Duplicate</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRemoveItem(index)}
+                  title="Delete material"
+                  className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-gray-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-950/40 hover:border-red-300 rounded-none transition-colors cursor-pointer"
+                >
+                  <Trash2 size={13} />
+                  <span className="hidden sm:inline">Delete</span>
+                </button>
+              </div>
+            </div>
 
-                {/* 1. Item Name / Material Search & Select */}
-                <div className="flex-1 min-w-[200px]">
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
-                    Item Name <span className="text-red-500 font-bold">*</span>
-                  </label>
-                  <SearchableSelect
-                    options={materialOptions}
-                    value={item.material_id || ''}
-                    onChange={(val) => onMaterialSelect(index, val)}
-                    placeholder="Select material"
-                  />
-                </div>
+            {/* Row 1: Item Name Select + HSN/SAC */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-start">
+              {/* 1. Item Name / Material Search & Select */}
+              <div className="sm:col-span-8">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
+                  Item Name <span className="text-red-500 font-bold">*</span>
+                </label>
+                <SearchableSelect
+                  options={materialOptions}
+                  value={item.material_id || ''}
+                  onChange={(val) => onMaterialSelect(index, val)}
+                  placeholder="Select material..."
+                />
+              </div>
 
-                {/* Grid for Numbers on Mobile (HSN, Qty, Unit, Rate, Amount) */}
-                <div className="grid grid-cols-2 sm:grid-cols-5 md:flex md:items-end gap-3">
-                  {/* 2. HSN / SAC Code */}
-                  <div className="col-span-1 md:w-24 shrink-0">
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
-                      HSN / SAC
-                    </label>
-                    <input
-                      type="text"
-                      value={item.hsn_code || ''}
-                      readOnly
-                      placeholder="HSN"
-                      className="w-full px-2 sm:px-3 py-2.5 text-xs sm:text-sm font-mono text-center text-[#292424] dark:text-white bg-gray-100 dark:bg-slate-800/80 border border-gray-300 dark:border-slate-700 rounded-none cursor-not-allowed select-none font-medium h-[41px]"
-                    />
-                  </div>
+              {/* 2. HSN / SAC Code */}
+              <div className="sm:col-span-4">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
+                  HSN / SAC Code
+                </label>
+                <input
+                  type="text"
+                  value={item.hsn_code || ''}
+                  readOnly
+                  placeholder="HSN / SAC"
+                  className="w-full px-2.5 py-2 text-xs font-mono text-center text-[#292424] dark:text-white bg-gray-100 dark:bg-slate-800/80 border border-gray-300 dark:border-slate-700 rounded-none cursor-not-allowed select-none font-medium h-[41px]"
+                />
+              </div>
+            </div>
 
-                  {/* 3. Quantity (Max 25) */}
-                  <div className="col-span-1 md:w-20 shrink-0">
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
-                      Qty <span className="text-[10px] text-gray-400 font-normal">(≤25)</span>
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="25"
-                      step="1"
-                      value={item.quantity}
-                      onChange={(e) => onItemChange(index, 'quantity', e.target.value)}
-                      title="Quantity (Max 25)"
-                      placeholder="Qty"
-                      className="w-full px-2 py-2.5 text-xs sm:text-sm text-center font-bold text-[#292424] dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 h-[41px]"
-                    />
-                  </div>
+            {/* Row 2: Quantity + Unit + Rate + Amount */}
+            <div className="grid grid-cols-2 sm:grid-cols-12 gap-3 pt-2.5 border-t border-gray-200/70 dark:border-slate-800 items-end">
+              {/* 3. Quantity (Max 25) */}
+              <div className="col-span-1 sm:col-span-3">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
+                  Qty <span className="text-[10px] text-gray-400 font-normal">(≤25)</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="25"
+                  step="1"
+                  value={item.quantity}
+                  onChange={(e) => onItemChange(index, 'quantity', e.target.value)}
+                  title="Quantity (Max 25)"
+                  placeholder="Qty"
+                  className="w-full px-2.5 py-2 text-xs text-center font-bold text-[#292424] dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 h-[41px]"
+                />
+              </div>
 
-                  {/* 4. Unit Type */}
-                  <div className="col-span-1 md:w-20 shrink-0">
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
-                      Unit
-                    </label>
-                    <input
-                      type="text"
-                      value={item.unit || 'NOS'}
-                      readOnly
-                      className="w-full px-2 py-2.5 text-xs sm:text-sm text-center uppercase font-semibold text-[#292424] dark:text-white bg-gray-100 dark:bg-slate-800/80 border border-gray-300 dark:border-slate-700 rounded-none cursor-not-allowed select-none h-[41px]"
-                    />
-                  </div>
+              {/* 4. Unit Type */}
+              <div className="col-span-1 sm:col-span-3">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
+                  Unit
+                </label>
+                <input
+                  type="text"
+                  value={item.unit || 'NOS'}
+                  readOnly
+                  className="w-full px-2.5 py-2 text-xs text-center uppercase font-semibold text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-none cursor-not-allowed select-none h-[41px]"
+                />
+              </div>
 
-                  {/* 5. Rate (₹) */}
-                  <div className="col-span-1 md:w-28 shrink-0">
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
-                      Rate (₹)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      value={item.rate !== undefined ? item.rate : ''}
-                      onChange={(e) => onItemChange(index, 'rate', e.target.value)}
-                      placeholder="0.00"
-                      className="w-full px-2 sm:px-3 py-2.5 text-xs sm:text-sm font-medium text-right font-mono text-[#292424] dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 h-[41px]"
-                    />
-                  </div>
+              {/* 5. Purchase Rate (₹) */}
+              <div className="col-span-1 sm:col-span-3">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">
+                  Purchase Rate (₹)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={item.rate !== undefined ? item.rate : ''}
+                  onChange={(e) => onItemChange(index, 'rate', e.target.value)}
+                  placeholder="0.00"
+                  className="w-full px-3 py-2 text-xs font-medium text-right font-mono text-[#292424] dark:text-white bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-none focus:outline-none focus:border-[#043486] dark:focus:border-blue-500 h-[41px]"
+                />
+              </div>
 
-                  {/* 6. Amount (₹) */}
-                  <div className="col-span-2 sm:col-span-1 md:w-32 shrink-0">
-                    <label className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">
-                      Amount (₹)
-                    </label>
-                    <div className="px-3 py-2.5 text-xs sm:text-sm font-bold font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 rounded-none flex items-center justify-end h-[41px]">
-                      ₹ {Number(item.amount || 0).toFixed(2)}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Desktop Actions */}
-                <div className="hidden md:block shrink-0 self-end">
-                  <div className="flex items-center gap-1 h-[41px]">
-                    <button
-                      type="button"
-                      onClick={() => onDuplicateItem(index)}
-                      title="Duplicate material row"
-                      className="p-2.5 text-gray-400 hover:text-[#043486] dark:hover:text-blue-400 hover:bg-white dark:hover:bg-slate-800 rounded-none transition-colors cursor-pointer"
-                    >
-                      <Copy size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onRemoveItem(index)}
-                      title="Delete material row"
-                      className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-none transition-colors cursor-pointer"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
+              {/* 6. Amount (₹) */}
+              <div className="col-span-1 sm:col-span-3">
+                <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-400 mb-1">
+                  Amount (₹)
+                </label>
+                <div className="px-3 py-2 text-xs font-bold font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 rounded-none flex items-center justify-end h-[41px]">
+                  ₹ {Number(item.amount || 0).toFixed(2)}
                 </div>
               </div>
+            </div>
 
               {/* Row 2: Description + Serial Number Toggle + Dynamic 3-Column Serial Inputs */}
               <div className="pt-3 border-t border-gray-200 dark:border-slate-800 space-y-3">

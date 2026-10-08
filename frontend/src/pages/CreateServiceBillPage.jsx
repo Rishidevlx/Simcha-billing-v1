@@ -676,19 +676,27 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
         }))
       }
 
-      // 1. Mount invoice template to DOM
-      setPreviewService(savedServiceData)
+      // 1. Template mounting & print trigger commented out (first follows quotation / job lifecycle)
+      // setPreviewService(savedServiceData)
 
       // 2. Alert user
       Swal.fire({
         icon: 'success',
-        title: isEditMode ? 'Service Request Updated Successfully!' : 'Service Request Created Successfully!',
-        text: `Service #${serviceNumber} ${isEditMode ? 'updated' : 'saved'}. Auto-opening print...`,
-        showConfirmButton: false,
-        timer: 1200
+        title: isEditMode ? 'Service Request Updated Successfully!' : 'Service Request Recorded Successfully!',
+        text: `Service Job #${serviceNumber} has been ${isEditMode ? 'updated' : 'saved'} successfully.`,
+        confirmButtonColor: '#043486',
+        confirmButtonText: 'OK',
+        timer: 1800
       })
 
-      // 3. Print and redirect / reset
+      // 3. Reset form or navigate to list without firing print dialog
+      if (isEditMode) {
+        navigate('/services/list')
+      } else {
+        handleReset()
+      }
+
+      /*
       setTimeout(() => {
         window.print()
         if (isEditMode) {
@@ -697,6 +705,7 @@ export default function CreateServiceBillPage({ setActiveRoute }) {
           handleReset()
         }
       }, 450)
+      */
     } catch (err) {
       console.error('Error saving service bill:', err)
       Swal.fire({

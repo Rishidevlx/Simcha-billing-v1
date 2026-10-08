@@ -29,6 +29,7 @@ export default function TemplateHeader({
             src={activeLogo}
             alt={effectiveCompanyName || "Company Logo"}
             className="h-12 sm:h-14 max-h-14 max-w-[150px] w-auto object-contain shrink-0"
+            style={{ maxHeight: '56px', maxWidth: '150px', height: '56px', width: 'auto', objectFit: 'contain' }}
           />
           <div className="space-y-0.5 flex-1 min-w-0">
             <h1 className="text-lg font-black text-[#043486] tracking-tight leading-none uppercase">
