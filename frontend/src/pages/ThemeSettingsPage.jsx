@@ -78,7 +78,7 @@ const THEME_PRESETS = [
 
 export default function ThemeSettingsPage() {
   const { theme, updateTheme, isSyncing } = useTheme()
-  const [activeTab, setActiveTab] = useState('colors') // 'colors', 'branding', 'documents'
+  const [activeTab, setActiveTab] = useState('branding') // 'branding' (colors & documents commented out)
   const [previewMode, setPreviewMode] = useState('app') // 'app', 'auth', 'invoice'
 
   // Per-tab Edit Mode States
@@ -330,9 +330,9 @@ export default function ThemeSettingsPage() {
       {/* 2. Velzon Arrow Nav Steps Tabs */}
       <ArrowNavTabs
         tabs={[
-          { id: 'colors', label: 'Colors', icon: Palette },
+          // { id: 'colors', label: 'Colors', icon: Palette },
           { id: 'branding', label: 'Logo & Favicon', icon: ImageIcon },
-          { id: 'documents', label: 'Invoice Style', icon: Receipt }
+          // { id: 'documents', label: 'Invoice Style', icon: Receipt }
         ]}
         activeTab={activeTab}
         onChange={setActiveTab}
@@ -342,10 +342,9 @@ export default function ThemeSettingsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Form Controls */}
         <div className="lg:col-span-7 space-y-6">
-          {/* TAB 1: COLORS */}
-          {activeTab === 'colors' && (
+          {/* TAB 1: COLORS (DISABLED / COMMENTED OUT) */}
+          {false && activeTab === 'colors' && (
             <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-6 shadow-2xs space-y-6">
-              {/* Card Action Header */}
               <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-slate-800">
                 <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                   <Palette size={16} className="text-[#043486] dark:text-blue-400" />
@@ -678,10 +677,9 @@ export default function ThemeSettingsPage() {
             </div>
           )}
 
-          {/* TAB 3: INVOICE STYLING */}
-          {activeTab === 'documents' && (
+          {/* TAB 3: INVOICE STYLING (DISABLED / COMMENTED OUT) */}
+          {false && activeTab === 'documents' && (
             <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-6 shadow-2xs space-y-6">
-              {/* Card Action Header */}
               <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-slate-800">
                 <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                   <Receipt size={16} className="text-[#043486] dark:text-blue-400" />
@@ -719,7 +717,6 @@ export default function ThemeSettingsPage() {
                 )}
               </div>
 
-              {/* Style Selector */}
               <div className="space-y-3">
                 <label className="text-xs font-bold text-gray-700 dark:text-slate-300 block">
                   Header Banner Format
@@ -755,7 +752,6 @@ export default function ThemeSettingsPage() {
                 </div>
               </div>
 
-              {/* Accent Color */}
               <div className="space-y-1.5 pt-2">
                 <label className="text-xs font-bold text-gray-700 dark:text-slate-300">
                   Invoice Accent Color
